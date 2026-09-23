@@ -4,6 +4,9 @@ on:
   workflow_dispatch:
   push:
     branches: [ main ]
+    paths:
+      - 'source/android_v0.3.3.tar.gz'
+      - '.github/workflows/build-apk.yml'
 
 jobs:
   build:
@@ -23,25 +26,26 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Rebuild Android source archive
+      - name: Unpack v0.3.3 Android source
         run: |
-          cat source/chunk_00 source/chunk_01 source/chunk_02 source/chunk_03 > source/android.b64
-          base64 -d source/android.b64 > source/android.tar.gz
           rm -rf buildsrc
           mkdir -p buildsrc
-          tar -xzf source/android.tar.gz -C buildsrc
+          tar -xzf source/android_v0.3.3.tar.gz -C buildsrc
           test -f buildsrc/android/app/build.gradle.kts
 
-      - name: Build installable APK
+      - name: Build unsigned release APK
         working-directory: buildsrc/android
-        run: gradle --no-daemon :app:assembleDebug
+        run: gradle --no-daemon :app:assembleRelease
 
-      - name: Rename APK
-        run: cp buildsrc/android/app/build/outputs/apk/debug/app-debug.apk LEDOA_CUT_Shorts_v0.3.2.apk
+      - name: Align APK
+        run: |
+          ZIPALIGN=$(find "${ANDROID_HOME}/build-tools" -name zipalign -type f | sort -V | tail -1)
+          test -n "$ZIPALIGN"
+          "$ZIPALIGN" -f 4 buildsrc/android/app/build/outputs/apk/release/app-release-unsigned.apk LEDOA_CUT_Shorts_v0.3.3-aligned-unsigned.apk
 
-      - name: Upload APK artifact
+      - name: Upload unsigned APK
         uses: actions/upload-artifact@v4
         with:
-          name: LEDOA_CUT_Shorts_v0.3.2
-          path: LEDOA_CUT_Shorts_v0.3.2.apk
+          name: LEDOA_CUT_Shorts_v0.3.3_unsigned
+          path: LEDOA_CUT_Shorts_v0.3.3-aligned-unsigned.apk
           if-no-files-found: error
