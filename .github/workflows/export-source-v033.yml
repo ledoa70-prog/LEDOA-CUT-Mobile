@@ -1,0 +1,29 @@
+name: Export v0.3.3 Source
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/export-source-v033.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract source
+        run: |
+          rm -rf mobile-src
+          mkdir -p mobile-src
+          tar -xzf source/android_v0.3.3.tar.gz -C mobile-src
+          find mobile-src -maxdepth 5 -type f | sort
+      - name: Commit extracted source
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add mobile-src
+          git commit -m "Export v0.3.3 Android source" || exit 0
+          git push
