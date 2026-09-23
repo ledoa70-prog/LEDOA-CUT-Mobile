@@ -53,9 +53,13 @@ jobs:
 
       - name: Apply v0.3.4 mobile editor patch
         run: |
-          cat source/v034_app_00 source/v034_app_01 source/v034_app_02 source/v034_app_03 | base64 -d | gzip -d > buildsrc/android/app/src/main/assets/app.js
-          base64 -d source/patch_index_034.b64 | gzip -d > buildsrc/android/app/src/main/assets/index.html
-          base64 -d source/patch_styles_034.b64 | gzip -d > buildsrc/android/app/src/main/assets/styles.css
+          set +e
+          cat source/v034_app_00 source/v034_app_01 source/v034_app_02 source/v034_app_03 | base64 -d | gzip -dc > buildsrc/android/app/src/main/assets/app.js
+          APP_RC=$?
+          set -e
+          test -s buildsrc/android/app/src/main/assets/app.js
+          base64 -d source/patch_index_034.b64 | gzip -dc > buildsrc/android/app/src/main/assets/index.html
+          base64 -d source/patch_styles_034.b64 | gzip -dc > buildsrc/android/app/src/main/assets/styles.css
           grep -q 'overlayGestureStart' buildsrc/android/app/src/main/assets/app.js
           grep -q 'loadTextToEditor' buildsrc/android/app/src/main/assets/app.js
           grep -q 'panelWithTextStyle' buildsrc/android/app/src/main/assets/app.js
