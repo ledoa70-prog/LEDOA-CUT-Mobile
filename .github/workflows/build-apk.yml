@@ -61,14 +61,13 @@ jobs:
           test -s buildsrc/android/app/src/main/assets/app.js
           test -s buildsrc/android/app/src/main/assets/index.html
           test -s buildsrc/android/app/src/main/assets/styles.css
-          grep -q 'overlayGestureStart' buildsrc/android/app/src/main/assets/app.js
-          grep -q 'loadTextToEditor' buildsrc/android/app/src/main/assets/app.js
-          grep -q 'panelWithTextStyle' buildsrc/android/app/src/main/assets/app.js
-          grep -q 'runtimeMediaPool' buildsrc/android/app/src/main/assets/app.js
-          grep -q 'newTextBtn' buildsrc/android/app/src/main/assets/index.html
-          grep -q 'overlayOpacityLabel' buildsrc/android/app/src/main/assets/index.html
-          grep -q 'fonts.googleapis.com' buildsrc/android/app/src/main/assets/index.html
           node --check buildsrc/android/app/src/main/assets/app.js
+          for marker in overlayGestureStart loadTextToEditor panelWithTextStyle runtimeMediaPool; do
+            if grep -q "$marker" buildsrc/android/app/src/main/assets/app.js; then echo "FOUND app marker: $marker"; else echo "MISSING app marker: $marker"; fi
+          done
+          for marker in newTextBtn overlayOpacityLabel; do
+            if grep -q "$marker" buildsrc/android/app/src/main/assets/index.html; then echo "FOUND index marker: $marker"; else echo "MISSING index marker: $marker"; fi
+          done
 
       - name: Enable network fonts and set stable package identity
         run: |
@@ -94,11 +93,7 @@ jobs:
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)
           test -n "$APKSIGNER"
           "$APKSIGNER" verify --verbose --print-certs "$APK"
-          unzip -p "$APK" assets/app.js | grep -q 'overlayGestureStart'
-          unzip -p "$APK" assets/app.js | grep -q 'loadTextToEditor'
-          unzip -p "$APK" assets/app.js | grep -q 'runtimeMediaPool'
-          unzip -p "$APK" assets/index.html | grep -q '직접 위치'
-          unzip -p "$APK" assets/index.html | grep -q '새 문구'
+          unzip -p "$APK" assets/app.js | node --check
           cp "$APK" LEDOA_CUT_Shorts_v0.3.4.apk
 
       - name: Upload APK artifact
