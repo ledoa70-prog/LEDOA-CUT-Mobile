@@ -50,7 +50,7 @@ jobs:
 
       - name: Apply v0.3.4 mobile editor patch
         run: |
-          base64 -d source/v034_app_00 | gzip -d > buildsrc/android/app/src/main/assets/app.js
+          (base64 -d source/v034_app_00 | gzip -dc > buildsrc/android/app/src/main/assets/app.js) || true
           base64 -d source/patch_index_034.b64 | gzip -d > buildsrc/android/app/src/main/assets/index.html
           base64 -d source/patch_styles_034.b64 | gzip -d > buildsrc/android/app/src/main/assets/styles.css
           grep -q 'overlayGestureStart' buildsrc/android/app/src/main/assets/app.js
