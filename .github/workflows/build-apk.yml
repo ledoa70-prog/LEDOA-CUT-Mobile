@@ -9,7 +9,10 @@ on:
       - 'source/chunk_01'
       - 'source/chunk_02'
       - 'source/chunk_03'
-      - 'source/patch_app_034.b64'
+      - 'source/v034_app_00'
+      - 'source/v034_app_01'
+      - 'source/v034_app_02'
+      - 'source/v034_app_03'
       - 'source/patch_index_034.b64'
       - 'source/patch_styles_034.b64'
       - '.github/workflows/build-apk.yml'
@@ -50,7 +53,7 @@ jobs:
 
       - name: Apply v0.3.4 mobile editor patch
         run: |
-          base64 -d source/patch_app_034.b64 | gzip -d > buildsrc/android/app/src/main/assets/app.js
+          cat source/v034_app_00 source/v034_app_01 source/v034_app_02 source/v034_app_03 | base64 -d | gzip -d > buildsrc/android/app/src/main/assets/app.js
           base64 -d source/patch_index_034.b64 | gzip -d > buildsrc/android/app/src/main/assets/index.html
           base64 -d source/patch_styles_034.b64 | gzip -d > buildsrc/android/app/src/main/assets/styles.css
           grep -q 'overlayGestureStart' buildsrc/android/app/src/main/assets/app.js
@@ -99,5 +102,3 @@ jobs:
           name: LEDOA_CUT_Shorts_v0.3.4
           path: LEDOA_CUT_Shorts_v0.3.4.apk
           if-no-files-found: error
-
-# v0.3.4 final rebuild
