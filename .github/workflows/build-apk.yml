@@ -1,0 +1,51 @@
+name: Build LEDOA CUT APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Install Android SDK 35
+        run: |
+          yes | sdkmanager --licenses >/dev/null || true
+          sdkmanager "platforms;android-35" "build-tools;35.0.0" "platform-tools"
+
+      - name: Unpack LEDOA CUT source
+        run: |
+          rm -rf buildsrc
+          mkdir -p buildsrc
+          unzip -q LEDOA_CUT_Mobile_Shorts_Standalone_v0.3.1.zip -d buildsrc
+          test -f buildsrc/LEDOA_CUT_Mobile_Shorts_Standalone_v0.3.1/android/app/build.gradle.kts
+
+      - name: Build installable debug APK
+        working-directory: buildsrc/LEDOA_CUT_Mobile_Shorts_Standalone_v0.3.1/android
+        run: gradle --no-daemon :app:assembleDebug
+
+      - name: Rename APK
+        run: |
+          cp buildsrc/LEDOA_CUT_Mobile_Shorts_Standalone_v0.3.1/android/app/build/outputs/apk/debug/app-debug.apk LEDOA_CUT_Shorts_v0.3.1.apk
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LEDOA_CUT_Shorts_v0.3.1
+          path: LEDOA_CUT_Shorts_v0.3.1.apk
+          if-no-files-found: error
