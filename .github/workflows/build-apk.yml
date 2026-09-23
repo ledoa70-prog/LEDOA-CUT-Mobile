@@ -9,6 +9,9 @@ on:
       - 'source/chunk_01'
       - 'source/chunk_02'
       - 'source/chunk_03'
+      - 'source/patch_app_033.b64'
+      - 'source/patch_index_033.b64'
+      - 'source/patch_styles_033.b64'
       - '.github/workflows/build-apk.yml'
 
 jobs:
@@ -39,6 +42,21 @@ jobs:
           tar -xzf source/android.tar.gz -C buildsrc
           test -f buildsrc/android/app/build.gradle.kts
 
+      - name: Apply v0.3.3 mobile editor patch
+        run: |
+          base64 -d source/patch_app_033.b64 | gzip -d > buildsrc/android/app/src/main/assets/app.js
+          base64 -d source/patch_index_033.b64 | gzip -d > buildsrc/android/app/src/main/assets/index.html
+          base64 -d source/patch_styles_033.b64 | gzip -d > buildsrc/android/app/src/main/assets/styles.css
+          grep -q 'clipVolume' buildsrc/android/app/src/main/assets/app.js
+          grep -q 'draftTextFromUi' buildsrc/android/app/src/main/assets/app.js
+          grep -q 'SHORTS_STYLE_PRESETS' buildsrc/android/app/src/main/assets/app.js
+          grep -q 'overlayInput' buildsrc/android/app/src/main/assets/app.js
+          grep -q '원본 오디오' buildsrc/android/app/src/main/assets/index.html
+          grep -q '편지지손글씨체' buildsrc/android/app/src/main/assets/index.html
+          grep -q '고운돋음' buildsrc/android/app/src/main/assets/index.html
+          grep -q '쇼츠 스타일' buildsrc/android/app/src/main/assets/index.html
+          node --check buildsrc/android/app/src/main/assets/app.js
+
       - name: Force clean install package identity
         run: |
           sed -i 's/applicationId = "kr.ledoa.cut"/applicationId = "kr.ledoa.cut.shorts"/' buildsrc/android/app/build.gradle.kts
@@ -50,12 +68,17 @@ jobs:
         working-directory: buildsrc/android
         run: gradle --no-daemon :app:assembleDebug
 
-      - name: Verify APK
+      - name: Verify APK and Android signature
         run: |
           APK=buildsrc/android/app/build/outputs/apk/debug/app-debug.apk
           test -s "$APK"
           unzip -t "$APK" >/dev/null
-          keytool -printcert -jarfile "$APK" >/dev/null
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)
+          test -n "$APKSIGNER"
+          "$APKSIGNER" verify --verbose --print-certs "$APK"
+          unzip -p "$APK" assets/index.html | grep -q '원본 오디오'
+          unzip -p "$APK" assets/index.html | grep -q '오버레이'
+          unzip -p "$APK" assets/index.html | grep -q '문구를 입력하면 위 미리보기에 바로 표시됩니다'
           cp "$APK" LEDOA_CUT_Shorts_v0.3.3.apk
 
       - name: Upload APK artifact
