@@ -99,3 +99,5 @@ jobs:
           name: LEDOA_CUT_Shorts_v0.3.4
           path: LEDOA_CUT_Shorts_v0.3.4.apk
           if-no-files-found: error
+
+# v0.3.4 final rebuild
