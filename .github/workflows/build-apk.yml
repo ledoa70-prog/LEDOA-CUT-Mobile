@@ -37,11 +37,11 @@ jobs:
         run: gradle --no-daemon :app:assembleDebug
 
       - name: Rename APK
-        run: cp buildsrc/android/app/build/outputs/apk/debug/app-debug.apk LEDOA_CUT_Shorts_v0.3.1.apk
+        run: cp buildsrc/android/app/build/outputs/apk/debug/app-debug.apk LEDOA_CUT_Shorts_v0.3.2.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: LEDOA_CUT_Shorts_v0.3.1
-          path: LEDOA_CUT_Shorts_v0.3.1.apk
+          name: LEDOA_CUT_Shorts_v0.3.2
+          path: LEDOA_CUT_Shorts_v0.3.2.apk
           if-no-files-found: error
