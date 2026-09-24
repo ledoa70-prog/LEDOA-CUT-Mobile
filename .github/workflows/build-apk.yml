@@ -9,7 +9,7 @@ on:
       - 'source/chunk_01'
       - 'source/chunk_02'
       - 'source/chunk_03'
-      - 'source/v034_app.js.gz'
+      - 'source/v035_app.b64'
       - 'source/patch_index_034.b64'
       - 'source/patch_styles_034.b64'
       - '.github/workflows/build-apk.yml'
@@ -50,8 +50,7 @@ jobs:
 
       - name: Apply clean v0.3.5 mobile editor patch
         run: |
-          gzip -t source/v034_app.js.gz
-          gzip -dc source/v034_app.js.gz > buildsrc/android/app/src/main/assets/app.js
+          base64 -d source/v035_app.b64 | gzip -dc > buildsrc/android/app/src/main/assets/app.js
           base64 -d source/patch_index_034.b64 | gzip -dc > buildsrc/android/app/src/main/assets/index.html
           base64 -d source/patch_styles_034.b64 | gzip -dc > buildsrc/android/app/src/main/assets/styles.css
           test -s buildsrc/android/app/src/main/assets/app.js
