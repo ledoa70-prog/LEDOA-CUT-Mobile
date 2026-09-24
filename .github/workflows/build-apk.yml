@@ -15,7 +15,7 @@ on:
       - 'source/v037_text_audio.js'
       - 'source/v037_overlay_core.js'
       - 'source/v037_overlay_ui.js'
-      - 'source/v038_autosave_textbg.b64'
+      - 'source/v038_autosave_bgopacity.js'
       - 'signing/v037_debug.keystore.b64'
       - '.github/workflows/build-apk.yml'
 
@@ -61,7 +61,7 @@ jobs:
           printf '\n' >> buildsrc/android/app/src/main/assets/app.js
           cat source/v037_overlay_ui.js >> buildsrc/android/app/src/main/assets/app.js
           printf '\n' >> buildsrc/android/app/src/main/assets/app.js
-          base64 -d source/v038_autosave_textbg.b64 | gzip -dc >> buildsrc/android/app/src/main/assets/app.js
+          cat source/v038_autosave_bgopacity.js >> buildsrc/android/app/src/main/assets/app.js
           sed -i 's/SHORTS · v0.3.5/SHORTS · v0.3.8/g; s/SHORTS · v0.3.6/SHORTS · v0.3.8/g; s/SHORTS · v0.3.7/SHORTS · v0.3.8/g' buildsrc/android/app/src/main/assets/index.html
           test -s buildsrc/android/app/src/main/assets/app.js
           node --check buildsrc/android/app/src/main/assets/app.js
