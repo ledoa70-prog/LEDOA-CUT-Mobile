@@ -12,6 +12,7 @@ on:
       - 'source/v035_app.b64'
       - 'source/patch_index_034.b64'
       - 'source/patch_styles_034.b64'
+      - 'signing/stable_debug.keystore.b64'
       - '.github/workflows/build-apk.yml'
 
 jobs:
@@ -32,12 +33,6 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Keep Android signing key stable
-        uses: actions/cache@v4
-        with:
-          path: ~/.android/debug.keystore
-          key: ledoa-cut-mobile-debug-signing-v1
-
       - name: Rebuild Android source from chunks
         run: |
           cat source/chunk_00 source/chunk_01 source/chunk_02 source/chunk_03 > source/android.b64
@@ -48,11 +43,12 @@ jobs:
           tar -xzf source/android.tar.gz -C buildsrc
           test -f buildsrc/android/app/build.gradle.kts
 
-      - name: Apply clean v0.3.5 mobile editor patch
+      - name: Apply clean v0.3.6 mobile editor patch
         run: |
           base64 -d source/v035_app.b64 | gzip -dc > buildsrc/android/app/src/main/assets/app.js
           base64 -d source/patch_index_034.b64 | gzip -dc > buildsrc/android/app/src/main/assets/index.html
           base64 -d source/patch_styles_034.b64 | gzip -dc > buildsrc/android/app/src/main/assets/styles.css
+          sed -i 's/SHORTS · v0.3.5/SHORTS · v0.3.6/g' buildsrc/android/app/src/main/assets/index.html
           test -s buildsrc/android/app/src/main/assets/app.js
           test -s buildsrc/android/app/src/main/assets/index.html
           test -s buildsrc/android/app/src/main/assets/styles.css
@@ -61,7 +57,7 @@ jobs:
           grep -q 'loadTextToEditor' buildsrc/android/app/src/main/assets/app.js
           grep -q 'panelWithTextStyle' buildsrc/android/app/src/main/assets/app.js
           grep -q 'runtimeMediaPool' buildsrc/android/app/src/main/assets/app.js
-          grep -q 'SHORTS · v0.3.5' buildsrc/android/app/src/main/assets/index.html
+          grep -q 'SHORTS · v0.3.6' buildsrc/android/app/src/main/assets/index.html
           grep -q 'newTextBtn' buildsrc/android/app/src/main/assets/index.html
           grep -q 'overlayOpacityLabel' buildsrc/android/app/src/main/assets/index.html
           grep -q '직접 위치' buildsrc/android/app/src/main/assets/index.html
@@ -69,42 +65,47 @@ jobs:
           grep -q 'android-safe-top' buildsrc/android/app/src/main/assets/styles.css
           ! grep -P '[\x00-\x08\x0B\x0C\x0E-\x1F]' buildsrc/android/app/src/main/assets/index.html
 
-      - name: Enable network fonts and set stable package identity
+      - name: Use fresh package id and fixed signing key
         run: |
           MANIFEST=buildsrc/android/app/src/main/AndroidManifest.xml
           if ! grep -q 'android.permission.INTERNET' "$MANIFEST"; then
             sed -i '/<manifest/a\    <uses-permission android:name="android.permission.INTERNET" />' "$MANIFEST"
           fi
-          sed -i 's/applicationId = "[^"]*"/applicationId = "kr.ledoa.cut.mobile"/' buildsrc/android/app/build.gradle.kts
-          sed -i 's/versionCode = [0-9][0-9]*/versionCode = 35/' buildsrc/android/app/build.gradle.kts
-          sed -i 's/versionName = "[^"]*"/versionName = "0.3.5"/' buildsrc/android/app/build.gradle.kts
-          grep -q 'android.permission.INTERNET' "$MANIFEST"
+          sed -i 's/applicationId = "[^"]*"/applicationId = "kr.ledoa.cut.standalone"/' buildsrc/android/app/build.gradle.kts
+          sed -i 's/versionCode = [0-9][0-9]*/versionCode = 36/' buildsrc/android/app/build.gradle.kts
+          sed -i 's/versionName = "[^"]*"/versionName = "0.3.6"/' buildsrc/android/app/build.gradle.kts
+          mkdir -p ~/.android
+          base64 -d signing/stable_debug.keystore.b64 > ~/.android/debug.keystore
+          keytool -list -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey >/dev/null
           grep -E 'applicationId|versionCode|versionName' buildsrc/android/app/build.gradle.kts
 
       - name: Build signed debug APK
         working-directory: buildsrc/android
         run: gradle --no-daemon :app:assembleDebug
 
-      - name: Verify APK and Android signature
+      - name: Verify install package thoroughly
         run: |
           APK=buildsrc/android/app/build/outputs/apk/debug/app-debug.apk
           test -s "$APK"
           unzip -t "$APK" >/dev/null
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)
+          AAPT2=$(find "$ANDROID_HOME/build-tools" -type f -name aapt2 | sort -V | tail -1)
+          ZIPALIGN=$(find "$ANDROID_HOME/build-tools" -type f -name zipalign | sort -V | tail -1)
           test -n "$APKSIGNER"
+          test -n "$AAPT2"
+          test -n "$ZIPALIGN"
           "$APKSIGNER" verify --verbose --print-certs "$APK"
-          unzip -p "$APK" assets/app.js | grep -q 'overlayGestureStart'
-          unzip -p "$APK" assets/app.js | grep -q 'loadTextToEditor'
-          unzip -p "$APK" assets/app.js | grep -q 'runtimeMediaPool'
-          unzip -p "$APK" assets/index.html | grep -q 'SHORTS · v0.3.5'
-          unzip -p "$APK" assets/index.html | grep -q '직접 위치'
-          unzip -p "$APK" assets/index.html | grep -q '새 문구'
-          unzip -p "$APK" assets/styles.css | grep -q 'android-safe-top'
-          cp "$APK" LEDOA_CUT_Shorts_v0.3.5.apk
+          "$ZIPALIGN" -c -v 4 "$APK"
+          "$AAPT2" dump badging "$APK" | tee /tmp/badging.txt
+          grep -q "package: name='kr.ledoa.cut.standalone'" /tmp/badging.txt
+          grep -q "launchable-activity: name='kr.ledoa.cut.MainActivity'" /tmp/badging.txt
+          unzip -p "$APK" assets/index.html | grep -q 'SHORTS · v0.3.6'
+          cp "$APK" LEDOA_CUT_Shorts_v0.3.6.apk
+          sha256sum "$APK"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: LEDOA_CUT_Shorts_v0.3.5
-          path: LEDOA_CUT_Shorts_v0.3.5.apk
+          name: LEDOA_CUT_Shorts_v0.3.6
+          path: LEDOA_CUT_Shorts_v0.3.6.apk
           if-no-files-found: error
