@@ -16,6 +16,7 @@ on:
       - 'source/v037_overlay_core.js'
       - 'source/v037_overlay_ui.js'
       - 'source/v038_autosave_bgopacity.js'
+      - 'source/v039_text_overlay_fix.js'
       - 'signing/v037_debug.keystore.b64'
       - '.github/workflows/build-apk.yml'
 
@@ -47,7 +48,7 @@ jobs:
           tar -xzf source/android.tar.gz -C buildsrc
           test -f buildsrc/android/app/build.gradle.kts
 
-      - name: Apply v0.3.8 editor patch
+      - name: Apply v0.3.9 editor patch
         run: |
           set +e
           base64 -d source/v035_app.b64 | gzip -dc > buildsrc/android/app/src/main/assets/app.js
@@ -62,15 +63,16 @@ jobs:
           cat source/v037_overlay_ui.js >> buildsrc/android/app/src/main/assets/app.js
           printf '\n' >> buildsrc/android/app/src/main/assets/app.js
           cat source/v038_autosave_bgopacity.js >> buildsrc/android/app/src/main/assets/app.js
-          sed -i 's/SHORTS · v0.3.5/SHORTS · v0.3.8/g; s/SHORTS · v0.3.6/SHORTS · v0.3.8/g; s/SHORTS · v0.3.7/SHORTS · v0.3.8/g' buildsrc/android/app/src/main/assets/index.html
+          printf '\n' >> buildsrc/android/app/src/main/assets/app.js
+          cat source/v039_text_overlay_fix.js >> buildsrc/android/app/src/main/assets/app.js
+          sed -i 's/SHORTS · v0.3.5/SHORTS · v0.3.9/g; s/SHORTS · v0.3.6/SHORTS · v0.3.9/g; s/SHORTS · v0.3.7/SHORTS · v0.3.9/g; s/SHORTS · v0.3.8/SHORTS · v0.3.9/g' buildsrc/android/app/src/main/assets/index.html
           test -s buildsrc/android/app/src/main/assets/app.js
           node --check buildsrc/android/app/src/main/assets/app.js
-          grep -q 'v037TextPreset' buildsrc/android/app/src/main/assets/app.js
-          grep -q 'v037OverlayAlpha' buildsrc/android/app/src/main/assets/app.js
+          grep -q 'v039CurrentTextDraft' buildsrc/android/app/src/main/assets/app.js
+          grep -q 'v039PointerDown' buildsrc/android/app/src/main/assets/app.js
+          grep -q 'overlayXLabel' buildsrc/android/app/src/main/assets/app.js
           grep -q 'v038RestoreProject' buildsrc/android/app/src/main/assets/app.js
-          grep -q 'textBgOpacity' buildsrc/android/app/src/main/assets/app.js
-          grep -q 'indexedDB' buildsrc/android/app/src/main/assets/app.js
-          grep -q 'SHORTS · v0.3.8' buildsrc/android/app/src/main/assets/index.html
+          grep -q 'SHORTS · v0.3.9' buildsrc/android/app/src/main/assets/index.html
           ! grep -P '[\x00-\x08\x0B\x0C\x0E-\x1F]' buildsrc/android/app/src/main/assets/index.html
 
       - name: Set version and stable signing key
@@ -80,8 +82,8 @@ jobs:
             sed -i '/<manifest/a\    <uses-permission android:name="android.permission.INTERNET" />' "$MANIFEST"
           fi
           sed -i 's/applicationId = "[^"]*"/applicationId = "kr.ledoa.cut.standalone"/' buildsrc/android/app/build.gradle.kts
-          sed -i 's/versionCode = [0-9][0-9]*/versionCode = 38/' buildsrc/android/app/build.gradle.kts
-          sed -i 's/versionName = "[^"]*"/versionName = "0.3.8"/' buildsrc/android/app/build.gradle.kts
+          sed -i 's/versionCode = [0-9][0-9]*/versionCode = 39/' buildsrc/android/app/build.gradle.kts
+          sed -i 's/versionName = "[^"]*"/versionName = "0.3.9"/' buildsrc/android/app/build.gradle.kts
           mkdir -p ~/.android
           base64 -d signing/v037_debug.keystore.b64 > ~/.android/debug.keystore
           keytool -list -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey >/dev/null
@@ -104,16 +106,16 @@ jobs:
           "$AAPT2" dump badging "$APK" | tee /tmp/badging.txt
           grep -q "package: name='kr.ledoa.cut.standalone'" /tmp/badging.txt
           grep -q "launchable-activity: name='kr.ledoa.cut.MainActivity'" /tmp/badging.txt
-          unzip -p "$APK" assets/index.html | grep -q 'SHORTS · v0.3.8'
-          unzip -p "$APK" assets/app.js | grep -q 'v038RestoreProject'
-          unzip -p "$APK" assets/app.js | grep -q 'textBgOpacity'
-          unzip -p "$APK" assets/app.js | grep -q 'indexedDB'
-          cp "$APK" LEDOA_CUT_Shorts_v0.3.8.apk
+          unzip -p "$APK" assets/index.html | grep -q 'SHORTS · v0.3.9'
+          unzip -p "$APK" assets/app.js | grep -q 'v039CurrentTextDraft'
+          unzip -p "$APK" assets/app.js | grep -q 'v039PointerDown'
+          unzip -p "$APK" assets/app.js | grep -q 'overlayXLabel'
+          cp "$APK" LEDOA_CUT_Shorts_v0.3.9.apk
           sha256sum "$APK"
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: LEDOA_CUT_Shorts_v0.3.8
-          path: LEDOA_CUT_Shorts_v0.3.8.apk
+          name: LEDOA_CUT_Shorts_v0.3.9
+          path: LEDOA_CUT_Shorts_v0.3.9.apk
           if-no-files-found: error
