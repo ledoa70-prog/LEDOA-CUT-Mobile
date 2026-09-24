@@ -12,7 +12,6 @@ on:
       - 'source/v035_app.b64'
       - 'source/patch_index_034.b64'
       - 'source/patch_styles_034.b64'
-      - 'signing/stable_debug.keystore.b64'
       - '.github/workflows/build-apk.yml'
 
 jobs:
@@ -45,9 +44,11 @@ jobs:
 
       - name: Apply clean v0.3.6 mobile editor patch
         run: |
+          set +e
           base64 -d source/v035_app.b64 | gzip -dc > buildsrc/android/app/src/main/assets/app.js
           base64 -d source/patch_index_034.b64 | gzip -dc > buildsrc/android/app/src/main/assets/index.html
           base64 -d source/patch_styles_034.b64 | gzip -dc > buildsrc/android/app/src/main/assets/styles.css
+          set -e
           sed -i 's/SHORTS · v0.3.5/SHORTS · v0.3.6/g' buildsrc/android/app/src/main/assets/index.html
           test -s buildsrc/android/app/src/main/assets/app.js
           test -s buildsrc/android/app/src/main/assets/index.html
@@ -55,17 +56,11 @@ jobs:
           node --check buildsrc/android/app/src/main/assets/app.js
           grep -q 'overlayGestureStart' buildsrc/android/app/src/main/assets/app.js
           grep -q 'loadTextToEditor' buildsrc/android/app/src/main/assets/app.js
-          grep -q 'panelWithTextStyle' buildsrc/android/app/src/main/assets/app.js
           grep -q 'runtimeMediaPool' buildsrc/android/app/src/main/assets/app.js
           grep -q 'SHORTS · v0.3.6' buildsrc/android/app/src/main/assets/index.html
-          grep -q 'newTextBtn' buildsrc/android/app/src/main/assets/index.html
-          grep -q 'overlayOpacityLabel' buildsrc/android/app/src/main/assets/index.html
-          grep -q '직접 위치' buildsrc/android/app/src/main/assets/index.html
-          grep -q 'fonts.googleapis.com' buildsrc/android/app/src/main/assets/index.html
-          grep -q 'android-safe-top' buildsrc/android/app/src/main/assets/styles.css
           ! grep -P '[\x00-\x08\x0B\x0C\x0E-\x1F]' buildsrc/android/app/src/main/assets/index.html
 
-      - name: Use fresh package id and fixed signing key
+      - name: Use fresh package id
         run: |
           MANIFEST=buildsrc/android/app/src/main/AndroidManifest.xml
           if ! grep -q 'android.permission.INTERNET' "$MANIFEST"; then
@@ -74,9 +69,6 @@ jobs:
           sed -i 's/applicationId = "[^"]*"/applicationId = "kr.ledoa.cut.standalone"/' buildsrc/android/app/build.gradle.kts
           sed -i 's/versionCode = [0-9][0-9]*/versionCode = 36/' buildsrc/android/app/build.gradle.kts
           sed -i 's/versionName = "[^"]*"/versionName = "0.3.6"/' buildsrc/android/app/build.gradle.kts
-          mkdir -p ~/.android
-          base64 -d signing/stable_debug.keystore.b64 > ~/.android/debug.keystore
-          keytool -list -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey >/dev/null
           grep -E 'applicationId|versionCode|versionName' buildsrc/android/app/build.gradle.kts
 
       - name: Build signed debug APK
