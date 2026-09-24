@@ -48,7 +48,7 @@ jobs:
           tar -xzf source/android.tar.gz -C buildsrc
           test -f buildsrc/android/app/build.gradle.kts
 
-      - name: Apply v0.3.9 editor patch
+      - name: Apply v0.4.0 editor assets
         run: |
           set +e
           base64 -d source/v035_app.b64 | gzip -dc > buildsrc/android/app/src/main/assets/app.js
@@ -65,57 +65,65 @@ jobs:
           cat source/v038_autosave_bgopacity.js >> buildsrc/android/app/src/main/assets/app.js
           printf '\n' >> buildsrc/android/app/src/main/assets/app.js
           cat source/v039_text_overlay_fix.js >> buildsrc/android/app/src/main/assets/app.js
-          sed -i 's/SHORTS · v0.3.5/SHORTS · v0.3.9/g; s/SHORTS · v0.3.6/SHORTS · v0.3.9/g; s/SHORTS · v0.3.7/SHORTS · v0.3.9/g; s/SHORTS · v0.3.8/SHORTS · v0.3.9/g' buildsrc/android/app/src/main/assets/index.html
+          sed -i 's/SHORTS · v0.3.5/SHORTS · v0.4.0/g; s/SHORTS · v0.3.6/SHORTS · v0.4.0/g; s/SHORTS · v0.3.7/SHORTS · v0.4.0/g; s/SHORTS · v0.3.8/SHORTS · v0.4.0/g; s/SHORTS · v0.3.9/SHORTS · v0.4.0/g' buildsrc/android/app/src/main/assets/index.html
           test -s buildsrc/android/app/src/main/assets/app.js
           node --check buildsrc/android/app/src/main/assets/app.js
           grep -q 'v039CurrentTextDraft' buildsrc/android/app/src/main/assets/app.js
           grep -q 'v039PointerDown' buildsrc/android/app/src/main/assets/app.js
           grep -q 'overlayXLabel' buildsrc/android/app/src/main/assets/app.js
           grep -q 'v038RestoreProject' buildsrc/android/app/src/main/assets/app.js
-          grep -q 'SHORTS · v0.3.9' buildsrc/android/app/src/main/assets/index.html
+          grep -q 'SHORTS · v0.4.0' buildsrc/android/app/src/main/assets/index.html
           ! grep -P '[\x00-\x08\x0B\x0C\x0E-\x1F]' buildsrc/android/app/src/main/assets/index.html
 
-      - name: Set version and stable signing key
+      - name: Set permanent package identity
         run: |
           MANIFEST=buildsrc/android/app/src/main/AndroidManifest.xml
           if ! grep -q 'android.permission.INTERNET' "$MANIFEST"; then
             sed -i '/<manifest/a\    <uses-permission android:name="android.permission.INTERNET" />' "$MANIFEST"
           fi
-          sed -i 's/applicationId = "[^"]*"/applicationId = "kr.ledoa.cut.standalone"/' buildsrc/android/app/build.gradle.kts
-          sed -i 's/versionCode = [0-9][0-9]*/versionCode = 39/' buildsrc/android/app/build.gradle.kts
-          sed -i 's/versionName = "[^"]*"/versionName = "0.3.9"/' buildsrc/android/app/build.gradle.kts
-          mkdir -p ~/.android
-          base64 -d signing/v037_debug.keystore.b64 > ~/.android/debug.keystore
-          keytool -list -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey >/dev/null
+          sed -i 's/applicationId = "[^"]*"/applicationId = "kr.ledoa.cut.release"/' buildsrc/android/app/build.gradle.kts
+          sed -i 's/versionCode = [0-9][0-9]*/versionCode = 400/' buildsrc/android/app/build.gradle.kts
+          sed -i 's/versionName = "[^"]*"/versionName = "0.4.0"/' buildsrc/android/app/build.gradle.kts
           grep -E 'applicationId|versionCode|versionName' buildsrc/android/app/build.gradle.kts
 
-      - name: Build signed debug APK
+      - name: Build APK
         working-directory: buildsrc/android
         run: gradle --no-daemon :app:assembleDebug
 
-      - name: Verify install package thoroughly
+      - name: Sign APK explicitly with permanent LEDOA key
         run: |
+          set -euo pipefail
           APK=buildsrc/android/app/build/outputs/apk/debug/app-debug.apk
-          test -s "$APK"
-          unzip -t "$APK" >/dev/null
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)
           AAPT2=$(find "$ANDROID_HOME/build-tools" -type f -name aapt2 | sort -V | tail -1)
           ZIPALIGN=$(find "$ANDROID_HOME/build-tools" -type f -name zipalign | sort -V | tail -1)
-          "$APKSIGNER" verify --verbose --print-certs "$APK"
-          "$ZIPALIGN" -c -v 4 "$APK"
-          "$AAPT2" dump badging "$APK" | tee /tmp/badging.txt
-          grep -q "package: name='kr.ledoa.cut.standalone'" /tmp/badging.txt
+          base64 -d signing/v037_debug.keystore.b64 > /tmp/ledoa-release.keystore
+          keytool -list -v -keystore /tmp/ledoa-release.keystore -storepass android -alias androiddebugkey | tee /tmp/key-info.txt
+          "$ZIPALIGN" -f 4 "$APK" /tmp/ledoa-aligned.apk
+          "$APKSIGNER" sign \
+            --ks /tmp/ledoa-release.keystore \
+            --ks-key-alias androiddebugkey \
+            --ks-pass pass:android \
+            --key-pass pass:android \
+            --out LEDOA_CUT_Mobile_v0.4.0.apk \
+            /tmp/ledoa-aligned.apk
+          "$APKSIGNER" verify --verbose --print-certs LEDOA_CUT_Mobile_v0.4.0.apk | tee /tmp/apk-cert.txt
+          "$ZIPALIGN" -c -v 4 LEDOA_CUT_Mobile_v0.4.0.apk
+          "$AAPT2" dump badging LEDOA_CUT_Mobile_v0.4.0.apk | tee /tmp/badging.txt
+          grep -q "package: name='kr.ledoa.cut.release'" /tmp/badging.txt
+          grep -q "versionCode='400'" /tmp/badging.txt
           grep -q "launchable-activity: name='kr.ledoa.cut.MainActivity'" /tmp/badging.txt
-          unzip -p "$APK" assets/index.html | grep -q 'SHORTS · v0.3.9'
-          unzip -p "$APK" assets/app.js | grep -q 'v039CurrentTextDraft'
-          unzip -p "$APK" assets/app.js | grep -q 'v039PointerDown'
-          unzip -p "$APK" assets/app.js | grep -q 'overlayXLabel'
-          cp "$APK" LEDOA_CUT_Shorts_v0.3.9.apk
-          sha256sum "$APK"
+          unzip -p LEDOA_CUT_Mobile_v0.4.0.apk assets/index.html | grep -q 'SHORTS · v0.4.0'
+          unzip -p LEDOA_CUT_Mobile_v0.4.0.apk assets/app.js | grep -q 'v039CurrentTextDraft'
+          unzip -p LEDOA_CUT_Mobile_v0.4.0.apk assets/app.js | grep -q 'v039PointerDown'
+          unzip -p LEDOA_CUT_Mobile_v0.4.0.apk assets/app.js | grep -q 'v038RestoreProject'
+          echo '--- FINAL SIGNER ---'
+          grep 'certificate SHA-256 digest:' /tmp/apk-cert.txt
+          sha256sum LEDOA_CUT_Mobile_v0.4.0.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: LEDOA_CUT_Shorts_v0.3.9
-          path: LEDOA_CUT_Shorts_v0.3.9.apk
+          name: LEDOA_CUT_Mobile_v0.4.0
+          path: LEDOA_CUT_Mobile_v0.4.0.apk
           if-no-files-found: error
