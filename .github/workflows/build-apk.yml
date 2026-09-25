@@ -18,8 +18,8 @@ on:
       - 'source/v038_autosave_bgopacity.js'
       - 'source/v039_text_overlay_fix.js'
       - 'source/v041_new_project.js'
-      - 'source/v042_MainActivity.java'
       - 'source/v043_text_commit_fix.js'
+      - 'source/v044_MainActivity.java'
       - 'signing/v037_debug.keystore.b64'
       - '.github/workflows/build-apk.yml'
 
@@ -51,7 +51,7 @@ jobs:
           tar -xzf source/android.tar.gz -C buildsrc
           test -f buildsrc/android/app/build.gradle.kts
 
-      - name: Apply v0.4.3 editor assets and native media picker
+      - name: Apply v0.4.4 editor assets and YouTube-safe MP4 finalizer
         run: |
           set +e
           base64 -d source/v035_app.b64 | gzip -dc > buildsrc/android/app/src/main/assets/app.js
@@ -72,13 +72,14 @@ jobs:
           cat source/v041_new_project.js >> buildsrc/android/app/src/main/assets/app.js
           printf '\n' >> buildsrc/android/app/src/main/assets/app.js
           cat source/v043_text_commit_fix.js >> buildsrc/android/app/src/main/assets/app.js
-          cp source/v042_MainActivity.java buildsrc/android/app/src/main/java/kr/ledoa/cut/MainActivity.java
-          sed -i 's/SHORTS · v0.3.5/SHORTS · v0.4.3/g; s/SHORTS · v0.3.6/SHORTS · v0.4.3/g; s/SHORTS · v0.3.7/SHORTS · v0.4.3/g; s/SHORTS · v0.3.8/SHORTS · v0.4.3/g; s/SHORTS · v0.3.9/SHORTS · v0.4.3/g; s/SHORTS · v0.4.0/SHORTS · v0.4.3/g; s/SHORTS · v0.4.1/SHORTS · v0.4.3/g; s/SHORTS · v0.4.2/SHORTS · v0.4.3/g' buildsrc/android/app/src/main/assets/index.html
+          cp source/v044_MainActivity.java buildsrc/android/app/src/main/java/kr/ledoa/cut/MainActivity.java
+          sed -i 's/SHORTS · v0.3.5/SHORTS · v0.4.4/g; s/SHORTS · v0.3.6/SHORTS · v0.4.4/g; s/SHORTS · v0.3.7/SHORTS · v0.4.4/g; s/SHORTS · v0.3.8/SHORTS · v0.4.4/g; s/SHORTS · v0.3.9/SHORTS · v0.4.4/g; s/SHORTS · v0.4.0/SHORTS · v0.4.4/g; s/SHORTS · v0.4.1/SHORTS · v0.4.4/g; s/SHORTS · v0.4.2/SHORTS · v0.4.4/g; s/SHORTS · v0.4.3/SHORTS · v0.4.4/g' buildsrc/android/app/src/main/assets/index.html
           test -s buildsrc/android/app/src/main/assets/app.js
           node --check buildsrc/android/app/src/main/assets/app.js
           grep -q 'commitText' buildsrc/android/app/src/main/assets/app.js
-          grep -q 'ACTION_PICK_IMAGES' buildsrc/android/app/src/main/java/kr/ledoa/cut/MainActivity.java
-          grep -q 'SHORTS · v0.4.3' buildsrc/android/app/src/main/assets/index.html
+          grep -q 'MediaMuxer' buildsrc/android/app/src/main/java/kr/ledoa/cut/MainActivity.java
+          grep -q 'remuxToStandardMp4' buildsrc/android/app/src/main/java/kr/ledoa/cut/MainActivity.java
+          grep -q 'SHORTS · v0.4.4' buildsrc/android/app/src/main/assets/index.html
           ! grep -P '[\x00-\x08\x0B\x0C\x0E-\x1F]' buildsrc/android/app/src/main/assets/index.html
 
       - name: Set permanent package identity
@@ -88,8 +89,8 @@ jobs:
             sed -i '/<manifest/a\    <uses-permission android:name="android.permission.INTERNET" />' "$MANIFEST"
           fi
           sed -i 's/applicationId = "[^"]*"/applicationId = "kr.ledoa.cut.release"/' buildsrc/android/app/build.gradle.kts
-          sed -i 's/versionCode = [0-9][0-9]*/versionCode = 403/' buildsrc/android/app/build.gradle.kts
-          sed -i 's/versionName = "[^"]*"/versionName = "0.4.3"/' buildsrc/android/app/build.gradle.kts
+          sed -i 's/versionCode = [0-9][0-9]*/versionCode = 404/' buildsrc/android/app/build.gradle.kts
+          sed -i 's/versionName = "[^"]*"/versionName = "0.4.4"/' buildsrc/android/app/build.gradle.kts
           grep -E 'applicationId|versionCode|versionName' buildsrc/android/app/build.gradle.kts
 
       - name: Build APK
@@ -105,20 +106,20 @@ jobs:
           ZIPALIGN=$(find "$ANDROID_HOME/build-tools" -type f -name zipalign | sort -V | tail -1)
           base64 -d signing/v037_debug.keystore.b64 > /tmp/ledoa-release.keystore
           "$ZIPALIGN" -f 4 "$APK" /tmp/ledoa-aligned.apk
-          "$APKSIGNER" sign --ks /tmp/ledoa-release.keystore --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out LEDOA_CUT_Mobile_v0.4.3.apk /tmp/ledoa-aligned.apk
-          "$APKSIGNER" verify --verbose --print-certs LEDOA_CUT_Mobile_v0.4.3.apk | tee /tmp/apk-cert.txt
-          "$ZIPALIGN" -c -v 4 LEDOA_CUT_Mobile_v0.4.3.apk
-          "$AAPT2" dump badging LEDOA_CUT_Mobile_v0.4.3.apk | tee /tmp/badging.txt
+          "$APKSIGNER" sign --ks /tmp/ledoa-release.keystore --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out LEDOA_CUT_Mobile_v0.4.4.apk /tmp/ledoa-aligned.apk
+          "$APKSIGNER" verify --verbose --print-certs LEDOA_CUT_Mobile_v0.4.4.apk | tee /tmp/apk-cert.txt
+          "$ZIPALIGN" -c -v 4 LEDOA_CUT_Mobile_v0.4.4.apk
+          "$AAPT2" dump badging LEDOA_CUT_Mobile_v0.4.4.apk | tee /tmp/badging.txt
           grep -q "package: name='kr.ledoa.cut.release'" /tmp/badging.txt
-          grep -q "versionCode='403'" /tmp/badging.txt
+          grep -q "versionCode='404'" /tmp/badging.txt
           grep -q "launchable-activity: name='kr.ledoa.cut.MainActivity'" /tmp/badging.txt
-          unzip -p LEDOA_CUT_Mobile_v0.4.3.apk assets/index.html | grep -q 'SHORTS · v0.4.3'
-          unzip -p LEDOA_CUT_Mobile_v0.4.3.apk assets/app.js | grep -q 'commitText'
-          sha256sum LEDOA_CUT_Mobile_v0.4.3.apk
+          unzip -p LEDOA_CUT_Mobile_v0.4.4.apk assets/index.html | grep -q 'SHORTS · v0.4.4'
+          unzip -p LEDOA_CUT_Mobile_v0.4.4.apk assets/app.js | grep -q 'commitText'
+          sha256sum LEDOA_CUT_Mobile_v0.4.4.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: LEDOA_CUT_Mobile_v0.4.3
-          path: LEDOA_CUT_Mobile_v0.4.3.apk
+          name: LEDOA_CUT_Mobile_v0.4.4
+          path: LEDOA_CUT_Mobile_v0.4.4.apk
           if-no-files-found: error
