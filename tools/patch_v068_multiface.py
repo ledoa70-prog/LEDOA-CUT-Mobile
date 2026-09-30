@@ -55,3 +55,34 @@ new="function renderFrame(g,forPlay=false){g=clamp(g,0,totalDuration()||0);state
 if old not in s:raise SystemExit("renderFrame missing")
 s=s.replace(old,new,1)
 open(p,"w",encoding="utf-8").write(s)
+
+s=open(p,encoding="utf-8").read()
+s=rf(s,"async function runTracking()",r"""async function runTracking(){
+ if(faceTracking){faceCancel=true;return;}
+ let masks=faceSelecting?.maskIds?.map(id=>state.faceMasks.find(m=>m.id===id)).filter(Boolean)||[];if(!masks.length){const m=selectedMask();if(m)masks=[m];}
+ const clip=masks[0]&&state.clips.find(c=>c.id===masks[0].clipId);if(!masks.length||!clip)return toast('먼저 얼굴 박스를 하나 이상 체크하세요.');
+ pause();faceTracking=true;faceCancel=false;syncUi();const prog=$('faceMaskProgress061');let tv;
+ try{
+  const det=await getDetector();if(!det)throw new Error('얼굴 감지 엔진 오류');tv=await trackVideo(clip);const bounds={start:+clip.trimStart||0,end:+clip.trimEnd||+clip.sourceDuration||0};
+  for(let mi=0;mi<masks.length;mi++){
+   if(faceCancel)break;const mask=masks[mi],a=mask.identityAnchor||mask.keyframes?.[0];if(!a)continue;await seekTrack(tv,a.sourceTime);
+   const base=sanitizeFaceBox064(a,null),span=Math.max(.01,bounds.end-bounds.start),step=Math.max(.066,Math.min(.10,span/900)),res=[{sourceTime:a.sourceTime,...base,confidence:1}];
+   mask.sourceStart=bounds.start;mask.sourceEnd=bounds.end;
+   async function pass(dir,limit){
+    let prev={...base},good={...base},vel={x:0,y:0},lost=0,t=a.sourceTime+dir*step;
+    while(dir>0?t<=limit+.001:t>=limit-.001){
+     if(faceCancel)return;await seekTrack(tv,t);const pred={x:clamp(prev.x+vel.x,0,1-prev.w),y:clamp(prev.y+vel.y,0,1-prev.h),w:prev.w,h:prev.h};
+     const ds=await detect(det,tv,{rect:pred,lost});let cand=chooseDetectedFace064(ds,prev,pred,base,lost);
+     if(cand){const clean=sanitizeFaceBox064(cand,prev),jump=Math.hypot(clean.x+clean.w/2-prev.x-prev.w/2,clean.y+clean.h/2-prev.y-prev.h/2);if(jump>.22+Math.min(.14,lost*.02))cand=null;}
+     if(cand){const next=smooth(prev,sanitizeFaceBox064(cand,prev),.70),nx=next.x+next.w/2-prev.x-prev.w/2,ny=next.y+next.h/2-prev.y-prev.h/2;vel={x:vel.x*.35+nx*.65,y:vel.y*.35+ny*.65};prev=next;good={...prev};lost=0;res.push({sourceTime:clamp(t,bounds.start,bounds.end),...prev,confidence:cand.confidence||.7});}
+     else{lost++;vel={x:vel.x*.45,y:vel.y*.45};prev={...good};res.push({sourceTime:clamp(t,bounds.start,bounds.end),...prev,confidence:.12});}
+     if(prog)prog.textContent=`얼굴 ${mi+1}/${masks.length} · ${dir>0?'뒤쪽':'앞쪽'} 추적 중…`;t+=dir*step;
+    }
+   }
+   await pass(1,bounds.end);if(!faceCancel)await pass(-1,bounds.start);res.sort((x,y)=>x.sourceTime-y.sourceTime);mask.keyframes=res;mask.tracked=true;mask.trackerVersion=68;mask.identityLock=true;
+  }
+  if(faceCancel)return toast('얼굴 추적을 취소했습니다.');faceSelecting=null;syncUi();renderFrame(state.currentTime,false);v038ScheduleAutosave?.(100);if(prog)prog.textContent=`완료 · 선택 얼굴 ${masks.length}명 · 클립 전체 추적`;toast(`얼굴 ${masks.length}명 전체 추적 완료`);
+ }catch(e){console.error('v068',e);if(prog)prog.textContent='추적 실패 · '+(e?.message||e);toast('얼굴 추적 실패');}
+ finally{try{tv?.pause();tv?.removeAttribute('src');tv?.load();}catch{}faceTracking=false;faceCancel=false;syncUi();}
+}""")
+open(p,"w",encoding="utf-8").write(s)
