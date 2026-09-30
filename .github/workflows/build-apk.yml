@@ -130,15 +130,51 @@ jobs:
           PY
           grep -nE 'v077-direct-preview|preview-section|empty-viewer' "$HTML" | tail -15
 
-      - name: Verify and normalize v0.7.7 direct preview identity
+      - name: Apply v0.7.8 visible version and hard preview fix
+        run: |
+          set -euo pipefail
+          HTML=$(find buildsrc -type f -name index.html | head -1)
+          CSS=$(find buildsrc -type f -name '*.css' | head -1)
+          python3 - "$HTML" "$CSS" <<'PY'
+          import sys,re
+          hp,cp=sys.argv[1:3]
+          h=open(hp,encoding='utf-8').read()
+          # Make the on-screen build identity truthful.
+          h=h.replace('SHORTS · v0.6.6','SHORTS · v0.7.8')
+          h=h.replace('SHORTS · v0.6.5','SHORTS · v0.7.8')
+          # Hard mobile geometry injected last: no dependence on prior cascade.
+          css=r'''<style id="v078-hard-mobile-preview">
+          @media(max-width:700px){
+            body{width:100vw!important;max-width:100vw!important;overflow-x:hidden!important}
+            .preview-section{display:block!important;position:relative!important;width:100vw!important;max-width:100vw!important;min-width:0!important;height:auto!important;padding:16px!important;margin:0!important;box-sizing:border-box!important;overflow:hidden!important}
+            .viewer{display:block!important;position:relative!important;flex:none!important;width:calc(100vw - 32px)!important;max-width:calc(100vw - 32px)!important;min-width:0!important;height:calc((100vw - 32px)*9/16)!important;max-height:none!important;aspect-ratio:auto!important;margin:0 auto!important;overflow:hidden!important;box-sizing:border-box!important}
+            .empty-viewer{position:absolute!important;inset:0!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;width:100%!important;height:100%!important;transform:none!important;text-align:center!important;box-sizing:border-box!important;padding:16px!important}
+            .viewer canvas{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;object-fit:contain!important}
+          }
+          </style>'''
+          h=h.replace('</head>',css+'\n</head>')
+          open(hp,'w',encoding='utf-8').write(h)
+          open(cp,'a',encoding='utf-8').write('\n/* v0.7.8 source marker */\n')
+          PY
+          grep -nE 'SHORTS · v0.7.8|v078-hard-mobile-preview' "$HTML"
+
+      - name: Verify packaged web assets before Android build
+        run: |
+          set -euo pipefail
+          HTML=$(find buildsrc -type f -name index.html | head -1)
+          grep -q 'SHORTS · v0.7.8' "$HTML"
+          grep -q 'v078-hard-mobile-preview' "$HTML"
+          echo "SOURCE VERIFIED: v0.7.8 identity + preview patch present"
+
+      - name: Verify and normalize v0.7.8 verified package identity
         run: |
           set -euo pipefail
           echo "Using $APP_GRADLE"
           if grep -q 'versionCode[[:space:]]*=' "$APP_GRADLE"; then
-            sed -i -E 's/versionCode[[:space:]]*=[[:space:]]*[0-9]+/versionCode = 707/' "$APP_GRADLE"
+            sed -i -E 's/versionCode[[:space:]]*=[[:space:]]*[0-9]+/versionCode = 708/' "$APP_GRADLE"
           fi
           if grep -q 'versionName[[:space:]]*=' "$APP_GRADLE"; then
-            sed -i -E 's/versionName[[:space:]]*=[[:space:]]*"[^"]*"/versionName = "0.7.7"/' "$APP_GRADLE"
+            sed -i -E 's/versionName[[:space:]]*=[[:space:]]*"[^"]*"/versionName = "0.7.8"/' "$APP_GRADLE"
           fi
           grep -E 'applicationId|versionCode|versionName' "$APP_GRADLE" || true
 
