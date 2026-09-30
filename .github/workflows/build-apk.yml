@@ -45,7 +45,7 @@ jobs:
           set -euo pipefail
           APPJS=$(find buildsrc -type f -name app.js | head -1)
           echo "APPJS=$APPJS"
-          grep -nEi 'face|track|mosaic|blur' "$APPJS" | head -250 || true
+          sed -n '3428,3610p' "$APPJS"
 
       - name: Verify and normalize v0.6.6 identity
         run: |
