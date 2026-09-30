@@ -45,7 +45,7 @@ jobs:
           set -euo pipefail
           APPJS=$(find buildsrc -type f -name app.js | head -1)
           echo "APPJS=$APPJS"
-          grep -nE 'function (renderFrame|play|pause)|renderFrame=|function clipRuntime|runtimeFor|currentTime.*video|video\.currentTime|v038RestoreProject' "$APPJS" | head -220
+          sed -n '40,105p' "$APPJS"; echo '---PATCHED RENDER---'; sed -n '2120,2205p' "$APPJS"; echo '---RESTORE---'; sed -n '2340,2395p' "$APPJS"
 
       - name: Verify and normalize v0.6.6 identity
         run: |
