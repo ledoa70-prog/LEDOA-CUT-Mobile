@@ -47,15 +47,150 @@ jobs:
           echo "APPJS=$APPJS"
           sed -n '40,105p' "$APPJS"; echo '---PATCHED RENDER---'; sed -n '2120,2205p' "$APPJS"; echo '---RESTORE---'; sed -n '2340,2395p' "$APPJS"
 
-      - name: Verify and normalize v0.6.6 identity
+      - name: Apply v0.6.7 playback and bidirectional face tracking patch
+        run: |
+          set -euo pipefail
+          APPJS=$(find buildsrc -type f -name app.js | head -1)
+          python3 - "$APPJS" <<'PY'
+          import sys
+          p=sys.argv[1]
+          s=open(p,encoding='utf-8').read()
+
+          def replace_function(src, signature, new_text):
+              start=src.find(signature)
+              if start<0: raise SystemExit("missing "+signature)
+              brace=src.find('{',start)
+              depth=0; quote=None; esc=False; i=brace
+              while i<len(src):
+                  ch=src[i]
+                  if quote:
+                      if esc: esc=False
+                      elif ch=='\\': esc=True
+                      elif ch==quote: quote=None
+                  else:
+                      if ch in ("'",'"','`'): quote=ch
+                      elif ch=='{': depth+=1
+                      elif ch=='}':
+                          depth-=1
+                          if depth==0: return src[:start]+new_text+src[i+1:]
+                  i+=1
+              raise SystemExit("unterminated "+signature)
+
+          new_prepare=r'''function prepareMedia(g,forPlay=false){
+            const ai=activeInfo(g),activeIds=new Set(); if(!ai)return;
+            const next=state.clips[ai.idx+1];
+            if(next?.type==='video'&&!next.placeholder){const nr=ensureRuntime(next);if(!nr.preloaded){try{nr.el.load();}catch{}nr.preloaded=true;}}
+            const items=ai.trans?[ai.trans.prev,ai.trans.cur]:[ai.cur];
+            items.forEach(c=>{
+              if(c.type!=='video'||c.placeholder)return;
+              activeIds.add(c.id);
+              const rt=ensureRuntime(c),v=rt.el,target=mediaLocalSourceTime(c,g);
+              v.playbackRate=Math.max(.5,Math.min(2,+c.speed||1));
+              const drift=Math.abs((Number.isFinite(v.currentTime)?v.currentTime:0)-target);
+              if(!forPlay){
+                try{v.pause();}catch{}
+                if(drift>.025){try{v.currentTime=target}catch{}}
+                rt.synced=false;
+                rt.lastTarget=target;
+              }else{
+                const stalled=rt.lastMediaTime!=null && Math.abs((v.currentTime||0)-rt.lastMediaTime)<.002 && rt.lastWall && performance.now()-rt.lastWall>220;
+                if(!rt.synced||drift>.22||stalled){try{v.currentTime=target}catch{}}
+                rt.lastTarget=target; rt.lastMediaTime=v.currentTime||0; rt.lastWall=performance.now();
+                if(v.paused||v.ended||stalled){
+                  try{const pp=v.play();if(pp?.then)pp.then(()=>{rt.synced=true;}).catch(()=>{rt.synced=false;});else rt.synced=!v.paused;}catch{rt.synced=false;}
+                }else rt.synced=true;
+              }
+            });
+            state.clips.forEach(c=>{if(c.type==='video'&&c.rt?.el&&!activeIds.has(c.id)){try{c.rt.el.pause();}catch{}c.rt.synced=false;c.rt.lastMediaTime=null;c.rt.lastWall=0;}});
+            applyVideoAudioGains(ai);
+          }'''
+          s=replace_function(s,'function prepareMedia(g,forPlay=false)',new_prepare)
+
+          new_play=r'''function play(){
+            if(!state.clips.length)return toast('먼저 미디어를 넣어주세요.');
+            ensureAudioGraph().catch(()=>{});
+            if(state.currentTime>=totalDuration()-.03)state.currentTime=0;
+            state.clips.forEach(c=>{if(c.rt){c.rt.synced=false;c.rt.lastMediaTime=null;c.rt.lastWall=0;}});
+            renderFrame(state.currentTime,false);
+            state.playing=true;state.playStartPerf=performance.now();state.playStartTime=state.currentTime;
+            $('playBtn').textContent='Ⅱ';syncMusic(true);cancelAnimationFrame(raf);raf=requestAnimationFrame(playLoop);
+          }'''
+          s=replace_function(s,'function play()',new_play)
+
+          new_track=r'''async function runTracking(){
+            if(faceTracking){faceCancel=true;return;}
+            const mask=selectedMask(),clip=mask&&state.clips.find(c=>c.id===mask.clipId);if(!mask||!clip)return toast('먼저 얼굴을 선택하세요.');
+            pause();faceTracking=true;faceCancel=false;syncUi();const prog=$('faceMaskProgress061');if(prog)prog.textContent='선택 얼굴 양방향 추적 준비 중…';let tv;
+            try{
+              const det=await getDetector();if(!det)throw new Error('얼굴 감지 엔진을 불러오지 못했습니다.');
+              tv=await trackVideo(clip);const a=mask.identityAnchor||mask.keyframes?.[0];if(!a)throw new Error('얼굴 기준점이 없습니다.');
+              const clipStart=+clip.trimStart||0,clipEnd=+clip.trimEnd||+clip.sourceDuration||0;
+              const bounds={start:clipStart,end:clipEnd};if(bounds.end-bounds.start<.08)throw new Error('영상 구간이 너무 짧습니다.');
+              await seekTrack(tv,a.sourceTime);
+              const base=sanitizeFaceBox064({x:a.x,y:a.y,w:a.w,h:a.h,confidence:a.confidence||1},null);
+              mask.sourceStart=bounds.start;mask.sourceEnd=bounds.end;
+              mask.identityAnchor={sourceTime:a.sourceTime,...base,confidence:1,manual:true,detected:true,directLock:true};
+              const span=Math.max(.01,bounds.end-bounds.start),step=Math.max(.066,Math.min(.10,span/900));
+              const total=Math.max(1,Math.ceil((a.sourceTime-bounds.start)/step)+Math.ceil((bounds.end-a.sourceTime)/step));
+              let done=0;
+              const results=[{sourceTime:a.sourceTime,...base,confidence:1}];
+
+              async function pass(dir,limit){
+                let prev={...base},good={...base},vel={x:0,y:0},lost=0,t=a.sourceTime+dir*step;
+                while(dir>0?t<=limit+.001:t>=limit-.001){
+                  if(faceCancel)return;
+                  await seekTrack(tv,t);
+                  const pred={x:clamp(prev.x+vel.x,0,1-prev.w),y:clamp(prev.y+vel.y,0,1-prev.h),w:prev.w,h:prev.h};
+                  const dets=await detect(det,tv,{rect:pred,lost});
+                  let cand=chooseDetectedFace064(dets,prev,pred,base,lost);
+                  if(cand){
+                    const clean=sanitizeFaceBox064(cand,prev);
+                    const jump=Math.hypot((clean.x+clean.w/2)-(prev.x+prev.w/2),(clean.y+clean.h/2)-(prev.y+prev.h/2));
+                    const sizeRatio=Math.max(clean.w/Math.max(.001,base.w),base.w/Math.max(.001,clean.w));
+                    if(jump>.24+Math.min(.16,lost*.025)||sizeRatio>2.15)cand=null;
+                  }
+                  if(cand){
+                    const clean=sanitizeFaceBox064(cand,prev),alpha=cand.dist<.45?.78:cand.dist<.9?.66:.54,next=smooth(prev,clean,alpha);
+                    const nx=(next.x+next.w/2)-(prev.x+prev.w/2),ny=(next.y+next.h/2)-(prev.y+prev.h/2);
+                    vel={x:vel.x*.35+nx*.65,y:vel.y*.35+ny*.65};prev=sanitizeFaceBox064(next,prev);good={...prev};lost=0;
+                    results.push({sourceTime:clamp(t,bounds.start,bounds.end),...prev,confidence:clamp(cand.confidence??.7,.25,1)});
+                  }else{
+                    lost++;vel={x:vel.x*.55,y:vel.y*.55};
+                    const predicted=sanitizeFaceBox064({x:clamp(prev.x+vel.x,0,1-prev.w),y:clamp(prev.y+vel.y,0,1-prev.h),w:prev.w,h:prev.h},prev);
+                    prev=lost<=6?predicted:{...good};
+                    results.push({sourceTime:clamp(t,bounds.start,bounds.end),...prev,confidence:lost<=6?.16:.10});
+                  }
+                  done++;if(done%3===0){if(prog)prog.textContent=`선택 얼굴 양방향 추적… ${Math.min(100,Math.round(done/total*100))}% · ${dir>0?'뒤쪽':'앞쪽'} · ${detectorBackend}`;await new Promise(r=>setTimeout(r,0));}
+                  t+=dir*step;
+                }
+              }
+              await pass(1,bounds.end);
+              if(!faceCancel)await pass(-1,bounds.start);
+              if(faceCancel){if(prog)prog.textContent='추적을 취소했습니다.';toast('얼굴 추적을 취소했습니다.');return;}
+              results.sort((x,y)=>x.sourceTime-y.sourceTime);
+              mask.keyframes=results;mask.tracked=true;mask.trackerVersion=67;mask.identityLock=true;mask.detectorOnly=true;mask.padding=Math.min(mask.padding??.10,.18);
+              if(prog)prog.textContent=`추적 완료 · ${results.length}포인트 · 선택 지점 기준 앞/뒤 전체 추적`;
+              renderFrame(state.currentTime,false);v038ScheduleAutosave?.(100);toast(`선택 얼굴 전체 추적 완료 · ${results.length}포인트`);
+            }catch(e){console.error('v067 face',e);if(prog)prog.textContent=`추적 실패 · ${e?.message||e}`;toast(`얼굴 추적 실패: ${e?.message||e}`);}
+            finally{try{tv?.pause();tv?.removeAttribute('src');tv?.load();}catch{}faceTracking=false;faceCancel=false;syncUi();}
+          }'''
+          s=replace_function(s,'async function runTracking()',new_track)
+
+          open(p,'w',encoding='utf-8').write(s)
+          print('Applied v0.6.7 playback + bidirectional face tracking patch')
+          PY
+          node --check "$APPJS"
+          grep -nE 'trackerVersion=67|function prepareMedia|function play\(\)' "$APPJS" | tail -20
+
+      - name: Verify and normalize v0.6.7 identity
         run: |
           set -euo pipefail
           echo "Using $APP_GRADLE"
           if grep -q 'versionCode[[:space:]]*=' "$APP_GRADLE"; then
-            sed -i -E 's/versionCode[[:space:]]*=[[:space:]]*[0-9]+/versionCode = 606/' "$APP_GRADLE"
+            sed -i -E 's/versionCode[[:space:]]*=[[:space:]]*[0-9]+/versionCode = 607/' "$APP_GRADLE"
           fi
           if grep -q 'versionName[[:space:]]*=' "$APP_GRADLE"; then
-            sed -i -E 's/versionName[[:space:]]*=[[:space:]]*"[^"]*"/versionName = "0.6.6"/' "$APP_GRADLE"
+            sed -i -E 's/versionName[[:space:]]*=[[:space:]]*"[^"]*"/versionName = "0.6.7"/' "$APP_GRADLE"
           fi
           grep -E 'applicationId|versionCode|versionName' "$APP_GRADLE" || true
 
@@ -82,16 +217,16 @@ jobs:
           if [ -f signing/v037_debug.keystore.b64 ]; then
             base64 -d signing/v037_debug.keystore.b64 > /tmp/ledoa-release.keystore
             "$ZIPALIGN" -f 4 "$APK" /tmp/ledoa-aligned.apk
-            "$APKSIGNER" sign --ks /tmp/ledoa-release.keystore --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out LEDOA_CUT_Mobile_v0.6.6_FACE_TRACK_FIX.apk /tmp/ledoa-aligned.apk
-            "$APKSIGNER" verify --verbose --print-certs LEDOA_CUT_Mobile_v0.6.6_FACE_TRACK_FIX.apk
+            "$APKSIGNER" sign --ks /tmp/ledoa-release.keystore --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out LEDOA_CUT_Mobile_v0.6.7_PLAYBACK_FACE_TRACK_FIX.apk /tmp/ledoa-aligned.apk
+            "$APKSIGNER" verify --verbose --print-certs LEDOA_CUT_Mobile_v0.6.7_PLAYBACK_FACE_TRACK_FIX.apk
           else
-            cp "$APK" LEDOA_CUT_Mobile_v0.6.6_FACE_TRACK_FIX.apk
+            cp "$APK" LEDOA_CUT_Mobile_v0.6.7_PLAYBACK_FACE_TRACK_FIX.apk
           fi
-          sha256sum LEDOA_CUT_Mobile_v0.6.6_FACE_TRACK_FIX.apk
+          sha256sum LEDOA_CUT_Mobile_v0.6.7_PLAYBACK_FACE_TRACK_FIX.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: LEDOA_CUT_Mobile_v0.6.6_FACE_TRACK_FIX
-          path: LEDOA_CUT_Mobile_v0.6.6_FACE_TRACK_FIX.apk
+          name: LEDOA_CUT_Mobile_v0.6.7_PLAYBACK_FACE_TRACK_FIX
+          path: LEDOA_CUT_Mobile_v0.6.7_PLAYBACK_FACE_TRACK_FIX.apk
           if-no-files-found: error
