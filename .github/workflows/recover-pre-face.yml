@@ -51,8 +51,8 @@ jobs:
           MANIFEST=buildsrc/android/app/src/main/AndroidManifest.xml
           if ! grep -q 'android.permission.INTERNET' "$MANIFEST"; then sed -i '/<manifest/a\    <uses-permission android:name="android.permission.INTERNET" />' "$MANIFEST"; fi
           sed -i 's/applicationId = "[^"]*"/applicationId = "kr.ledoa.cut.release"/' buildsrc/android/app/build.gradle.kts
-          sed -i 's/versionCode = [0-9][0-9]*/versionCode = 404/' buildsrc/android/app/build.gradle.kts
-          sed -i 's/versionName = "[^"]*"/versionName = "0.4.4"/' buildsrc/android/app/build.gradle.kts
+          sed -i 's/versionCode = [0-9][0-9]*/versionCode = 700/' buildsrc/android/app/build.gradle.kts
+          sed -i 's/versionName = "[^"]*"/versionName = "0.4.4-recovery"/' buildsrc/android/app/build.gradle.kts
       - name: Build
         working-directory: buildsrc/android
         run: gradle --no-daemon :app:assembleDebug
@@ -69,7 +69,7 @@ jobs:
           "$APKSIGNER" verify --verbose --print-certs LEDOA_CUT_Mobile_v0.4.4_PRE_FACE_RECOVERY.apk
           "$AAPT2" dump badging LEDOA_CUT_Mobile_v0.4.4_PRE_FACE_RECOVERY.apk | tee /tmp/badging.txt
           grep -q "package: name='kr.ledoa.cut.release'" /tmp/badging.txt
-          grep -q "versionCode='404'" /tmp/badging.txt
+          grep -q "versionCode='700'" /tmp/badging.txt
       - uses: actions/upload-artifact@v4
         with:
           name: LEDOA_CUT_Mobile_v0.4.4_PRE_FACE_RECOVERY
