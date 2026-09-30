@@ -311,15 +311,56 @@ jobs:
           node --check "$APPJS"
           grep -nE 'trackerVersion:68|현재 화면의 얼굴을 모두|async function beginSelection' "$APPJS" | tail -20
 
-      - name: Verify and normalize v0.6.8 identity
+      - name: Apply v0.6.9 face button auto-scan UI
+        run: |
+          set -euo pipefail
+          APPJS=$(find buildsrc -type f -name app.js | head -1)
+          python3 - "$APPJS" <<'PY'
+          import sys
+          p=sys.argv[1];s=open(p,encoding='utf-8').read()
+          # The top clip-sheet Face button already opens the Face panel. Make opening that panel
+          # automatically start full-frame face detection, so there is no second selection button.
+          needles=[
+            "faceMaskSelect061').addEventListener('click',beginSelection)",
+            'faceMaskSelect061").addEventListener("click",beginSelection)'
+          ]
+          # Keep old button as retry, but relabel it.
+          s=s.replace('1. 얼굴 터치 선택','얼굴 다시 찾기')
+          # Hook the existing top Face tab/button by wrapping updateClipSheet after the face card is visible.
+          anchor="const oldUpdateClipSheet061=updateClipSheet;\n  updateClipSheet=function(){oldUpdateClipSheet061();syncUi();};"
+          repl="""const oldUpdateClipSheet061=updateClipSheet;
+          updateClipSheet=function(){oldUpdateClipSheet061();syncUi();};
+          let v069LastAutoScanClip=null,v069LastAutoScanAt=-1;
+          function v069AutoScanFaces(){
+            const clip=currentVideoClip();if(!clip||faceTracking)return;
+            const now=state.currentTime;
+            if(v069LastAutoScanClip===clip.id&&Math.abs(now-v069LastAutoScanAt)<.03&&faceSelecting?.candidates?.length)return;
+            v069LastAutoScanClip=clip.id;v069LastAutoScanAt=now;
+            setTimeout(()=>beginSelection(),80);
+          }
+          const v069FaceBtn=document.querySelector('[data-sheet="face"],[data-panel="face"],#faceBtn,#clipFaceBtn');
+          if(v069FaceBtn)v069FaceBtn.addEventListener('click',()=>setTimeout(v069AutoScanFaces,120),true);
+          document.addEventListener('click',e=>{
+            const b=e.target?.closest?.('button');if(!b)return;
+            if((b.textContent||'').trim()==='얼굴')setTimeout(v069AutoScanFaces,120);
+          },true);"""
+          if anchor not in s: raise SystemExit("face UI anchor not found")
+          s=s.replace(anchor,repl)
+          open(p,'w',encoding='utf-8').write(s)
+          print('Applied v0.6.9 top Face button auto scan')
+          PY
+          node --check "$APPJS"
+          grep -nE 'v069AutoScanFaces|얼굴 다시 찾기' "$APPJS" | tail -20
+
+      - name: Verify and normalize v0.6.9 identity
         run: |
           set -euo pipefail
           echo "Using $APP_GRADLE"
           if grep -q 'versionCode[[:space:]]*=' "$APP_GRADLE"; then
-            sed -i -E 's/versionCode[[:space:]]*=[[:space:]]*[0-9]+/versionCode = 608/' "$APP_GRADLE"
+            sed -i -E 's/versionCode[[:space:]]*=[[:space:]]*[0-9]+/versionCode = 609/' "$APP_GRADLE"
           fi
           if grep -q 'versionName[[:space:]]*=' "$APP_GRADLE"; then
-            sed -i -E 's/versionName[[:space:]]*=[[:space:]]*"[^"]*"/versionName = "0.6.8"/' "$APP_GRADLE"
+            sed -i -E 's/versionName[[:space:]]*=[[:space:]]*"[^"]*"/versionName = "0.6.9"/' "$APP_GRADLE"
           fi
           grep -E 'applicationId|versionCode|versionName' "$APP_GRADLE" || true
 
@@ -346,16 +387,16 @@ jobs:
           if [ -f signing/v037_debug.keystore.b64 ]; then
             base64 -d signing/v037_debug.keystore.b64 > /tmp/ledoa-release.keystore
             "$ZIPALIGN" -f 4 "$APK" /tmp/ledoa-aligned.apk
-            "$APKSIGNER" sign --ks /tmp/ledoa-release.keystore --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out LEDOA_CUT_Mobile_v0.6.8_MULTI_FACE_TRACK.apk /tmp/ledoa-aligned.apk
-            "$APKSIGNER" verify --verbose --print-certs LEDOA_CUT_Mobile_v0.6.8_MULTI_FACE_TRACK.apk
+            "$APKSIGNER" sign --ks /tmp/ledoa-release.keystore --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out LEDOA_CUT_Mobile_v0.6.9_FACE_BUTTON_AUTO_SCAN.apk /tmp/ledoa-aligned.apk
+            "$APKSIGNER" verify --verbose --print-certs LEDOA_CUT_Mobile_v0.6.9_FACE_BUTTON_AUTO_SCAN.apk
           else
-            cp "$APK" LEDOA_CUT_Mobile_v0.6.8_MULTI_FACE_TRACK.apk
+            cp "$APK" LEDOA_CUT_Mobile_v0.6.9_FACE_BUTTON_AUTO_SCAN.apk
           fi
-          sha256sum LEDOA_CUT_Mobile_v0.6.8_MULTI_FACE_TRACK.apk
+          sha256sum LEDOA_CUT_Mobile_v0.6.9_FACE_BUTTON_AUTO_SCAN.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: LEDOA_CUT_Mobile_v0.6.8_MULTI_FACE_TRACK
-          path: LEDOA_CUT_Mobile_v0.6.8_MULTI_FACE_TRACK.apk
+          name: LEDOA_CUT_Mobile_v0.6.9_FACE_BUTTON_AUTO_SCAN
+          path: LEDOA_CUT_Mobile_v0.6.9_FACE_BUTTON_AUTO_SCAN.apk
           if-no-files-found: error
