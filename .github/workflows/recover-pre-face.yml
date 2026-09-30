@@ -60,10 +60,10 @@ jobs:
           sed -n '2879,2914p' "$LATER_JS" >> buildsrc/android/app/src/main/assets/app.js
           # v0.4.7: visible navigation controls in the timeline header.
           python3 - <<'PY'
-from pathlib import Path
-p=Path("buildsrc/android/app/src/main/assets/app.js")
-s=p.read_text()
-s += r"""
+          from pathlib import Path
+          p=Path("buildsrc/android/app/src/main/assets/app.js")
+          s=p.read_text()
+          s += r"""
 ;(()=>{
   function installVisibleTimelineNav(){
     if(document.getElementById('ledoaVisibleTimelineNav')) return;
@@ -84,8 +84,8 @@ s += r"""
   else setTimeout(installVisibleTimelineNav,100);
 })();
 """
-p.write_text(s)
-PY
+          p.write_text(s)
+          PY
           cp source/v044_MainActivity.java buildsrc/android/app/src/main/java/kr/ledoa/cut/MainActivity.java
           sed -i 's/SHORTS · v0.3.5/SHORTS · v0.4.7/g; s/SHORTS · v0.3.6/SHORTS · v0.4.7/g; s/SHORTS · v0.3.7/SHORTS · v0.4.7/g; s/SHORTS · v0.3.8/SHORTS · v0.4.7/g; s/SHORTS · v0.3.9/SHORTS · v0.4.7/g; s/SHORTS · v0.4.0/SHORTS · v0.4.7/g; s/SHORTS · v0.4.1/SHORTS · v0.4.7/g; s/SHORTS · v0.4.2/SHORTS · v0.4.7/g; s/SHORTS · v0.4.3/SHORTS · v0.4.7/g' buildsrc/android/app/src/main/assets/index.html
           node --check buildsrc/android/app/src/main/assets/app.js
