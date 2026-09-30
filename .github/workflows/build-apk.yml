@@ -84,15 +84,15 @@ jobs:
           CSS
           grep -nE '^\.viewer|^\.preview-section|ratio-16-9' "$CSS" | tail -20
 
-      - name: Verify and normalize v0.7.5 exact viewer identity
+      - name: Verify and normalize v0.7.6 viewport shell identity
         run: |
           set -euo pipefail
           echo "Using $APP_GRADLE"
           if grep -q 'versionCode[[:space:]]*=' "$APP_GRADLE"; then
-            sed -i -E 's/versionCode[[:space:]]*=[[:space:]]*[0-9]+/versionCode = 705/' "$APP_GRADLE"
+            sed -i -E 's/versionCode[[:space:]]*=[[:space:]]*[0-9]+/versionCode = 706/' "$APP_GRADLE"
           fi
           if grep -q 'versionName[[:space:]]*=' "$APP_GRADLE"; then
-            sed -i -E 's/versionName[[:space:]]*=[[:space:]]*"[^"]*"/versionName = "0.7.5"/' "$APP_GRADLE"
+            sed -i -E 's/versionName[[:space:]]*=[[:space:]]*"[^"]*"/versionName = "0.7.6"/' "$APP_GRADLE"
           fi
           grep -E 'applicationId|versionCode|versionName' "$APP_GRADLE" || true
 
