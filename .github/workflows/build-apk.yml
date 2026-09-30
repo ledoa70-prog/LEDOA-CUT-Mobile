@@ -40,6 +40,13 @@ jobs:
           echo "ANDROID_DIR=$ANDROID_DIR" >> "$GITHUB_ENV"
           echo "APP_GRADLE=$GRADLE_FILE" >> "$GITHUB_ENV"
 
+      - name: Inspect face tracking source
+        run: |
+          set -euo pipefail
+          APPJS=$(find buildsrc -type f -name app.js | head -1)
+          echo "APPJS=$APPJS"
+          grep -nEi 'face|track|mosaic|blur' "$APPJS" | head -250 || true
+
       - name: Verify and normalize v0.6.6 identity
         run: |
           set -euo pipefail
