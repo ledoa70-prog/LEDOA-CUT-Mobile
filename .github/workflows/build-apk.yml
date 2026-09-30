@@ -352,15 +352,74 @@ jobs:
           node --check "$APPJS"
           grep -nE 'v069AutoScanFaces|얼굴 다시 찾기' "$APPJS" | tail -20
 
-      - name: Verify and normalize v0.6.9 identity
+      - name: Apply v0.7.0 persistent face selection overlay
+        run: |
+          set -euo pipefail
+          APPJS=$(find buildsrc -type f -name app.js | head -1)
+          python3 - "$APPJS" <<'PY'
+          import sys
+          p=sys.argv[1];s=open(p,encoding='utf-8').read()
+          # Replace v0.6.8 canvas-only selection guide with a persistent DOM overlay.
+          sig='function drawSelectionGuide()'
+          st=s.find(sig)
+          if st<0: raise SystemExit('drawSelectionGuide missing')
+          b=s.find('{',st);dep=0;q=None;esc=False;i=b
+          while i<len(s):
+            ch=s[i]
+            if q:
+              if esc:esc=False
+              elif ch=='\\':esc=True
+              elif ch==q:q=None
+            else:
+              if ch in ("'",'"','`'):q=ch
+              elif ch=='{':dep+=1
+              elif ch=='}':
+                dep-=1
+                if dep==0:break
+            i+=1
+          new=r'''function drawSelectionGuide(){
+            let layer=document.getElementById('faceSelectOverlay070');
+            if(!faceSelecting?.candidates?.length){if(layer)layer.remove();return;}
+            const clip=state.clips.find(c=>c.id===faceSelecting.clipId);if(!clip)return;
+            const host=canvas.parentElement||document.body,hr=host.getBoundingClientRect(),cr=canvas.getBoundingClientRect();
+            if(!layer){layer=document.createElement('div');layer.id='faceSelectOverlay070';layer.style.cssText='position:absolute;z-index:99999;pointer-events:none;overflow:visible';host.appendChild(layer);}
+            if(getComputedStyle(host).position==='static')host.style.position='relative';
+            layer.style.left=(cr.left-hr.left)+'px';layer.style.top=(cr.top-hr.top)+'px';layer.style.width=cr.width+'px';layer.style.height=cr.height+'px';layer.innerHTML='';
+            const sx=cr.width/canvas.width,sy=cr.height/canvas.height;
+            faceSelecting.candidates.forEach((r,i)=>{
+              const d=sourceRectToCanvas(clip,r,.10);if(!d)return;const on=faceSelecting.selected.has(i),b=document.createElement('button');
+              b.type='button';b.dataset.faceIndex=String(i);b.style.cssText=`position:absolute;pointer-events:auto;left:${d.x*sx}px;top:${d.y*sy}px;width:${d.w*sx}px;height:${d.h*sy}px;border:${on?'4px solid #32e875':'3px solid #ffd36e'};background:${on?'rgba(50,232,117,.18)':'rgba(255,211,110,.10)'};border-radius:6px;color:#fff;font-weight:900;font-size:18px;text-shadow:0 1px 3px #000;box-shadow:0 0 0 1px rgba(0,0,0,.5);z-index:100000;`;
+              b.textContent=on?'✓':String(i+1);
+              b.addEventListener('click',ev=>{ev.preventDefault();ev.stopPropagation();if(faceSelecting.selected.has(i))faceSelecting.selected.delete(i);else faceSelecting.selected.add(i);drawSelectionGuide();const prog=$('faceMaskProgress061');if(prog)prog.textContent=`${faceSelecting.candidates.length}명 인식 · ${faceSelecting.selected.size}명 선택됨 · 박스를 추가 선택하거나 [선택 얼굴 추적]을 누르세요.`;});
+              layer.appendChild(b);
+            });
+          }'''
+          s=s[:st]+new+s[i+1:]
+
+          # Keep overlay visible after every frame render; remove it when selection ends.
+          old="updateTime();\n  updatePlayhead();\n}"
+          if old in s:
+            s=s.replace(old,"updateTime();\n  updatePlayhead();\n  if(typeof faceSelecting!=='undefined'&&faceSelecting?.candidates?.length)requestAnimationFrame(()=>drawSelectionGuide());\n}",1)
+          # Diagnostic: explicit count is already shown; ensure face panel remains above bottom sheet by mounting overlay on body if host clips.
+          s=s.replace("const host=canvas.parentElement||document.body,hr=host.getBoundingClientRect(),cr=canvas.getBoundingClientRect();","const host=document.body,hr=host.getBoundingClientRect(),cr=canvas.getBoundingClientRect();")
+          s=s.replace("if(getComputedStyle(host).position==='static')host.style.position='relative';","")
+          # body coordinates need viewport + scroll.
+          s=s.replace("layer.style.left=(cr.left-hr.left)+'px';layer.style.top=(cr.top-hr.top)+'px';","layer.style.left=(cr.left+window.scrollX)+'px';layer.style.top=(cr.top+window.scrollY)+'px';")
+          open(p,'w',encoding='utf-8').write(s)
+          print('Applied v0.7.0 persistent DOM face boxes')
+          PY
+          node --check "$APPJS"
+          grep -nE 'faceSelectOverlay070|명 인식' "$APPJS" | tail -20
+
+      - name: Verify and normalize v0.7.0 identity
         run: |
           set -euo pipefail
           echo "Using $APP_GRADLE"
           if grep -q 'versionCode[[:space:]]*=' "$APP_GRADLE"; then
-            sed -i -E 's/versionCode[[:space:]]*=[[:space:]]*[0-9]+/versionCode = 609/' "$APP_GRADLE"
+            sed -i -E 's/versionCode[[:space:]]*=[[:space:]]*[0-9]+/versionCode = 700/' "$APP_GRADLE"
           fi
           if grep -q 'versionName[[:space:]]*=' "$APP_GRADLE"; then
-            sed -i -E 's/versionName[[:space:]]*=[[:space:]]*"[^"]*"/versionName = "0.6.9"/' "$APP_GRADLE"
+            sed -i -E 's/versionName[[:space:]]*=[[:space:]]*"[^"]*"/versionName = "0.7.0"/' "$APP_GRADLE"
           fi
           grep -E 'applicationId|versionCode|versionName' "$APP_GRADLE" || true
 
@@ -387,16 +446,16 @@ jobs:
           if [ -f signing/v037_debug.keystore.b64 ]; then
             base64 -d signing/v037_debug.keystore.b64 > /tmp/ledoa-release.keystore
             "$ZIPALIGN" -f 4 "$APK" /tmp/ledoa-aligned.apk
-            "$APKSIGNER" sign --ks /tmp/ledoa-release.keystore --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out LEDOA_CUT_Mobile_v0.6.9_FACE_BUTTON_AUTO_SCAN.apk /tmp/ledoa-aligned.apk
-            "$APKSIGNER" verify --verbose --print-certs LEDOA_CUT_Mobile_v0.6.9_FACE_BUTTON_AUTO_SCAN.apk
+            "$APKSIGNER" sign --ks /tmp/ledoa-release.keystore --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out LEDOA_CUT_Mobile_v0.7.0_PERSISTENT_FACE_BOXES.apk /tmp/ledoa-aligned.apk
+            "$APKSIGNER" verify --verbose --print-certs LEDOA_CUT_Mobile_v0.7.0_PERSISTENT_FACE_BOXES.apk
           else
-            cp "$APK" LEDOA_CUT_Mobile_v0.6.9_FACE_BUTTON_AUTO_SCAN.apk
+            cp "$APK" LEDOA_CUT_Mobile_v0.7.0_PERSISTENT_FACE_BOXES.apk
           fi
-          sha256sum LEDOA_CUT_Mobile_v0.6.9_FACE_BUTTON_AUTO_SCAN.apk
+          sha256sum LEDOA_CUT_Mobile_v0.7.0_PERSISTENT_FACE_BOXES.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: LEDOA_CUT_Mobile_v0.6.9_FACE_BUTTON_AUTO_SCAN
-          path: LEDOA_CUT_Mobile_v0.6.9_FACE_BUTTON_AUTO_SCAN.apk
+          name: LEDOA_CUT_Mobile_v0.7.0_PERSISTENT_FACE_BOXES
+          path: LEDOA_CUT_Mobile_v0.7.0_PERSISTENT_FACE_BOXES.apk
           if-no-files-found: error
