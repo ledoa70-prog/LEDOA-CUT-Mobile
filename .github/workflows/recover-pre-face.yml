@@ -73,7 +73,7 @@ jobs:
     const bar=document.createElement('div');
     bar.id='ledoaVisibleTimelineNav';
     bar.style.cssText='display:flex;align-items:center;gap:6px;margin-left:auto;flex:0 0 auto;';
-    bar.innerHTML='<button type="button" id="ledoaGoStart" style="min-width:52px;padding:7px 8px;font-size:12px">⏮ 처음</button><button type="button" id="ledoaTlLeft" style="min-width:38px;padding:7px 8px;font-size:16px">◀</button><button type="button" id="ledoaTlRight" style="min-width:38px;padding:7px 8px;font-size:16px">▶</button>';
+    bar.innerHTML='<button type="button" id="ledoaGoStart" style="min-width:52px;padding:7px 8px;font-size:12px">처음</button><button type="button" id="ledoaTlLeft" style="min-width:38px;padding:7px 8px;font-size:16px">LEFT</button><button type="button" id="ledoaTlRight" style="min-width:38px;padding:7px 8px;font-size:16px">RIGHT</button>';
     if(getComputedStyle(host).display!=='flex'){host.style.display='flex';host.style.alignItems='center';host.style.gap='6px';}
     host.appendChild(bar);
     $('ledoaGoStart').onclick=()=>{try{pause?.();seek?.(0);timeline.scrollLeft=0;}catch(e){timeline.scrollLeft=0;}};
