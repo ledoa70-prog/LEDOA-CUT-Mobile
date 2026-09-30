@@ -45,7 +45,7 @@ jobs:
           set -euo pipefail
           APPJS=$(find buildsrc -type f -name app.js | head -1)
           echo "APPJS=$APPJS"
-          sed -n '40,105p' "$APPJS"; echo '---PATCHED RENDER---'; sed -n '2120,2205p' "$APPJS"; echo '---RESTORE---'; sed -n '2340,2395p' "$APPJS"
+          sed -n '3250,3435p' "$APPJS"
 
       - name: Apply v0.6.7 playback and bidirectional face tracking patch
         run: |
