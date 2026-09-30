@@ -411,74 +411,15 @@ jobs:
           node --check "$APPJS"
           grep -nE 'faceSelectOverlay070|명 인식' "$APPJS" | tail -20
 
-      - name: Apply v0.7.1 Fold narrow-screen contain preview
-        run: |
-          set -euo pipefail
-          APPJS=$(find buildsrc -type f -name app.js | head -1)
-          HTML=$(find buildsrc -type f -name index.html | head -1)
-          python3 - "$APPJS" "$HTML" <<'PY'
-          import sys,re
-          js,html=sys.argv[1:3]
-          s=open(js,encoding='utf-8').read()
-          # Patch canvas display geometry: always letterbox/contain source into the preview.
-          # Keep internal canvas dimensions untouched so export quality is unaffected.
-          add=r"""
-          /* v0.7.1: Fold/narrow-screen preview must show the whole frame, never crop it. */
-          function v071ContainPreview(){
-            try{
-              const c=window.canvas||document.querySelector('canvas');
-              if(!c)return;
-              c.style.objectFit='contain';
-              c.style.objectPosition='center center';
-              c.style.maxWidth='100%';
-              c.style.maxHeight='100%';
-              c.style.width='100%';
-              c.style.height='100%';
-              const p=c.parentElement;
-              if(p){p.style.overflow='hidden';p.style.background='#000';}
-              if(typeof drawSelectionGuide==='function'&&typeof faceSelecting!=='undefined'&&faceSelecting?.candidates?.length)requestAnimationFrame(()=>drawSelectionGuide());
-            }catch(e){console.warn('v071 contain preview',e);}
-          }
-          window.addEventListener('resize',v071ContainPreview,{passive:true});
-          window.addEventListener('orientationchange',()=>setTimeout(v071ContainPreview,120),{passive:true});
-          if(window.visualViewport)visualViewport.addEventListener('resize',v071ContainPreview,{passive:true});
-          setTimeout(v071ContainPreview,0);
-          """
-          s += add
-          open(js,'w',encoding='utf-8').write(s)
-
-          h=open(html,encoding='utf-8').read()
-          css="""<style id="v071-fold-preview">
-          /* Editing preview: preserve complete video frame on narrow/Fold cover screens. */
-          canvas#canvas, #canvas, .preview canvas, .stage canvas, .preview-stage canvas {
-            object-fit: contain !important;
-            object-position: center center !important;
-            max-width: 100% !important;
-            max-height: 100% !important;
-          }
-          @media (max-width: 700px) {
-            .preview, .stage, .preview-stage, .canvas-wrap, .preview-wrap {
-              overflow: hidden !important;
-              background: #000 !important;
-            }
-          }
-          </style>"""
-          h=h.replace('</head>',css+'\n</head>')
-          open(html,'w',encoding='utf-8').write(h)
-          print('Applied v0.7.1 contain preview for Fold/narrow screens')
-          PY
-          node --check "$APPJS"
-          grep -nE 'v071ContainPreview|v071-fold-preview|object-fit: contain' "$APPJS" "$HTML" | tail -30
-
-      - name: Verify and normalize v0.7.1 identity
+      - name: Verify and normalize v0.7.2 identity
         run: |
           set -euo pipefail
           echo "Using $APP_GRADLE"
           if grep -q 'versionCode[[:space:]]*=' "$APP_GRADLE"; then
-            sed -i -E 's/versionCode[[:space:]]*=[[:space:]]*[0-9]+/versionCode = 701/' "$APP_GRADLE"
+            sed -i -E 's/versionCode[[:space:]]*=[[:space:]]*[0-9]+/versionCode = 702/' "$APP_GRADLE"
           fi
           if grep -q 'versionName[[:space:]]*=' "$APP_GRADLE"; then
-            sed -i -E 's/versionName[[:space:]]*=[[:space:]]*"[^"]*"/versionName = "0.7.1"/' "$APP_GRADLE"
+            sed -i -E 's/versionName[[:space:]]*=[[:space:]]*"[^"]*"/versionName = "0.7.2"/' "$APP_GRADLE"
           fi
           grep -E 'applicationId|versionCode|versionName' "$APP_GRADLE" || true
 
@@ -505,16 +446,16 @@ jobs:
           if [ -f signing/v037_debug.keystore.b64 ]; then
             base64 -d signing/v037_debug.keystore.b64 > /tmp/ledoa-release.keystore
             "$ZIPALIGN" -f 4 "$APK" /tmp/ledoa-aligned.apk
-            "$APKSIGNER" sign --ks /tmp/ledoa-release.keystore --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out LEDOA_CUT_Mobile_v0.7.1_FOLD_CONTAIN_PREVIEW.apk /tmp/ledoa-aligned.apk
-            "$APKSIGNER" verify --verbose --print-certs LEDOA_CUT_Mobile_v0.7.1_FOLD_CONTAIN_PREVIEW.apk
+            "$APKSIGNER" sign --ks /tmp/ledoa-release.keystore --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out LEDOA_CUT_Mobile_v0.7.2_PREVIEW_ROLLBACK.apk /tmp/ledoa-aligned.apk
+            "$APKSIGNER" verify --verbose --print-certs LEDOA_CUT_Mobile_v0.7.2_PREVIEW_ROLLBACK.apk
           else
-            cp "$APK" LEDOA_CUT_Mobile_v0.7.1_FOLD_CONTAIN_PREVIEW.apk
+            cp "$APK" LEDOA_CUT_Mobile_v0.7.2_PREVIEW_ROLLBACK.apk
           fi
-          sha256sum LEDOA_CUT_Mobile_v0.7.1_FOLD_CONTAIN_PREVIEW.apk
+          sha256sum LEDOA_CUT_Mobile_v0.7.2_PREVIEW_ROLLBACK.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: LEDOA_CUT_Mobile_v0.7.1_FOLD_CONTAIN_PREVIEW
-          path: LEDOA_CUT_Mobile_v0.7.1_FOLD_CONTAIN_PREVIEW.apk
+          name: LEDOA_CUT_Mobile_v0.7.2_PREVIEW_ROLLBACK
+          path: LEDOA_CUT_Mobile_v0.7.2_PREVIEW_ROLLBACK.apk
           if-no-files-found: error
