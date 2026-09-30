@@ -1,4 +1,4 @@
-name: Recover pre-face LEDOA CUT v0.4.4
+name: Recover LEDOA CUT templates on pre-face base
 on:
   workflow_dispatch:
   push:
@@ -11,6 +11,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: 477f4a8ef5fe4993fa0d164e03f10cf78193274e
+      - name: Checkout current repository for template source only
+        uses: actions/checkout@v4
+        with:
+          path: latest
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -42,17 +46,27 @@ jobs:
           cat source/v041_new_project.js >> buildsrc/android/app/src/main/assets/app.js
           printf '\n' >> buildsrc/android/app/src/main/assets/app.js
           cat source/v043_text_commit_fix.js >> buildsrc/android/app/src/main/assets/app.js
+          # Restore only the two frequently used title/template features from the later source.
+          # Do NOT import playback, export, face tracking, or other later patches.
+          rm -rf /tmp/v66 && mkdir -p /tmp/v66
+          unzip -q latest/LEDOA_CUT_Mobile_Shorts_Standalone_v0.6.6_SOURCE.zip -d /tmp/v66
+          LATER_JS=$(find /tmp/v66 -type f -name app.js | head -1)
+          sed -n '726,1089p' "$LATER_JS" >> buildsrc/android/app/src/main/assets/app.js
+          printf '\n' >> buildsrc/android/app/src/main/assets/app.js
+          sed -n '1505,1727p' "$LATER_JS" >> buildsrc/android/app/src/main/assets/app.js
           cp source/v044_MainActivity.java buildsrc/android/app/src/main/java/kr/ledoa/cut/MainActivity.java
-          sed -i 's/SHORTS · v0.3.5/SHORTS · v0.4.4/g; s/SHORTS · v0.3.6/SHORTS · v0.4.4/g; s/SHORTS · v0.3.7/SHORTS · v0.4.4/g; s/SHORTS · v0.3.8/SHORTS · v0.4.4/g; s/SHORTS · v0.3.9/SHORTS · v0.4.4/g; s/SHORTS · v0.4.0/SHORTS · v0.4.4/g; s/SHORTS · v0.4.1/SHORTS · v0.4.4/g; s/SHORTS · v0.4.2/SHORTS · v0.4.4/g; s/SHORTS · v0.4.3/SHORTS · v0.4.4/g' buildsrc/android/app/src/main/assets/index.html
+          sed -i 's/SHORTS · v0.3.5/SHORTS · v0.4.5/g; s/SHORTS · v0.3.6/SHORTS · v0.4.5/g; s/SHORTS · v0.3.7/SHORTS · v0.4.5/g; s/SHORTS · v0.3.8/SHORTS · v0.4.5/g; s/SHORTS · v0.3.9/SHORTS · v0.4.5/g; s/SHORTS · v0.4.0/SHORTS · v0.4.5/g; s/SHORTS · v0.4.1/SHORTS · v0.4.5/g; s/SHORTS · v0.4.2/SHORTS · v0.4.5/g; s/SHORTS · v0.4.3/SHORTS · v0.4.5/g' buildsrc/android/app/src/main/assets/index.html
           node --check buildsrc/android/app/src/main/assets/app.js
+          grep -q "LEDOA TV Shorts title layout refinement" buildsrc/android/app/src/main/assets/app.js
+          grep -q "two-line impact Shorts title template" buildsrc/android/app/src/main/assets/app.js
           ! grep -qiE 'faceMask|faceTracking|trackerVersion|얼굴 모자이크|자동추적' buildsrc/android/app/src/main/assets/app.js
       - name: Keep original package and version
         run: |
           MANIFEST=buildsrc/android/app/src/main/AndroidManifest.xml
           if ! grep -q 'android.permission.INTERNET' "$MANIFEST"; then sed -i '/<manifest/a\    <uses-permission android:name="android.permission.INTERNET" />' "$MANIFEST"; fi
           sed -i 's/applicationId = "[^"]*"/applicationId = "kr.ledoa.cut.release"/' buildsrc/android/app/build.gradle.kts
-          sed -i 's/versionCode = [0-9][0-9]*/versionCode = 700/' buildsrc/android/app/build.gradle.kts
-          sed -i 's/versionName = "[^"]*"/versionName = "0.4.4-recovery"/' buildsrc/android/app/build.gradle.kts
+          sed -i 's/versionCode = [0-9][0-9]*/versionCode = 701/' buildsrc/android/app/build.gradle.kts
+          sed -i 's/versionName = "[^"]*"/versionName = "0.4.5-template-recovery"/' buildsrc/android/app/build.gradle.kts
       - name: Build
         working-directory: buildsrc/android
         run: gradle --no-daemon :app:assembleDebug
@@ -65,13 +79,13 @@ jobs:
           ZIPALIGN=$(find "$ANDROID_HOME/build-tools" -type f -name zipalign | sort -V | tail -1)
           base64 -d signing/v037_debug.keystore.b64 > /tmp/ledoa.keystore
           "$ZIPALIGN" -f 4 "$APK" /tmp/ledoa-aligned.apk
-          "$APKSIGNER" sign --ks /tmp/ledoa.keystore --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out LEDOA_CUT_Mobile_v0.4.4_PRE_FACE_RECOVERY.apk /tmp/ledoa-aligned.apk
-          "$APKSIGNER" verify --verbose --print-certs LEDOA_CUT_Mobile_v0.4.4_PRE_FACE_RECOVERY.apk
-          "$AAPT2" dump badging LEDOA_CUT_Mobile_v0.4.4_PRE_FACE_RECOVERY.apk | tee /tmp/badging.txt
+          "$APKSIGNER" sign --ks /tmp/ledoa.keystore --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out LEDOA_CUT_Mobile_v0.4.5_TEMPLATE_RECOVERY.apk /tmp/ledoa-aligned.apk
+          "$APKSIGNER" verify --verbose --print-certs LEDOA_CUT_Mobile_v0.4.5_TEMPLATE_RECOVERY.apk
+          "$AAPT2" dump badging LEDOA_CUT_Mobile_v0.4.5_TEMPLATE_RECOVERY.apk | tee /tmp/badging.txt
           grep -q "package: name='kr.ledoa.cut.release'" /tmp/badging.txt
           grep -q "versionCode='700'" /tmp/badging.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: LEDOA_CUT_Mobile_v0.4.4_PRE_FACE_RECOVERY
-          path: LEDOA_CUT_Mobile_v0.4.4_PRE_FACE_RECOVERY.apk
+          name: LEDOA_CUT_Mobile_v0.4.5_TEMPLATE_RECOVERY
+          path: LEDOA_CUT_Mobile_v0.4.5_TEMPLATE_RECOVERY.apk
           if-no-files-found: error
