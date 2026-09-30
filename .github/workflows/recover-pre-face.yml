@@ -83,7 +83,7 @@ jobs:
           "$APKSIGNER" verify --verbose --print-certs LEDOA_CUT_Mobile_v0.4.5_TEMPLATE_RECOVERY.apk
           "$AAPT2" dump badging LEDOA_CUT_Mobile_v0.4.5_TEMPLATE_RECOVERY.apk | tee /tmp/badging.txt
           grep -q "package: name='kr.ledoa.cut.release'" /tmp/badging.txt
-          grep -q "versionCode='700'" /tmp/badging.txt
+          grep -q "versionCode='701'" /tmp/badging.txt
       - uses: actions/upload-artifact@v4
         with:
           name: LEDOA_CUT_Mobile_v0.4.5_TEMPLATE_RECOVERY
