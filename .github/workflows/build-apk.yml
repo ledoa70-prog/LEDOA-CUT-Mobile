@@ -84,6 +84,25 @@ jobs:
           CSS
           grep -nE '^\.viewer|^\.preview-section|ratio-16-9' "$CSS" | tail -20
 
+      - name: Apply v0.7.6 viewport shell fix
+        run: |
+          set -euo pipefail
+          HTML=$(find buildsrc -type f -name index.html | head -1)
+          CSS=$(find buildsrc -type f -name '*.css' | head -1)
+          python3 - "$HTML" "$CSS" <<'PY'
+          import sys,re
+          hp,cp=sys.argv[1:3]
+          h=open(hp,encoding='utf-8').read()
+          tag='<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">'
+          m=re.search(r'<meta[^>]+name=["\x27]viewport["\x27][^>]*>',h,re.I)
+          h=h[:m.start()]+tag+h[m.end():] if m else h.replace('<head>','<head>\n'+tag,1)
+          open(hp,'w',encoding='utf-8').write(h)
+          s=open(cp,encoding='utf-8').read()
+          s += """\n/* v076-shell */\nhtml,body,#app,.app,.app-shell,.main,.main-content{width:100%!important;max-width:100vw!important;min-width:0!important;box-sizing:border-box!important;overflow-x:hidden!important}\n.preview-section{width:100%!important;max-width:100%!important;min-width:0!important;box-sizing:border-box!important}\n.viewer{width:calc(100vw - 32px)!important;max-width:calc(100vw - 32px)!important;min-width:0!important;flex:none!important;margin-left:auto!important;margin-right:auto!important;box-sizing:border-box!important}\n.empty-viewer{left:0!important;right:0!important;width:100%!important;max-width:100%!important;transform:none!important;box-sizing:border-box!important;text-align:center!important}\n"""
+          open(cp,'w',encoding='utf-8').write(s)
+          PY
+          grep -nE 'viewport|v076-shell' "$HTML" "$CSS" | tail -10
+
       - name: Verify and normalize v0.7.6 viewport shell identity
         run: |
           set -euo pipefail
