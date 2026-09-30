@@ -1,4 +1,4 @@
-name: Recover LEDOA CUT timeline navigation
+name: Fix visible LEDOA CUT timeline navigation
 on:
   workflow_dispatch:
   push:
@@ -58,21 +58,48 @@ jobs:
           sed -n '2676,2878p' "$LATER_JS" >> buildsrc/android/app/src/main/assets/app.js
           printf '\n' >> buildsrc/android/app/src/main/assets/app.js
           sed -n '2879,2914p' "$LATER_JS" >> buildsrc/android/app/src/main/assets/app.js
+          # v0.4.7: make navigation controls unmissable in the visible timeline header.
+          cat >> buildsrc/android/app/src/main/assets/app.js <<'EOF'
+
+;(()=>{
+  const $=id=>document.getElementById(id);
+  function installVisibleTimelineNav(){
+    if($('ledoaVisibleTimelineNav')) return;
+    const timeline=document.querySelector('.timeline-scroll');
+    if(!timeline) return;
+    const title=[...document.querySelectorAll('b,strong,div')].find(e=>e.textContent?.trim()==='타임라인');
+    const host=title?.parentElement || timeline.parentElement;
+    if(!host) return;
+    const bar=document.createElement('div');
+    bar.id='ledoaVisibleTimelineNav';
+    bar.style.cssText='display:flex;align-items:center;gap:6px;margin-left:auto;flex:0 0 auto;';
+    bar.innerHTML='<button type="button" id="ledoaGoStart" style="min-width:52px;padding:7px 8px;font-size:12px">⏮ 처음</button><button type="button" id="ledoaTlLeft" style="min-width:38px;padding:7px 8px;font-size:16px">◀</button><button type="button" id="ledoaTlRight" style="min-width:38px;padding:7px 8px;font-size:16px">▶</button>';
+    if(getComputedStyle(host).display!=='flex'){host.style.display='flex';host.style.alignItems='center';host.style.gap='6px';}
+    host.appendChild(bar);
+    $('ledoaGoStart').onclick=()=>{try{pause?.();seek?.(0);timeline.scrollLeft=0;}catch(e){timeline.scrollLeft=0;}};
+    $('ledoaTlLeft').onclick=()=>timeline.scrollBy({left:-Math.max(180,timeline.clientWidth*.65),behavior:'smooth'});
+    $('ledoaTlRight').onclick=()=>timeline.scrollBy({left:Math.max(180,timeline.clientWidth*.65),behavior:'smooth'});
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(installVisibleTimelineNav,100));
+  else setTimeout(installVisibleTimelineNav,100);
+})();
+EOF
           cp source/v044_MainActivity.java buildsrc/android/app/src/main/java/kr/ledoa/cut/MainActivity.java
-          sed -i 's/SHORTS · v0.3.5/SHORTS · v0.4.6/g; s/SHORTS · v0.3.6/SHORTS · v0.4.6/g; s/SHORTS · v0.3.7/SHORTS · v0.4.6/g; s/SHORTS · v0.3.8/SHORTS · v0.4.6/g; s/SHORTS · v0.3.9/SHORTS · v0.4.6/g; s/SHORTS · v0.4.0/SHORTS · v0.4.6/g; s/SHORTS · v0.4.1/SHORTS · v0.4.6/g; s/SHORTS · v0.4.2/SHORTS · v0.4.6/g; s/SHORTS · v0.4.3/SHORTS · v0.4.6/g' buildsrc/android/app/src/main/assets/index.html
+          sed -i 's/SHORTS · v0.3.5/SHORTS · v0.4.7/g; s/SHORTS · v0.3.6/SHORTS · v0.4.7/g; s/SHORTS · v0.3.7/SHORTS · v0.4.7/g; s/SHORTS · v0.3.8/SHORTS · v0.4.7/g; s/SHORTS · v0.3.9/SHORTS · v0.4.7/g; s/SHORTS · v0.4.0/SHORTS · v0.4.7/g; s/SHORTS · v0.4.1/SHORTS · v0.4.7/g; s/SHORTS · v0.4.2/SHORTS · v0.4.7/g; s/SHORTS · v0.4.3/SHORTS · v0.4.7/g' buildsrc/android/app/src/main/assets/index.html
           node --check buildsrc/android/app/src/main/assets/app.js
           grep -q "LEDOA TV Shorts title layout refinement" buildsrc/android/app/src/main/assets/app.js
           grep -q "two-line impact Shorts title template" buildsrc/android/app/src/main/assets/app.js
           grep -q "explicit left/right timeline viewport controls" buildsrc/android/app/src/main/assets/app.js
           grep -q "restart-to-zero transport control" buildsrc/android/app/src/main/assets/app.js
+          grep -q "ledoaVisibleTimelineNav" buildsrc/android/app/src/main/assets/app.js
           ! grep -qiE 'faceMask|faceTracking|trackerVersion|얼굴 모자이크|자동추적' buildsrc/android/app/src/main/assets/app.js
       - name: Keep original package and version
         run: |
           MANIFEST=buildsrc/android/app/src/main/AndroidManifest.xml
           if ! grep -q 'android.permission.INTERNET' "$MANIFEST"; then sed -i '/<manifest/a\    <uses-permission android:name="android.permission.INTERNET" />' "$MANIFEST"; fi
           sed -i 's/applicationId = "[^"]*"/applicationId = "kr.ledoa.cut.release"/' buildsrc/android/app/build.gradle.kts
-          sed -i 's/versionCode = [0-9][0-9]*/versionCode = 702/' buildsrc/android/app/build.gradle.kts
-          sed -i 's/versionName = "[^"]*"/versionName = "0.4.6-timeline-nav"/' buildsrc/android/app/build.gradle.kts
+          sed -i 's/versionCode = [0-9][0-9]*/versionCode = 703/' buildsrc/android/app/build.gradle.kts
+          sed -i 's/versionName = "[^"]*"/versionName = "0.4.7-visible-nav"/' buildsrc/android/app/build.gradle.kts
       - name: Build
         working-directory: buildsrc/android
         run: gradle --no-daemon :app:assembleDebug
@@ -85,13 +112,13 @@ jobs:
           ZIPALIGN=$(find "$ANDROID_HOME/build-tools" -type f -name zipalign | sort -V | tail -1)
           base64 -d signing/v037_debug.keystore.b64 > /tmp/ledoa.keystore
           "$ZIPALIGN" -f 4 "$APK" /tmp/ledoa-aligned.apk
-          "$APKSIGNER" sign --ks /tmp/ledoa.keystore --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out LEDOA_CUT_Mobile_v0.4.6_TIMELINE_NAV.apk /tmp/ledoa-aligned.apk
-          "$APKSIGNER" verify --verbose --print-certs LEDOA_CUT_Mobile_v0.4.6_TIMELINE_NAV.apk
-          "$AAPT2" dump badging LEDOA_CUT_Mobile_v0.4.6_TIMELINE_NAV.apk | tee /tmp/badging.txt
+          "$APKSIGNER" sign --ks /tmp/ledoa.keystore --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out LEDOA_CUT_Mobile_v0.4.7_VISIBLE_TIMELINE_NAV.apk /tmp/ledoa-aligned.apk
+          "$APKSIGNER" verify --verbose --print-certs LEDOA_CUT_Mobile_v0.4.7_VISIBLE_TIMELINE_NAV.apk
+          "$AAPT2" dump badging LEDOA_CUT_Mobile_v0.4.7_VISIBLE_TIMELINE_NAV.apk | tee /tmp/badging.txt
           grep -q "package: name='kr.ledoa.cut.release'" /tmp/badging.txt
-          grep -q "versionCode='702'" /tmp/badging.txt
+          grep -q "versionCode='703'" /tmp/badging.txt
       - uses: actions/upload-artifact@v4
         with:
-          name: LEDOA_CUT_Mobile_v0.4.6_TIMELINE_NAV
-          path: LEDOA_CUT_Mobile_v0.4.6_TIMELINE_NAV.apk
+          name: LEDOA_CUT_Mobile_v0.4.7_VISIBLE_TIMELINE_NAV
+          path: LEDOA_CUT_Mobile_v0.4.7_VISIBLE_TIMELINE_NAV.apk
           if-no-files-found: error
