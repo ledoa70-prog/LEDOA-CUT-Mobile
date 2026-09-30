@@ -16,6 +16,8 @@ jobs:
           HTML=$(find /tmp/v66 -type f -name index.html | head -1)
           JS=$(find /tmp/v66 -type f -name app.js | head -1)
           CSS=$(find /tmp/v66 -type f -name '*.css' | head -1)
+          echo "=== PATCH MARKERS ==="
+          grep -nE '^// v0\.' "$JS" || true
           echo "=== HTML LEDOA TV / TWO LINE ==="
           grep -nEi -C 8 'LEDOA TV|두줄|강조|쇼츠 스타일|shorts.?style|two.?line|highlight' "$HTML" || true
           echo "=== JS LEDOA TV / TWO LINE ==="
