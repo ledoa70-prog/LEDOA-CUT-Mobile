@@ -47,15 +47,65 @@ jobs:
           echo "APPJS=$APPJS"
           sed -n '3250,3435p' "$APPJS"
 
-      - name: Verify and normalize v0.7.3 clean v0.6.6 preview identity
+      - name: Apply v0.7.4 responsive preview viewport fix
+        run: |
+          set -euo pipefail
+          APPJS=$(find buildsrc -type f -name app.js | head -1)
+          HTML=$(find buildsrc -type f -name index.html | head -1)
+          python3 - "$APPJS" "$HTML" <<'PY'
+          import sys,re
+          js,html=sys.argv[1:3]
+          h=open(html,encoding='utf-8').read()
+          css=r'''<style id="v074-preview-viewport-fix">
+          /* v0.7.4: the preview viewport itself must fit the phone width.
+             Do not resize the drawing buffer; only constrain the visible stage. */
+          html,body{max-width:100vw;overflow-x:hidden!important}
+          #previewWrap,#preview-wrap,.preview-wrap,.preview,.stage,.preview-stage,.canvas-wrap{
+            width:100%!important;max-width:100%!important;min-width:0!important;
+            box-sizing:border-box!important;overflow:hidden!important;
+          }
+          #previewWrap canvas,#preview-wrap canvas,.preview-wrap canvas,.preview canvas,.stage canvas,.preview-stage canvas,.canvas-wrap canvas,canvas#canvas,#canvas{
+            display:block!important;width:100%!important;max-width:100%!important;min-width:0!important;
+            height:auto!important;margin:0 auto!important;
+          }
+          @media(max-width:700px){
+            #previewWrap,#preview-wrap,.preview-wrap,.preview,.stage,.preview-stage,.canvas-wrap{
+              max-height:calc(100svh - 330px)!important;
+            }
+          }
+          </style>'''
+          if '</head>' not in h: raise SystemExit('head close missing')
+          h=h.replace('</head>',css+'\n</head>')
+          open(html,'w',encoding='utf-8').write(h)
+
+          s=open(js,encoding='utf-8').read()
+          s += r'''
+          // v0.7.4: reflow only. Keeps the original v0.6.6 renderer and export coordinates intact.
+          function v074PreviewReflow(){
+            document.documentElement.style.overflowX='hidden';
+            document.body.style.overflowX='hidden';
+            requestAnimationFrame(()=>{try{if(typeof renderFrame==='function')renderFrame(state.currentTime,false);}catch(e){}});
+          }
+          addEventListener('resize',v074PreviewReflow,{passive:true});
+          addEventListener('orientationchange',()=>setTimeout(v074PreviewReflow,120),{passive:true});
+          if(window.visualViewport)visualViewport.addEventListener('resize',v074PreviewReflow,{passive:true});
+          setTimeout(v074PreviewReflow,0);
+          '''
+          open(js,'w',encoding='utf-8').write(s)
+          print('Applied v0.7.4 responsive preview viewport fix')
+          PY
+          node --check "$APPJS"
+          grep -nE 'v074-preview-viewport-fix|v074PreviewReflow' "$HTML" "$APPJS"
+
+      - name: Verify and normalize v0.7.4 responsive preview identity
         run: |
           set -euo pipefail
           echo "Using $APP_GRADLE"
           if grep -q 'versionCode[[:space:]]*=' "$APP_GRADLE"; then
-            sed -i -E 's/versionCode[[:space:]]*=[[:space:]]*[0-9]+/versionCode = 703/' "$APP_GRADLE"
+            sed -i -E 's/versionCode[[:space:]]*=[[:space:]]*[0-9]+/versionCode = 704/' "$APP_GRADLE"
           fi
           if grep -q 'versionName[[:space:]]*=' "$APP_GRADLE"; then
-            sed -i -E 's/versionName[[:space:]]*=[[:space:]]*"[^"]*"/versionName = "0.7.3"/' "$APP_GRADLE"
+            sed -i -E 's/versionName[[:space:]]*=[[:space:]]*"[^"]*"/versionName = "0.7.4"/' "$APP_GRADLE"
           fi
           grep -E 'applicationId|versionCode|versionName' "$APP_GRADLE" || true
 
@@ -82,16 +132,16 @@ jobs:
           if [ -f signing/v037_debug.keystore.b64 ]; then
             base64 -d signing/v037_debug.keystore.b64 > /tmp/ledoa-release.keystore
             "$ZIPALIGN" -f 4 "$APK" /tmp/ledoa-aligned.apk
-            "$APKSIGNER" sign --ks /tmp/ledoa-release.keystore --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out LEDOA_CUT_Mobile_v0.7.3_CLEAN_PREVIEW_RESTORE.apk /tmp/ledoa-aligned.apk
-            "$APKSIGNER" verify --verbose --print-certs LEDOA_CUT_Mobile_v0.7.3_CLEAN_PREVIEW_RESTORE.apk
+            "$APKSIGNER" sign --ks /tmp/ledoa-release.keystore --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out LEDOA_CUT_Mobile_v0.7.4_RESPONSIVE_PREVIEW.apk /tmp/ledoa-aligned.apk
+            "$APKSIGNER" verify --verbose --print-certs LEDOA_CUT_Mobile_v0.7.4_RESPONSIVE_PREVIEW.apk
           else
-            cp "$APK" LEDOA_CUT_Mobile_v0.7.3_CLEAN_PREVIEW_RESTORE.apk
+            cp "$APK" LEDOA_CUT_Mobile_v0.7.4_RESPONSIVE_PREVIEW.apk
           fi
-          sha256sum LEDOA_CUT_Mobile_v0.7.3_CLEAN_PREVIEW_RESTORE.apk
+          sha256sum LEDOA_CUT_Mobile_v0.7.4_RESPONSIVE_PREVIEW.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: LEDOA_CUT_Mobile_v0.7.3_CLEAN_PREVIEW_RESTORE
-          path: LEDOA_CUT_Mobile_v0.7.3_CLEAN_PREVIEW_RESTORE.apk
+          name: LEDOA_CUT_Mobile_v0.7.4_RESPONSIVE_PREVIEW
+          path: LEDOA_CUT_Mobile_v0.7.4_RESPONSIVE_PREVIEW.apk
           if-no-files-found: error
