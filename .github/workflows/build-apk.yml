@@ -47,6 +47,19 @@ jobs:
           echo "APPJS=$APPJS"
           sed -n '3250,3435p' "$APPJS"
 
+      - name: Inspect actual preview DOM and sizing rules
+        run: |
+          set -euo pipefail
+          APPJS=$(find buildsrc -type f -name app.js | head -1)
+          HTML=$(find buildsrc -type f -name index.html | head -1)
+          CSS=$(find buildsrc -type f -name '*.css' | head -1)
+          echo "=== PREVIEW HTML ==="
+          grep -nEi 'preview|canvas|stage|9:16|16:9' "$HTML" | head -120 || true
+          echo "=== WIDTH / TRANSFORM CSS ==="
+          grep -nEi 'min-width|max-width|width:|translate|scale|aspect-ratio|preview|canvas|stage' "$CSS" | head -220 || true
+          echo "=== JS SIZING ==="
+          grep -nEi 'canvas\.width|canvas\.height|getBoundingClientRect|clientWidth|innerWidth|preview|aspect' "$APPJS" | head -220 || true
+
       - name: Apply v0.7.4 responsive preview viewport fix
         run: |
           set -euo pipefail
