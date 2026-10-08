@@ -31,6 +31,10 @@ public final class OpticalBridge {
         previous=null;lastBox=null;width=height=0;
         lastSeenMs=lastFrameMs=-1;estimated=rejected=expired=0;
     }
+    /** Discard old motion location when other faces are detected without a safe match. */
+    public void invalidate(){
+        previous=null;lastBox=null;lastSeenMs=lastFrameMs=-1;
+    }
     public int estimatedCount(){return estimated;}
     public int rejectedCount(){return rejected;}
     public int expiredCount(){return expired;}
