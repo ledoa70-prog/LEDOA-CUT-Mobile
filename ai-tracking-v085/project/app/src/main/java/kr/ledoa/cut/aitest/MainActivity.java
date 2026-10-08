@@ -83,6 +83,7 @@ public final class MainActivity extends Activity {
     private MediaMetadataRetriever retriever;
     private Uri videoUri;
     private long durationMs=0,currentMs=0,anchorMs=-1;
+    private long lastRunStartMs=-1,lastRunEndMs=-1;
     private volatile boolean analysing=false;
     private FacePath.Box selected;
     private List<FacePath.Box> visibleFaces=new ArrayList<>();
@@ -125,7 +126,7 @@ public final class MainActivity extends Activity {
                 .setDetectorMode(PoseDetectorOptions.SINGLE_IMAGE_MODE).build();
         poseDetector=PoseDetection.getClient(poseOptions);
         renderUi();
-        if(interrupted)status.setText("이전 얼굴 추적이 중단됐습니다. '진단 기록 저장'으로 v0.8.6 오류 정보를 보내주세요.");
+        if(interrupted)status.setText("이전 얼굴 추적이 중단됐습니다. '진단 기록 저장'으로 v0.8.7 오류 정보를 보내주세요.");
     }
     private TextView text(String message,int size,int color){
         TextView t=new TextView(this);t.setText(message);t.setTextSize(size);t.setTextColor(color);
@@ -136,7 +137,7 @@ public final class MainActivity extends Activity {
     private void renderUi(){
         LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(Color.rgb(13,19,27));root.setPadding(dp(10),dp(6),dp(10),dp(6));
-        root.addView(text("LEDOA CUT  |  AI 수동보정 연속추적 TEST 0.8.6",18,Color.WHITE));
+        root.addView(text("LEDOA CUT  |  AI 다중 수동보정 TEST 0.8.7",18,Color.WHITE));
         root.addView(text("정식 앱과 분리 · 얼굴+상반신 옷 보조 추적 · 모자이크 85%",12,Color.rgb(188,199,215)));
         frameView=new FrameView();root.addView(frameView,new LinearLayout.LayoutParams(-1,0,1));frameView.setMinimumHeight(dp(150));
         clock=text("00:00.0 / 00:00.0",12,Color.WHITE);root.addView(clock);
@@ -215,7 +216,7 @@ public final class MainActivity extends Activity {
                 if(ms<=0)throw new IllegalArgumentException("영상 길이를 읽지 못했습니다.");
                 MediaMetadataRetriever old=retriever;retriever=r;
                 if(old!=null){try{old.release();}catch(java.io.IOException e){android.util.Log.w("LEDOA-AI","Previous video release failed",e);}}videoUri=uri;
-                durationMs=ms;currentMs=0;anchorMs=-1;selected=null;path.reset();manualBoxMode=false;manualCorrectionPending=false;
+                durationMs=ms;currentMs=0;anchorMs=-1;selected=null;path.reset();lastRunStartMs=lastRunEndMs=-1;manualBoxMode=false;manualCorrectionPending=false;
                 bodyClothing.reset();visibleBody=null;
                 roiAttempts=roiAccepted=roiDiscarded=roiAmbiguous=0;
                 roiThrottled=roiMemoryFailures=0;roiDisabled=false;roiLastScanMs=-10000;
@@ -494,8 +495,13 @@ public final class MainActivity extends Activity {
             if(picked==null||b.area()<picked.area())picked=b;
         }
         if(picked==null){status.setText("얼굴 영역 밖입니다. 얼굴 안쪽을 다시 터치하세요.");return;}
-        selected=picked;anchorMs=currentMs;selectedBody=visibleBody;manualCorrectionPending=false;
-        path.anchor(anchorMs,picked);
+        selected=picked;anchorMs=currentMs;selectedBody=visibleBody;
+        // A tap inside a face box during review is also a legitimate manual
+        // re-identification. Preserve other manual corrections when revising it.
+        boolean correcting=path.latestTimestamp()>currentMs && currentMs>path.firstTimestamp();
+        manualCorrectionPending=correcting;
+        if(correcting)path.anchorManual(anchorMs,picked);
+        else path.anchor(anchorMs,picked);
         final boolean upperBodyLinked=bodyClothing.select(anchorMs,picked,visibleBody);
         frameView.setFrame(frameView.frame,visibleFaces,path.interpolated(currentMs),path.nearest(currentMs));
         status.setText(upperBodyLinked
@@ -536,7 +542,11 @@ public final class MainActivity extends Activity {
     private void startAnalysis(){
         if(selected==null||retriever==null||analysing)return;
         stopPlayback(false);
-        final long start=anchorMs,end=durationMs;
+        final long start=anchorMs;
+        final boolean partialCorrection=manualCorrectionPending;
+        final Long nextManual=partialCorrection?path.nextManualAfter(start):null;
+        final long end=nextManual==null?durationMs:Math.min(durationMs,nextManual);
+        lastRunStartMs=start;lastRunEndMs=-1;
         final FacePath.Box anchor=selected;
         final BodyClothing.Observation initialBody=selectedBody;
         final boolean keepManualKeyframe=manualCorrectionPending;
@@ -585,6 +595,10 @@ public final class MainActivity extends Activity {
                     }else frame=bitmapAt(requested);
                     decodeMs+=SystemClock.elapsedRealtime()-time;
                     if(frame==null)throw new java.io.IOException("영상 프레임을 읽지 못했습니다.");
+                    // Stop before the next independently confirmed manual
+                    // face keyframe. Otherwise a decoded frame may overwrite
+                    // that verified anchor despite a requested segment bound.
+                    if(ms>=end){frame.recycle();break;}
                     if(ms<=processed){frame.recycle();continue;}
                     if(ms-lastKey>=STEP_MS)key=true;
                     sampledFrames++;processed=ms;
@@ -628,10 +642,14 @@ public final class MainActivity extends Activity {
                 boolean stopped=cancel.get()||Thread.currentThread().isInterrupted();
                 if(reader!=null)decodedFrames+=reader.decodedFrames;
                 analysisElapsedMs=SystemClock.elapsedRealtime()-began;
-                analysedEndMs=Math.min(end,stopped?processed:lastKey+STEP_MS);
+                long segmentEnd=Math.min(end,stopped?processed:lastKey+STEP_MS);
+                lastRunEndMs=segmentEnd;
+                // Preserve the original whole-video coverage when just one
+                // manually delimited segment has been re-analysed.
+                analysedEndMs=Math.max(segmentEnd,Math.max(path.latestTimestamp(),path.coveredThrough()));
                 path.coverageEnd(analysedEndMs);
                 int shortGapsReviewed=path.bridgeShortConfirmedGaps();
-                diagnostics.finished(analysedEndMs,!stopped);
+                diagnostics.finished(segmentEnd,!stopped);
                 final String summary=(stopped?"분석 중단":"분석 완료")+" · "+
                     String.format(Locale.KOREA,"%.1f",analysisElapsedMs/1000.)+"초 소요"+
                     " · 움직임 보완 "+path.flowEstimatedCount()+" · 가림 미확인 "+path.uncoveredCount()+
@@ -661,7 +679,7 @@ public final class MainActivity extends Activity {
         Intent intent=new Intent(Intent.ACTION_CREATE_DOCUMENT);
         intent.setType("text/plain");
         intent.addCategory(Intent.CATEGORY_OPENABLE);
-        intent.putExtra(Intent.EXTRA_TITLE,"LEDOA_FACE_CRASH_v0.8.6.txt");
+        intent.putExtra(Intent.EXTRA_TITLE,"LEDOA_FACE_CRASH_v0.8.7.txt");
         startActivityForResult(intent,SAVE_DIAGNOSTIC);
     }
     private void writeDiagnostic(Uri uri){
@@ -677,7 +695,7 @@ public final class MainActivity extends Activity {
     private void saveTrack(){
         if(path.points().isEmpty())return;
         Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.setType("application/json");i.addCategory(Intent.CATEGORY_OPENABLE);
-        i.putExtra(Intent.EXTRA_TITLE,"LEDOA_FACE_FLOW_TRACK_v0.8.6.json");startActivityForResult(i,SAVE_TRACK);
+        i.putExtra(Intent.EXTRA_TITLE,"LEDOA_FACE_FLOW_TRACK_v0.8.7.json");startActivityForResult(i,SAVE_TRACK);
     }
     private void writeTrack(Uri uri){
         if(uri==null)return;
@@ -694,9 +712,13 @@ public final class MainActivity extends Activity {
             obj.put("confirmedDetectionBackfills",path.confirmedBackfillCount());
             obj.put("shortConfirmedGapReviews",path.confirmedGapReviewCount());
             obj.put("manualFaceKeyframes",path.manualKeyframeCount());
+            obj.put("manualEditsMade",path.manualEditsMade());
+            obj.put("lastCorrectedSegmentStartMs",lastRunStartMs);
+            obj.put("lastCorrectedSegmentEndMs",lastRunEndMs);
+            obj.put("manualAnchorsPreserved",true);
             obj.put("manualCorrectionSupported",true);
             obj.put("peakCachedMotionFrames",continuity.peakCachedFrames());
-            obj.put("motionSampleStepMs",50).put("analysedStartMs",anchorMs).put("analysedEndMs",analysedEndMs);
+            obj.put("motionSampleStepMs",50).put("analysedStartMs",path.firstTimestamp()).put("analysedEndMs",analysedEndMs);
             obj.put("bodyLinked",bodyClothing.isEnabled());
             obj.put("bodyConfirmedObservations",bodyClothing.heldCount());
             obj.put("bodyRejectedObservations",bodyClothing.rejectedCount());
@@ -727,7 +749,7 @@ public final class MainActivity extends Activity {
             obj.put("flowRejectionsElapsed",opticalBridge.rejectedElapsed());
             obj.put("flowRejectionsNoAnchor",opticalBridge.rejectedNoAnchor());
             obj.put("crashDiagnosticAvailable",true);
-            obj.put("analysisStabilityVersion","0.8.6");
+            obj.put("analysisStabilityVersion","0.8.7");
             obj.put("roiDisabledForStability",ROI_DISABLED_FOR_STABILITY);
             obj.put("flowLazyTrustedFrames",lazyFlow.trustedUpdates());
             obj.put("flowLazyPyramidBuilds",lazyFlow.lazySeeds());
