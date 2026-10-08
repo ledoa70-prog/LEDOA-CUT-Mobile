@@ -1,0 +1,124 @@
+name: Build LEDOA face and clothing tracker v0.7.5
+on:
+  push:
+    branches: [ 'feature/ai-face-body-v075' ]
+    paths:
+      - 'ai-tracking-v075/**'
+      - '.github/workflows/build-ai-face-body-v075.yml'
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout isolated feature branch
+        uses: actions/checkout@v4
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Restore standalone test project
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/ledoa-face-v075
+          unzip -q LEDOA_CUT_AI_FACE_TEST_v0.7.0_SOURCE.zip -d /tmp/ledoa-face-v075
+          PROJECT=/tmp/ledoa-face-v075/LEDOA_CUT_AI_FACE_TEST_v0.7.0_SOURCE
+          test -f "$PROJECT/app/src/main/java/kr/ledoa/cut/aitest/MainActivity.java"
+          echo "PROJECT=$PROJECT" >> "$GITHUB_ENV"
+      - name: Add v0.7.1 preview and v0.7.3 adaptive tracking
+        run: |
+          set -euo pipefail
+          cp ai-tracking-v075/FacePath.java "$PROJECT/app/src/main/java/kr/ledoa/cut/aitest/FacePath.java"
+          cp ai-tracking-v075/BodyClothing.java "$PROJECT/app/src/main/java/kr/ledoa/cut/aitest/BodyClothing.java"
+          cp ai-tracking-v075/PoseBodyAdapter.java "$PROJECT/app/src/main/java/kr/ledoa/cut/aitest/PoseBodyAdapter.java"
+          cp ai-tracking-v073/FaceAppearance.java "$PROJECT/app/src/main/java/kr/ledoa/cut/aitest/FaceAppearance.java"
+          cd "$PROJECT/app/src/main/java/kr/ledoa/cut/aitest"
+          patch --batch --fuzz=0 -p1 < "$GITHUB_WORKSPACE/ai-preview-v071/MainActivity.patch"
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          p=Path(os.environ['PROJECT'])/'app/src/main/java/kr/ledoa/cut/aitest/MainActivity.java'
+          s=p.read_text(encoding='utf8')
+          assert 'TEST 0.7.1' in s
+          assert 'LEDOA_FACE_TRACK_v0.7.1.json' in s
+          marker='if(p.box!=null)o.put("x",p.box.x).put("y",p.box.y).put("w",p.box.w).put("h",p.box.h);'
+          assert s.count(marker)==1
+          s=s.replace('TEST 0.7.1','TEST 0.7.2').replace('LEDOA_FACE_TRACK_v0.7.1.json','LEDOA_FACE_TRACK_v0.7.3.json')
+          s=s.replace(marker,'o.put("candidateCount",p.candidates).put("reason",p.reason);\n                '+marker)
+          p.write_text(s,encoding='utf8')
+          p=Path(os.environ['PROJECT'])/'app/build.gradle'
+          s=p.read_text(encoding='utf8')
+          assert 'versionCode 700' in s and "applicationId 'kr.ledoa.cut.aitest'" in s
+          s=s.replace('versionCode 700','versionCode 704').replace("versionName '0.7.0-ai-test'","versionName '0.7.4-quality-guard'").replace("applicationId 'kr.ledoa.cut.aitest'","applicationId 'kr.ledoa.cut.aiface075'")
+          p.write_text(s,encoding='utf8')
+          p=Path(os.environ['PROJECT'])/'app/src/main/AndroidManifest.xml'
+          s=p.read_text(encoding='utf8')
+          s=s.replace('LEDOA AI 모자이크 테스트','LEDOA AI 얼굴 추적 0.7.4').replace('LEDOA AI 모자이크 미리보기','LEDOA AI 얼굴 추적 0.7.4')
+          s=s.replace('android:name=".MainActivity"','android:name="kr.ledoa.cut.aitest.MainActivity"')
+          p.write_text(s,encoding='utf8')
+          PY
+          cd "$PROJECT/app/src/main/java/kr/ledoa/cut/aitest"
+          patch --batch --fuzz=0 -p1 < "$GITHUB_WORKSPACE/ai-tracking-v073/MainActivity.patch"
+          grep -q 'appearanceIn' MainActivity.java
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          p=Path(os.environ['PROJECT'])/'app/src/main/java/kr/ledoa/cut/aitest/MainActivity.java'
+          s=p.read_text(encoding='utf-8')
+          def change(old,new):
+              global s
+              assert s.count(old)==1, 'Unexpected source layout for '+old[:50]
+              s=s.replace(old,new)
+          change('import com.google.mlkit.vision.face.FaceDetectorOptions;',
+                 'import com.google.mlkit.vision.face.FaceDetectorOptions;\nimport com.google.mlkit.vision.face.FaceLandmark;')
+          change('.setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_NONE)',
+                 '.setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)')
+          change('TEST 0.7.3','TEST 0.7.4')
+          change('LEDOA_FACE_TRACK_v0.7.3.json','LEDOA_FACE_TRACK_v0.7.4.json')
+          change('float[] visual=appearanceIn(frame,r);',
+                 '''float[] visual=appearanceIn(frame,r);
+                boolean nose=face.getLandmark(FaceLandmark.NOSE_BASE)!=null;
+                boolean eye=face.getLandmark(FaceLandmark.LEFT_EYE)!=null
+                        ||face.getLandmark(FaceLandmark.RIGHT_EYE)!=null;
+                boolean mouth=face.getLandmark(FaceLandmark.MOUTH_BOTTOM)!=null;
+                boolean faceEvidence=nose && (eye || mouth);
+                if(!faceEvidence)continue;''')
+          change('face.getTrackingId()==null?-1:face.getTrackingId(),visual));',
+                 'face.getTrackingId()==null?-1:face.getTrackingId(),visual,faceEvidence));')
+          p.write_text(s,encoding='utf-8')
+          assert 'landmarkEvidence' not in s and 'faceEvidence' in s
+          PY
+          python3 "$GITHUB_WORKSPACE/ai-tracking-v075/apply-v075.py"
+      - name: Run tracking safety and recovery tests
+        run: |
+          set -euo pipefail
+          cd "$PROJECT"
+          javac -d tests/out app/src/main/java/kr/ledoa/cut/aitest/FaceAppearance.java app/src/main/java/kr/ledoa/cut/aitest/BodyClothing.java app/src/main/java/kr/ledoa/cut/aitest/FacePath.java "$GITHUB_WORKSPACE/ai-tracking-v073/FacePathV073Test.java" "$GITHUB_WORKSPACE/ai-tracking-v074/FacePathV074Test.java" "$GITHUB_WORKSPACE/ai-tracking-v075/BodyClothingV075Test.java"
+          java -cp tests/out FacePathV073Test
+          java -cp tests/out FacePathV074Test
+          java -cp tests/out kr.ledoa.cut.aitest.BodyClothingV075Test
+      - name: Build v0.7.3 standalone APK
+        run: |
+          set -euo pipefail
+          cd "$PROJECT"
+          gradle --no-daemon :app:assembleDebug
+      - name: Verify app cannot overwrite stable editor
+        run: |
+          set -euo pipefail
+          APK="$PROJECT/app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK"
+          AAPT=$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -1)
+          "$AAPT" dump badging "$APK" | grep "package: name='kr.ledoa.cut.aiface075'"
+          "$AAPT" dump badging "$APK" | grep "versionCode='705'"
+          "$AAPT" dump badging "$APK" | grep "launchable-activity: name='kr.ledoa.cut.aitest.MainActivity'"
+          sha256sum "$APK"
+      - name: Upload face recovery APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: LEDOA_AI_FACE_BODY_v0.7.5_APK
+          path: /tmp/ledoa-face-v075/LEDOA_CUT_AI_FACE_TEST_v0.7.0_SOURCE/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
