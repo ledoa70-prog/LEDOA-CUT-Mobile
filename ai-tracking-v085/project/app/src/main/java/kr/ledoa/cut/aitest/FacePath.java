@@ -58,7 +58,11 @@ public final class FacePath {
     private int crowdedGapBlocked=0;
     private final TreeMap<Long,Box> confirmingFrames=new TreeMap<>();
     private int confirmedBackfills=0;
+    private int confirmedGapReviews=0;
+    private int manualKeyframes=0;
     public synchronized int confirmedBackfillCount(){return confirmedBackfills;}
+    public synchronized int confirmedGapReviewCount(){return confirmedGapReviews;}
+    public synchronized int manualKeyframeCount(){return manualKeyframes;}
     public synchronized void reset(){
         frames.clear();appearanceGallery.clear();last=previous=pending=null;
         lastMs=previousMs=pendingMs=-1;lastId=-1;confirmations=0;
@@ -66,7 +70,7 @@ public final class FacePath {
         scaleRecoveredCount=scaleReasonMismatch=0;
         wrongSizeBodyRejected=0;flowEstimatedCount=0;crowdedGapBlocked=0;
         scalePending=null;scalePendingMs=-1;scalePendingCount=0;
-        confirmingFrames.clear();confirmedBackfills=0;coverageEndMs=-1;
+        confirmingFrames.clear();confirmedBackfills=0;confirmedGapReviews=0;manualKeyframes=0;coverageEndMs=-1;
     }
     public synchronized int bodyValidatedCount(){return bodyValidatedCount;}
     public synchronized int bodyRecoveredCount(){return bodyRecoveredCount;}
@@ -114,6 +118,55 @@ public final class FacePath {
         last=b;lastMs=ms;lastId=b.id;previous=null;previousMs=-1;pending=null;pendingMs=-1;confirmations=0;scalePending=null;scalePendingMs=-1;scalePendingCount=0;
         appearanceGallery.clear();if(b.appearance!=null)appearanceGallery.add(b.appearance);
         frames.put(ms,new Point(ms,b,Status.VERIFIED,-1,"USER_SELECTED"));
+    }
+    /**
+     * A manual drag is the user's explicit identity confirmation, not an AI guess.
+     * Keep ALL prior video annotations, truncate only the corrected tail.
+     */
+    public synchronized void anchorManual(long ms,Box b){
+        anchor(ms,b);
+        frames.put(ms,new Point(ms,b,Status.VERIFIED,-1,"MANUAL_FACE_BOX_SELECTED"));
+        manualKeyframes++;
+    }
+    /**
+     * Only bridge <=2 consecutive 100ms missing samples. Require a geometric
+     * agreement with a REAL detected and confirmed face shortly afterwards.
+     * The resulting frame stays provisional and review-required.
+     */
+    public synchronized int bridgeShortConfirmedGaps(){
+        ArrayList<Point> points=new ArrayList<>(frames.values());
+        int filled=0;
+        for(int right=1;right<points.size();right++){
+            Point after=points.get(right);
+            if(after.status!=Status.DETECTION_BRIDGED||after.box==null)continue;
+            int previous=right-1,missing=0;
+            while(previous>=0&&points.get(previous).box==null){
+                missing++;previous--;
+                if(missing>2)break;
+            }
+            if(previous<0||missing<1||missing>2)continue;
+            Point before=points.get(previous);
+            Point realAfter=null;
+            for(int i=right+1;i<points.size();i++){
+                Point candidate=points.get(i);
+                if(candidate.ms-after.ms>320)break;
+                if(candidate.status==Status.TRACKED||candidate.status==Status.VERIFIED){
+                    realAfter=candidate;break;
+                }
+            }
+            if(!SafeGapV086.supported(before,after,realAfter,missing))continue;
+            for(int i=previous+1;i<right;i++){
+                Point old=points.get(i);
+                if(old.box!=null)break;
+                float ratio=(old.ms-before.ms)/(float)(after.ms-before.ms);
+                Box predicted=SafeGapV086.interpolate(before.box,after.box,ratio);
+                if(predicted==null)continue;
+                frames.put(old.ms,new Point(old.ms,predicted,Status.FLOW_ESTIMATED,
+                    old.candidates,"CONFIRMED_SHORT_GAP_REVIEW"));
+                filled++;confirmedGapReviews++;
+            }
+        }
+        return filled;
     }
     private static double scale(Box a,Box b){return b.area()/Math.max(.0001f,a.area());}
     private float appearance(Box b){
