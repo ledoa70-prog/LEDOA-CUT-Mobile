@@ -1,0 +1,19 @@
+plugins { id 'com.android.application' }
+android {
+    namespace 'kr.ledoa.cut.aitest'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'kr.ledoa.cut.aiface085'
+        minSdk 26
+        targetSdk 28 // Test-only: avoid migration side effects; update after modern API regression tests.
+        ndk { abiFilters 'arm64-v8a' }
+        versionCode 805
+        versionName '0.8.5-continuity-sequential'
+    }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+}
+dependencies {
+    // Bundled model: no model download / no paid cloud inference.
+    implementation 'com.google.mlkit:face-detection:16.1.7'
+    implementation 'com.google.mlkit:pose-detection:18.0.0-beta5'
+}

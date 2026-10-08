@@ -1,0 +1,48 @@
+name: Build LEDOA face continuity v0.8.5
+on:
+  push:
+    branches: [ feature/ai-face-continuity-v085 ]
+    paths: [ 'ai-tracking-v085/**', '.github/workflows/build-ai-face-continuity-v085.yml' ]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Regression checks
+        run: bash ai-tracking-v085/run-tests.sh
+      - name: Restore existing test signing identity
+        run: |
+          mkdir -p "$HOME/.android"
+          base64 -d signing/v037_debug.keystore.b64 > "$HOME/.android/debug.keystore"
+          chmod 600 "$HOME/.android/debug.keystore"
+      - name: Build standalone ARM64 patch
+        working-directory: ai-tracking-v085/project
+        run: gradle --no-daemon :app:assembleDebug
+      - name: Verify standalone APK
+        run: |
+          set -euo pipefail
+          APK=ai-tracking-v085/project/app/build/outputs/apk/debug/app-debug.apk
+          AAPT=$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -1)
+          SIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)
+          "$AAPT" dump badging "$APK" | tee /tmp/ledoa-v085-badging.txt
+          grep -q "package: name='kr.ledoa.cut.aiface085'" /tmp/ledoa-v085-badging.txt
+          grep -q "versionCode='805'" /tmp/ledoa-v085-badging.txt
+          "$SIGNER" verify "$APK"
+          cp "$APK" LEDOA_AI_FACE_CONTINUITY_v0.8.5.apk
+          sha256sum LEDOA_AI_FACE_CONTINUITY_v0.8.5.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LEDOA_AI_FACE_CONTINUITY_v0.8.5_APK
+          path: LEDOA_AI_FACE_CONTINUITY_v0.8.5.apk
+          if-no-files-found: error
