@@ -22,7 +22,7 @@ rep("import com.google.mlkit.vision.face.FaceLandmark;",
     """import com.google.mlkit.vision.face.FaceLandmark;
 import com.google.mlkit.vision.pose.PoseDetection;
 import com.google.mlkit.vision.pose.PoseDetector;
-import com.google.mlkit.vision.pose.PoseDetectorOptions;""")
+import com.google.mlkit.vision.pose.defaults.PoseDetectorOptions;""")
 rep("private FaceDetector detector;", """private FaceDetector detector;
     private PoseDetector poseDetector;
     private final BodyClothing bodyClothing=new BodyClothing();
