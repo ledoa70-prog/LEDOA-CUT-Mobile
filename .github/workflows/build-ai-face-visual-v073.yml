@@ -1,10 +1,10 @@
 name: Build LEDOA visual face recovery v0.7.3
 on:
   push:
-    branches: [ 'feature/ai-face-tracking-v073' ]
+    branches: [ 'feature/ai-face-visual-v073' ]
     paths:
       - 'ai-tracking-v073/**'
-      - '.github/workflows/build-ai-face-tracking-v073.yml'
+      - '.github/workflows/build-ai-face-visual-v073.yml'
   workflow_dispatch:
 jobs:
   build:
