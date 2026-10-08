@@ -33,6 +33,18 @@ jobs:
           test -f "$PROJECT/settings.gradle"
           test -f "$PROJECT/app/build.gradle"
           echo "PROJECT=$PROJECT" >> "$GITHUB_ENV"
+      - name: Apply Android API 35 release compatibility fix
+        run: |
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          p=Path(os.environ["PROJECT"])/"app/src/main/java/kr/ledoa/cut/aitest/MainActivity.java"
+          s=p.read_text(encoding="utf-8")
+          old="if(retriever!=null)retriever.release();"
+          assert s.count(old)==1, "Expected exactly one MediaMetadataRetriever release site"
+          replacement='if(retriever!=null){try{retriever.release();}catch(java.io.IOException e){android.util.Log.w("LEDOA-AI","MediaMetadataRetriever release failed",e);}}'
+          p.write_text(s.replace(old,replacement),encoding="utf-8")
+          PY
       - name: Face tracking JVM safety tests
         run: |
           cd "$PROJECT"
