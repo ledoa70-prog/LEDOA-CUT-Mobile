@@ -84,7 +84,7 @@ final class CrashDiagnostics {
             b.append("epochMs=").append(System.currentTimeMillis()).append("\n");
             b.append("androidApi=").append(Build.VERSION.SDK_INT).append("\n");
             b.append("javaHeapAvailableBytes=").append(Runtime.getRuntime().freeMemory()).append("\n");
-            b.append("nativeHeapAllocatedBytes=").append(android.os.Debug.getNativeHeapAllocatedSize()).append("\\n");
+            b.append("nativeHeapAllocatedBytes=").append(android.os.Debug.getNativeHeapAllocatedSize()).append("\n");
             b.append("error=").append(error.getClass().getName()).append("\n");
             // Avoid giant Android stack logs, URI paths or raw image data.
             StackTraceElement[] trace=error.getStackTrace();
@@ -104,8 +104,8 @@ final class CrashDiagnostics {
         b.append("lastSavedFrameMs=").append(preferences.getLong("lastProgressMs",-1)).append("\n");
         b.append("lastSavedStage=").append(preferences.getString("lastStage","UNKNOWN")).append("\n");
         b.append("analysisStartEpochMs=").append(preferences.getLong("analysisStartedEpochMs",0)).append("\n");
-        b.append("nativeHeapAllocatedBytes=").append(android.os.Debug.getNativeHeapAllocatedSize()).append("\\n");
-        b.append("javaHeapFreeBytes=").append(Runtime.getRuntime().freeMemory()).append("\\n");
+        b.append("nativeHeapAllocatedBytes=").append(android.os.Debug.getNativeHeapAllocatedSize()).append("\n");
+        b.append("javaHeapFreeBytes=").append(Runtime.getRuntime().freeMemory()).append("\n");
         try(FileInputStream in=context.openFileInput(CRASH_FILE)){
             b.append("---- LAST CAUGHT/UNCAUGHT ERROR ----\n");
             ByteArrayOutputStream out=new ByteArrayOutputStream();
