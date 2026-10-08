@@ -45,7 +45,7 @@ jobs:
           assert 'LEDOA_FACE_TRACK_v0.7.1.json' in s
           marker='if(p.box!=null)o.put("x",p.box.x).put("y",p.box.y).put("w",p.box.w).put("h",p.box.h);'
           assert s.count(marker)==1
-          s=s.replace('TEST 0.7.1','TEST 0.7.2').replace('LEDOA_FACE_TRACK_v0.7.1.json','LEDOA_FACE_TRACK_v0.7.2.json')
+          s=s.replace('TEST 0.7.1','TEST 0.7.2').replace('LEDOA_FACE_TRACK_v0.7.1.json','LEDOA_FACE_TRACK_v0.7.3.json')
           s=s.replace(marker,'o.put("candidateCount",p.candidates).put("reason",p.reason);\n                '+marker)
           p.write_text(s,encoding='utf8')
           p=Path(os.environ['PROJECT'])/'app/build.gradle'
