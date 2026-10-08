@@ -148,7 +148,7 @@ jobs:
             'lazyFlow.gap(',
             'roiDetector=null',
             'ROI_SKIPPED_STABILITY',
-            'analysisStabilityVersion","0.8.3',
+            'analysisStabilityVersion","0.8.4',
             'regularPose||boostedPose',
             'ms-roiLastScanMs<600',
             '(found.size()<=2 && "MOTION_OR_SCALE_GATE".equals(p.reason))',
