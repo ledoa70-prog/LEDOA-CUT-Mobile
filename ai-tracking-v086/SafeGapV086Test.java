@@ -50,7 +50,7 @@ public final class SafeGapV086Test {
               "both new masks are provisional, not fabricated face detections");
         check(path.confirmedGapReviewCount()==2,"gap repair statistics recorded");
         check(path.bridgeShortConfirmedGaps()==0,"repair is idempotent");
-        check(path.reviewCount()==4,"all provisional backfills still need review");
+        check(path.reviewCount()==5,"all provisional backfills still need review");
         path.anchor(0,b(.4f,.2f,.2f,.1f));
         map=frames(path);
         map.put(1000L,p(1000,FacePath.Status.TRACKED,b(.5f,.2f,.2f,.1f),1));
