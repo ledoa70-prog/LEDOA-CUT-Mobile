@@ -131,9 +131,9 @@ change("""                        }else if(found.isEmpty()){
                             // Multiple/ambiguous faces: never jump to a bystander.
                             opticalBridge.invalidate();
                         }""")
-change("""                final int problems=failed;
+change("""                final int problems=failed,bodyOnlyFrames=bodyOnly;
                 final boolean stopped=cancel.get();""",
-"""                final int problems=failed;
+"""                final int problems=failed,bodyOnlyFrames=bodyOnly;
                 final boolean stopped=cancel.get();
                 diagnostics.finished(Math.min(end,start+total*STEP_MS),!stopped);""")
 change("""            }catch(OutOfMemoryError oom){
