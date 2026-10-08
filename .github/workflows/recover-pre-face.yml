@@ -64,26 +64,26 @@ jobs:
           p=Path("buildsrc/android/app/src/main/assets/app.js")
           s=p.read_text()
           s += r"""
-;(()=>{
-  function installVisibleTimelineNav(){
-    if(document.getElementById('ledoaVisibleTimelineNav')) return;
-    const timeline=document.querySelector('.timeline-scroll');
-    if(!timeline) return;
-    const host=timeline.parentElement;
-    if(!host) return;
-    const bar=document.createElement('div');
-    bar.id='ledoaVisibleTimelineNav';
-    bar.style.cssText='display:flex;align-items:center;justify-content:flex-end;gap:8px;margin:8px 0;';
-    bar.innerHTML='<button type="button" id="ledoaGoStart">처음</button><button type="button" id="ledoaTlLeft">왼쪽</button><button type="button" id="ledoaTlRight">오른쪽</button>';
-    host.insertBefore(bar,timeline);
-    document.getElementById('ledoaGoStart').onclick=function(){ try{ if(typeof pause==="function") pause(); if(typeof seek==="function") seek(0); }catch(e){} timeline.scrollLeft=0; };
-    document.getElementById('ledoaTlLeft').onclick=function(){ timeline.scrollLeft=Math.max(0,timeline.scrollLeft-Math.max(180,timeline.clientWidth*0.65)); };
-    document.getElementById('ledoaTlRight').onclick=function(){ timeline.scrollLeft=timeline.scrollLeft+Math.max(180,timeline.clientWidth*0.65); };
-  }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',function(){setTimeout(installVisibleTimelineNav,100);});
-  else setTimeout(installVisibleTimelineNav,100);
-})();
-"""
+          ;(()=>{
+            function installVisibleTimelineNav(){
+              if(document.getElementById('ledoaVisibleTimelineNav')) return;
+              const timeline=document.querySelector('.timeline-scroll');
+              if(!timeline) return;
+              const host=timeline.parentElement;
+              if(!host) return;
+              const bar=document.createElement('div');
+              bar.id='ledoaVisibleTimelineNav';
+              bar.style.cssText='display:flex;align-items:center;justify-content:flex-end;gap:8px;margin:8px 0;';
+              bar.innerHTML='<button type="button" id="ledoaGoStart">처음</button><button type="button" id="ledoaTlLeft">왼쪽</button><button type="button" id="ledoaTlRight">오른쪽</button>';
+              host.insertBefore(bar,timeline);
+              document.getElementById('ledoaGoStart').onclick=function(){ try{ if(typeof pause==="function") pause(); if(typeof seek==="function") seek(0); }catch(e){} timeline.scrollLeft=0; };
+              document.getElementById('ledoaTlLeft').onclick=function(){ timeline.scrollLeft=Math.max(0,timeline.scrollLeft-Math.max(180,timeline.clientWidth*0.65)); };
+              document.getElementById('ledoaTlRight').onclick=function(){ timeline.scrollLeft=timeline.scrollLeft+Math.max(180,timeline.clientWidth*0.65); };
+            }
+            if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',function(){setTimeout(installVisibleTimelineNav,100);});
+            else setTimeout(installVisibleTimelineNav,100);
+          })();
+          """
           p.write_text(s)
           PY
           cp source/v044_MainActivity.java buildsrc/android/app/src/main/java/kr/ledoa/cut/MainActivity.java
