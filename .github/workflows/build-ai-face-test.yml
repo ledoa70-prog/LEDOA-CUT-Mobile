@@ -1,4 +1,5 @@
 name: Build independent LEDOA AI face mosaic TEST APK
+# Re-triggered after repairing legacy recovery YAML on this feature branch
 on:
   push:
     branches:
