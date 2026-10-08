@@ -140,7 +140,7 @@ jobs:
             'if(motion!=null && found.isEmpty())',
           ]:
             assert needle in a, "Missing analysis crashguard wiring: "+needle
-          assert 'applicationId \'kr.ledoa.cut.aiface081\'' in (Path(os.environ["PROJECT"])/"app/build.gradle").read_text()
+          assert 'applicationId \'kr.ledoa.cut.aiface082\'' in (Path(os.environ["PROJECT"])/"app/build.gradle").read_text()
           print("PASS: crash diagnostic export and AI cadence/source guards")
           PY
       - name: Build v0.8.2 zoom flow APK
