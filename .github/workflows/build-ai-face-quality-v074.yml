@@ -77,18 +77,16 @@ jobs:
                  '.setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)')
           change('TEST 0.7.3','TEST 0.7.4')
           change('LEDOA_FACE_TRACK_v0.7.3.json','LEDOA_FACE_TRACK_v0.7.4.json')
-          change('''float[] visual=appearanceIn(frame,r);
-                boxes.add(new FacePath.Box(x,y,right-x,bottom-y,
-                        face.getTrackingId()==null?-1:face.getTrackingId(),visual));''',
+          change('float[] visual=appearanceIn(frame,r);',
                  '''float[] visual=appearanceIn(frame,r);
                 boolean nose=face.getLandmark(FaceLandmark.NOSE_BASE)!=null;
                 boolean eye=face.getLandmark(FaceLandmark.LEFT_EYE)!=null
                         ||face.getLandmark(FaceLandmark.RIGHT_EYE)!=null;
                 boolean mouth=face.getLandmark(FaceLandmark.MOUTH_BOTTOM)!=null;
                 boolean faceEvidence=nose && (eye || mouth);
-                if(!faceEvidence)continue;
-                boxes.add(new FacePath.Box(x,y,right-x,bottom-y,
-                        face.getTrackingId()==null?-1:face.getTrackingId(),visual,faceEvidence));''')
+                if(!faceEvidence)continue;''')
+          change('face.getTrackingId()==null?-1:face.getTrackingId(),visual));',
+                 'face.getTrackingId()==null?-1:face.getTrackingId(),visual,faceEvidence));')
           p.write_text(s,encoding='utf-8')
           assert 'landmarkEvidence' not in s and 'faceEvidence' in s
           PY
