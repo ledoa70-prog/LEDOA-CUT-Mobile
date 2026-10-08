@@ -55,6 +55,7 @@ jobs:
           p=Path(os.environ['PROJECT'])/'app/src/main/AndroidManifest.xml'
           s=p.read_text(encoding='utf8')
           s=s.replace('LEDOA AI 모자이크 테스트','LEDOA AI 얼굴 추적 개선').replace('LEDOA AI 모자이크 미리보기','LEDOA AI 얼굴 추적 개선')
+          s=s.replace('android:name=".MainActivity"','android:name="kr.ledoa.cut.aitest.MainActivity"')
           p.write_text(s,encoding='utf8')
           PY
       - name: Run tracking safety and recovery tests
@@ -77,6 +78,7 @@ jobs:
           AAPT=$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -1)
           "$AAPT" dump badging "$APK" | grep "package: name='kr.ledoa.cut.aitracking'"
           "$AAPT" dump badging "$APK" | grep "versionCode='702'"
+          "$AAPT" dump badging "$APK" | grep "launchable-activity: name='kr.ledoa.cut.aitest.MainActivity'"
           sha256sum "$APK"
       - name: Upload face recovery APK
         uses: actions/upload-artifact@v4
