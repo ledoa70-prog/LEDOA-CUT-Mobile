@@ -145,7 +145,7 @@ g=g.replace("applicationId 'kr.ledoa.cut.aiface077'","applicationId 'kr.ledoa.cu
 gradle.write_text(g,encoding="utf-8")
 m=manifest.read_text(encoding="utf-8")
 assert "LEDOA AI 복합 추적 v0.7.7" in m
-m.write_text(m.replace("LEDOA AI 복합 추적 v0.7.7",
+manifest.write_text(m.replace("LEDOA AI 복합 추적 v0.7.7",
 "LEDOA AI ROI 얼굴 추적 v0.7.8"),encoding="utf-8")
 assert "roiDetector" in s and "roiFaceCandidatesAccepted" in s
 print("PASS: v0.7.8 isolated face-ROI second detector and JSON diagnostics applied")
