@@ -85,10 +85,21 @@ change("    private float clamp(float n){return Math.max(0,Math.min(1,n));}",
                 android.util.Log.w("LEDOA-AI","Crop face search unavailable",e);
             }finally{if(crop!=null&&!crop.isRecycled())crop.recycle();}
         }
+        // De-duplicate the SAME face seen by overlapping head and torso crops.
+        List<FacePath.Box> unique=new ArrayList<>();
+        for(FacePath.Box b:faces){
+            boolean seen=false;
+            for(FacePath.Box other:unique){
+                float dx=Math.abs(b.cx()-other.cx()),dy=Math.abs(b.cy()-other.cy());
+                if(dx<Math.min(b.w,other.w)*.16f &&
+                   dy<Math.min(b.h,other.h)*.16f){seen=true;break;}
+            }
+            if(!seen)unique.add(b);
+        }
         // Multiple conflicting ROI matches must be reviewed, not guessed.
         FacePath.Box winner=null;
         float best=-10f,runner=-10f;
-        for(FacePath.Box b:faces){
+        for(FacePath.Box b:unique){
             float faceSimilarity=(last.appearance==null||b.appearance==null)?
                     .55f:FaceAppearance.score(last.appearance,b.appearance);
             float bodyBonus=assist!=null&&assist.near(b)?.07f:0f;
@@ -101,7 +112,7 @@ change("    private float clamp(float n){return Math.max(0,Math.min(1,n));}",
             roiAccepted++;
             return java.util.Collections.singletonList(winner);
         }
-        if(faces.size()>1){roiAmbiguous++;roiDiscarded++;return new ArrayList<>();}
+        if(unique.size()>1){roiAmbiguous++;roiDiscarded++;return new ArrayList<>();}
         if(full.size()>5){roiDiscarded++;return new ArrayList<>();}
         return full;
     }
