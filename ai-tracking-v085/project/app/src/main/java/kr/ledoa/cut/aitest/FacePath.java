@@ -61,10 +61,12 @@ public final class FacePath {
     private int confirmedGapReviews=0;
     private final TreeMap<Long,Box> manualKeyframes=new TreeMap<>();
     private int manualEditsMade=0;
+    private int manualInterpolatedReviews=0;
     public synchronized int confirmedBackfillCount(){return confirmedBackfills;}
     public synchronized int confirmedGapReviewCount(){return confirmedGapReviews;}
     public synchronized int manualKeyframeCount(){return manualKeyframes.size();}
     public synchronized int manualEditsMade(){return manualEditsMade;}
+    public synchronized int manualInterpolatedReviews(){return manualInterpolatedReviews;}
     public synchronized Long nextManualAfter(long ms){return manualKeyframes.higherKey(ms);}
     public synchronized long firstTimestamp(){return frames.isEmpty()?-1:frames.firstKey();}
     public synchronized long latestTimestamp(){return frames.isEmpty()?-1:frames.lastKey();}
@@ -76,7 +78,7 @@ public final class FacePath {
         scaleRecoveredCount=scaleReasonMismatch=0;
         wrongSizeBodyRejected=0;flowEstimatedCount=0;crowdedGapBlocked=0;
         scalePending=null;scalePendingMs=-1;scalePendingCount=0;
-        confirmingFrames.clear();confirmedBackfills=0;confirmedGapReviews=0;manualKeyframes.clear();manualEditsMade=0;coverageEndMs=-1;
+        confirmingFrames.clear();confirmedBackfills=0;confirmedGapReviews=0;manualKeyframes.clear();manualEditsMade=0;manualInterpolatedReviews=0;coverageEndMs=-1;
     }
     public synchronized int bodyValidatedCount(){return bodyValidatedCount;}
     public synchronized int bodyRecoveredCount(){return bodyRecoveredCount;}
@@ -120,7 +122,7 @@ public final class FacePath {
     public synchronized Box lastReliableBox(){return last;}
     public synchronized long lastReliableTimestamp(){return lastMs;}
     public synchronized void anchor(long ms,Box b){
-        Objects.requireNonNull(b);frames.tailMap(ms,true).clear();coverageEndMs=-1;confirmingFrames.clear();
+        Objects.requireNonNull(b);frames.tailMap(ms,true).clear();manualKeyframes.tailMap(ms,true).clear();coverageEndMs=-1;confirmingFrames.clear();
         last=b;lastMs=ms;lastId=b.id;previous=null;previousMs=-1;pending=null;pendingMs=-1;confirmations=0;scalePending=null;scalePendingMs=-1;scalePendingCount=0;
         appearanceGallery.clear();if(b.appearance!=null)appearanceGallery.add(b.appearance);
         frames.put(ms,new Point(ms,b,Status.VERIFIED,-1,"USER_SELECTED"));
@@ -145,6 +147,44 @@ public final class FacePath {
         appearanceGallery.clear();
         if(b.appearance!=null)appearanceGallery.add(b.appearance);
         frames.put(ms,new Point(ms,b,Status.VERIFIED,-1,"MANUAL_FACE_BOX_SELECTED"));
+    }
+    /**
+     * Between TWO independent user-placed keyframes of the same selected face,
+     * bridge only short (<=700ms) missing detector frames for manual review.
+     * No flow estimate or interpolated box enters the trusted identity gallery.
+     * Side/back-of-head turns still require human preview confirmation.
+     */
+    public synchronized int fillBetweenManualKeyframes(){
+        int added=0;
+        Map.Entry<Long,Box> previous=null;
+        for(Map.Entry<Long,Box> current:manualKeyframes.entrySet()){
+            if(previous!=null){
+                long from=previous.getKey(),to=current.getKey(),gap=to-from;
+                Box a=previous.getValue(),b=current.getValue();
+                float ratio=b.area()/Math.max(.0001f,a.area());
+                float centerDist=(float)Math.hypot(
+                    (a.x+a.w*.5f)-(b.x+b.w*.5f),
+                    (a.y+a.h*.5f)-(b.y+b.h*.5f));
+                if(gap>=100&&gap<=700&&ratio>.35f&&ratio<2.9f&&centerDist<.42f){
+                    ArrayList<Long> missed=new ArrayList<>();
+                    for(Map.Entry<Long,Point> sample:
+                          frames.subMap(from,false,to,false).entrySet())
+                        if(sample.getValue().box==null)missed.add(sample.getKey());
+                    for(Long ms:missed){
+                        float factor=(ms-from)/(float)gap;
+                        Box box=SafeGapV086.interpolate(a,b,factor);
+                        if(box!=null){
+                            Point old=frames.get(ms);
+                            frames.put(ms,new Point(ms,box,Status.FLOW_ESTIMATED,
+                                old.candidates,"TWO_MANUAL_BOXES_GAP_REVIEW"));
+                            manualInterpolatedReviews++;added++;
+                        }
+                    }
+                }
+            }
+            previous=current;
+        }
+        return added;
     }
     /**
      * Only bridge <=2 consecutive 100ms missing samples. Require a geometric
