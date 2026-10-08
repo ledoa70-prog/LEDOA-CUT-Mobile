@@ -47,6 +47,30 @@ public final class ManualRetentionV087Test {
         ok(p.exact(22100)!=null,"next manual anchor survives same-time replacement");
         ok(p.firstTimestamp()==0,"whole video first timestamp remains zero");
         ok(p.latestTimestamp()==22100,"ending frame remains in export");
+        // Two nearby user-marked faces authorize ONLY provisional boxes
+        // between them, never a verified identity or an unbounded tail.
+        FacePath bounded=new FacePath();
+        bounded.anchor(0,b(.3f,.1f,.2f,.15f));
+        bounded.anchorManual(21000,b(.45f,.12f,.25f,.20f));
+        bounded.anchorManual(21600,b(.58f,.14f,.24f,.18f));
+        for(long ms=21100;ms<21600;ms+=100)
+            bounded.step(ms,Collections.emptyList());
+        int nBefore=bounded.uncoveredCount();
+        int filled=bounded.fillBetweenManualKeyframes();
+        ok(filled==5,"5 previously empty samples bridged between two user keys");
+        ok(bounded.uncoveredCount()==nBefore-5,"manually bracketed coverage improves");
+        ok(bounded.exact(21100).status==FacePath.Status.FLOW_ESTIMATED,
+           "manual gap interpolation is not face recognition");
+        ok("TWO_MANUAL_BOXES_GAP_REVIEW".equals(bounded.exact(21300).reason),
+           "manual interpolation requires human review");
+        ok(bounded.fillBetweenManualKeyframes()==0,"no duplicate interpolation");
+        FacePath far=new FacePath();
+        far.anchor(0,b(.3f,.1f,.2f,.15f));
+        far.anchorManual(21000,b(.45f,.12f,.25f,.20f));
+        far.anchorManual(22000,b(.58f,.14f,.24f,.18f));
+        far.step(21500,Collections.emptyList());
+        ok(far.fillBetweenManualKeyframes()==0,"never infer a face across a one second gap");
+        ok(far.exact(21500).box==null,"unsupported long gap remains unmasked");
         p.reset();
         ok(p.manualKeyframeCount()==0 && p.manualEditsMade()==0 &&
            p.firstTimestamp()==-1,"new video clears old personal manual positions");
