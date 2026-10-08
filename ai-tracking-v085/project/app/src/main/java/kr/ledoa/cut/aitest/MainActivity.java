@@ -498,7 +498,7 @@ public final class MainActivity extends Activity {
         selected=picked;anchorMs=currentMs;selectedBody=visibleBody;
         // A tap inside a face box during review is also a legitimate manual
         // re-identification. Preserve other manual corrections when revising it.
-        boolean correcting=path.latestTimestamp()>currentMs && currentMs>path.firstTimestamp();
+        boolean correcting=path.coveredThrough()>=currentMs && currentMs>path.firstTimestamp();
         manualCorrectionPending=correcting;
         if(correcting)path.anchorManual(anchorMs,picked);
         else path.anchor(anchorMs,picked);
@@ -649,6 +649,7 @@ public final class MainActivity extends Activity {
                 analysedEndMs=Math.max(segmentEnd,Math.max(path.latestTimestamp(),path.coveredThrough()));
                 path.coverageEnd(analysedEndMs);
                 int shortGapsReviewed=path.bridgeShortConfirmedGaps();
+                int manualGapsReviewed=path.fillBetweenManualKeyframes();
                 diagnostics.finished(segmentEnd,!stopped);
                 final String summary=(stopped?"분석 중단":"분석 완료")+" · "+
                     String.format(Locale.KOREA,"%.1f",analysisElapsedMs/1000.)+"초 소요"+
@@ -713,9 +714,11 @@ public final class MainActivity extends Activity {
             obj.put("shortConfirmedGapReviews",path.confirmedGapReviewCount());
             obj.put("manualFaceKeyframes",path.manualKeyframeCount());
             obj.put("manualEditsMade",path.manualEditsMade());
+            obj.put("manualInterpolatedReviewFrames",path.manualInterpolatedReviews());
             obj.put("lastCorrectedSegmentStartMs",lastRunStartMs);
             obj.put("lastCorrectedSegmentEndMs",lastRunEndMs);
             obj.put("manualAnchorsPreserved",true);
+            obj.put("manualGapInterpolationRequiresReview",true);
             obj.put("manualCorrectionSupported",true);
             obj.put("peakCachedMotionFrames",continuity.peakCachedFrames());
             obj.put("motionSampleStepMs",50).put("analysedStartMs",path.firstTimestamp()).put("analysedEndMs",analysedEndMs);
