@@ -1,0 +1,69 @@
+--- a/MainActivity.java
++++ b/MainActivity.java
+@@ -95,7 +95,7 @@
+     private void renderUi(){
+         LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);
+         root.setBackgroundColor(Color.rgb(13,19,27));root.setPadding(dp(10),dp(6),dp(10),dp(6));
+-        root.addView(text("LEDOA CUT  |  AI 얼굴 모자이크 TEST 0.7.2",18,Color.WHITE));
++        root.addView(text("LEDOA CUT  |  AI 얼굴 모자이크 TEST 0.7.3",18,Color.WHITE));
+         root.addView(text("정식 앱과 분리 · 선택한 얼굴 1명 · 픽셀화 강도 85%",12,Color.rgb(188,199,215)));
+         frameView=new FrameView();root.addView(frameView,new LinearLayout.LayoutParams(-1,0,1));frameView.setMinimumHeight(dp(150));
+         clock=text("00:00.0 / 00:00.0",12,Color.WHITE);root.addView(clock);
+@@ -241,9 +241,39 @@
+         for(Face face:faces){Rect r=face.getBoundingBox();
+             float x=clamp(r.left/(float)frame.getWidth()),y=clamp(r.top/(float)frame.getHeight());
+             float right=clamp(r.right/(float)frame.getWidth()),bottom=clamp(r.bottom/(float)frame.getHeight());
+-            if(right>x&&bottom>y)boxes.add(new FacePath.Box(x,y,right-x,bottom-y,face.getTrackingId()==null?-1:face.getTrackingId()));
++            // A face-detection ID may change between decoded video frames. Compute visual
++            // signature locally; it is supporting evidence, never a biometric identity.
++            if(right>x && bottom>y && (right-x)*(bottom-y)<.82f){
++                float[] visual=appearanceIn(frame,r);
++                boxes.add(new FacePath.Box(x,y,right-x,bottom-y,
++                        face.getTrackingId()==null?-1:face.getTrackingId(),visual));
++            }
+         }return boxes;
+     }
++    private float[] appearanceIn(Bitmap image,Rect face){
++        if(image==null)return null;
++        int l=Math.max(0,Math.min(image.getWidth()-1,face.left));
++        int t=Math.max(0,Math.min(image.getHeight()-1,face.top));
++        int r=Math.max(l+1,Math.min(image.getWidth(),face.right));
++        int b=Math.max(t+1,Math.min(image.getHeight(),face.bottom));
++        if(r-l<12 || b-t<12)return null;
++        // Exclude bounding-box edges to reduce background and hat-brim contamination.
++        int marginX=Math.max(1,(r-l)/8),marginY=Math.max(1,(b-t)/8);
++        l+=marginX;t+=marginY;r-=marginX;b-=marginY;
++        if(r-l<8||b-t<8)return null;
++        Bitmap crop=null,tiny=null;
++        try{
++            crop=Bitmap.createBitmap(image,l,t,r-l,b-t);
++            tiny=Bitmap.createScaledBitmap(crop,FaceAppearance.SIZE,FaceAppearance.SIZE,true);
++            int[] colors=new int[FaceAppearance.SIZE*FaceAppearance.SIZE];
++            tiny.getPixels(colors,0,FaceAppearance.SIZE,0,0,FaceAppearance.SIZE,FaceAppearance.SIZE);
++            return FaceAppearance.describe(colors,FaceAppearance.SIZE,FaceAppearance.SIZE);
++        }catch(RuntimeException e){return null;}
++        finally{
++            if(tiny!=null&&tiny!=crop&&!tiny.isRecycled())tiny.recycle();
++            if(crop!=null&&!crop.isRecycled())crop.recycle();
++        }
++    }
+     private float clamp(float n){return Math.max(0,Math.min(1,n));}
+     private void preview(long ms){
+         if(retriever==null)return;
+@@ -306,7 +336,7 @@
+                 final boolean stopped=cancel.get();
+                 runOnUiThread(()->{
+                     analysing=false;controls();
+-                    status.setText((stopped?"중단됨":"분석 완료")+" · 확인 필요 샘플 "+problems+"개. 노란 표시 구간은 수동 확인하세요. MP4 저장은 비활성화 상태입니다.");
++                    status.setText((stopped?"중단됨":"분석 완료")+" · 확인 필요 샘플 "+problems+"개. 빨간 확인 구간은 수동 확인하세요. MP4 저장은 비활성화 상태입니다.");
+                     preview(start);
+                 });
+             }catch(Exception e){runOnUiThread(()->{analysing=false;controls();status.setText("분석 중 오류: "+e.getMessage());});}
+@@ -315,7 +345,7 @@
+     private void saveTrack(){
+         if(path.points().isEmpty())return;
+         Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.setType("application/json");i.addCategory(Intent.CATEGORY_OPENABLE);
+-        i.putExtra(Intent.EXTRA_TITLE,"LEDOA_FACE_TRACK_v0.7.2.json");startActivityForResult(i,SAVE_TRACK);
++        i.putExtra(Intent.EXTRA_TITLE,"LEDOA_FACE_TRACK_v0.7.3.json");startActivityForResult(i,SAVE_TRACK);
+     }
+     private void writeTrack(Uri uri){
