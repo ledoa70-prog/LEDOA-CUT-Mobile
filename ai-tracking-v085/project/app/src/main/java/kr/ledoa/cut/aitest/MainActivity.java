@@ -89,7 +89,8 @@ public final class MainActivity extends Activity {
     private FrameView frameView;
     private TextView status,clock,disclaimer;
     private SeekBar seek;
-    private Button openBtn,trackBtn,cancelBtn,saveBtn,playBtn;
+    private Button openBtn,trackBtn,cancelBtn,saveBtn,playBtn,manualBoxBtn;
+    private boolean manualBoxMode=false,manualCorrectionPending=false;
     private boolean updatingSeek=false;
     // Standalone preview: sampled video frames with the already-calculated mosaic path.
     // This is intentionally silent and can skip frames on slow devices; not a 30fps editor playback engine.
@@ -124,7 +125,7 @@ public final class MainActivity extends Activity {
                 .setDetectorMode(PoseDetectorOptions.SINGLE_IMAGE_MODE).build();
         poseDetector=PoseDetection.getClient(poseOptions);
         renderUi();
-        if(interrupted)status.setText("이전 얼굴 추적이 중단됐습니다. '진단 기록 저장'으로 v0.8.5 오류 정보를 보내주세요.");
+        if(interrupted)status.setText("이전 얼굴 추적이 중단됐습니다. '진단 기록 저장'으로 v0.8.6 오류 정보를 보내주세요.");
     }
     private TextView text(String message,int size,int color){
         TextView t=new TextView(this);t.setText(message);t.setTextSize(size);t.setTextColor(color);
@@ -135,7 +136,7 @@ public final class MainActivity extends Activity {
     private void renderUi(){
         LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(Color.rgb(13,19,27));root.setPadding(dp(10),dp(6),dp(10),dp(6));
-        root.addView(text("LEDOA CUT  |  AI 연속 추적 TEST 0.8.5",18,Color.WHITE));
+        root.addView(text("LEDOA CUT  |  AI 수동보정 연속추적 TEST 0.8.6",18,Color.WHITE));
         root.addView(text("정식 앱과 분리 · 얼굴+상반신 옷 보조 추적 · 모자이크 85%",12,Color.rgb(188,199,215)));
         frameView=new FrameView();root.addView(frameView,new LinearLayout.LayoutParams(-1,0,1));frameView.setMinimumHeight(dp(150));
         clock=text("00:00.0 / 00:00.0",12,Color.WHITE);root.addView(clock);
@@ -152,6 +153,8 @@ public final class MainActivity extends Activity {
         LinearLayout playbackRow=new LinearLayout(this);playbackRow.setOrientation(LinearLayout.HORIZONTAL);
         playBtn=btn("▶ 모자이크 재생");
         playbackRow.addView(playBtn,new LinearLayout.LayoutParams(0,dp(47),1));
+        manualBoxBtn=btn("수동 얼굴박스 지정");
+        playbackRow.addView(manualBoxBtn,new LinearLayout.LayoutParams(0,dp(47),1));
         root.addView(playbackRow);
         root.addView(saveBtn,new LinearLayout.LayoutParams(-1,dp(45)));
         diagnosticBtn=btn("진단 기록 저장 (앱 종료 후에도 가능)");
@@ -166,6 +169,15 @@ public final class MainActivity extends Activity {
         saveBtn.setOnClickListener(v->saveTrack());
         diagnosticBtn.setOnClickListener(v->saveDiagnostic());
         playBtn.setOnClickListener(v->togglePlayback());
+        manualBoxBtn.setOnClickListener(v->{
+            if(analysing||playing||frameView.frame==null)return;
+            manualBoxMode=!manualBoxMode;
+            manualBoxBtn.setText(manualBoxMode?"수동 지정 취소":"수동 얼굴박스 지정");
+            status.setText(manualBoxMode
+                ?"영상에서 가릴 얼굴을 손가락으로 대각선 드래그해 박스를 만드세요."
+                :"수동 얼굴 지정 취소");
+            frameView.invalidate();
+        });
         controls();
     }
     private void controls(){
@@ -176,6 +188,7 @@ public final class MainActivity extends Activity {
         if(diagnosticBtn!=null)diagnosticBtn.setEnabled(!analysing && !playing);
         seek.setEnabled(!analysing && durationMs>0);
         playBtn.setEnabled(!analysing && retriever!=null && durationMs>0);
+        if(manualBoxBtn!=null)manualBoxBtn.setEnabled(!analysing&&!playing&&frameView.frame!=null);
         playBtn.setText(playing?"Ⅱ 일시정지":"▶ 모자이크 재생");
     }
     private String fmt(long m){return String.format(Locale.KOREA,"%02d:%02d.%01d",m/60000,(m/1000)%60,(m/100)%10);}
@@ -202,7 +215,7 @@ public final class MainActivity extends Activity {
                 if(ms<=0)throw new IllegalArgumentException("영상 길이를 읽지 못했습니다.");
                 MediaMetadataRetriever old=retriever;retriever=r;
                 if(old!=null){try{old.release();}catch(java.io.IOException e){android.util.Log.w("LEDOA-AI","Previous video release failed",e);}}videoUri=uri;
-                durationMs=ms;currentMs=0;anchorMs=-1;selected=null;path.reset();
+                durationMs=ms;currentMs=0;anchorMs=-1;selected=null;path.reset();manualBoxMode=false;manualCorrectionPending=false;
                 bodyClothing.reset();visibleBody=null;
                 roiAttempts=roiAccepted=roiDiscarded=roiAmbiguous=0;
                 roiThrottled=roiMemoryFailures=0;roiDisabled=false;roiLastScanMs=-10000;
@@ -481,7 +494,7 @@ public final class MainActivity extends Activity {
             if(picked==null||b.area()<picked.area())picked=b;
         }
         if(picked==null){status.setText("얼굴 영역 밖입니다. 얼굴 안쪽을 다시 터치하세요.");return;}
-        selected=picked;anchorMs=currentMs;selectedBody=visibleBody;
+        selected=picked;anchorMs=currentMs;selectedBody=visibleBody;manualCorrectionPending=false;
         path.anchor(anchorMs,picked);
         final boolean upperBodyLinked=bodyClothing.select(anchorMs,picked,visibleBody);
         frameView.setFrame(frameView.frame,visibleFaces,path.interpolated(currentMs),path.nearest(currentMs));
@@ -490,12 +503,44 @@ public final class MainActivity extends Activity {
             :"얼굴 선택 완료 · 상의가 명확히 보이지 않아 얼굴 단독 추적으로 진행합니다.");
         controls();
     }
+    /**
+     * Manual region selection works when ML Kit cannot detect a side face.
+     * A real user drag is required: no identity is inferred from clothing or
+     * from the nearest background person. Earlier video frames stay intact.
+     */
+    private void onManualFaceRegion(float x1,float y1,float x2,float y2){
+        if(analysing||playing||frameView.frame==null)return;
+        float l=Math.max(0,Math.min(x1,x2)),t=Math.max(0,Math.min(y1,y2));
+        float r=Math.min(1,Math.max(x1,x2)),b=Math.min(1,Math.max(y1,y2));
+        if(r-l<.065f||b-t<.045f||r-l>.90f||b-t>.90f){
+            status.setText("얼굴 부분만 사각형으로 지정해 주세요. 너무 작거나 큰 박스는 사용할 수 없습니다.");return;
+        }
+        Bitmap image=frameView.frame;
+        Rect area=new Rect((int)(l*image.getWidth()),(int)(t*image.getHeight()),
+                           Math.min(image.getWidth(),(int)Math.ceil(r*image.getWidth())),
+                           Math.min(image.getHeight(),(int)Math.ceil(b*image.getHeight())));
+        float[] appearance=appearanceIn(image,area);
+        if(appearance==null){
+            status.setText("선택한 얼굴에서 특징을 읽지 못했습니다. 조금 넓게 지정해 주세요.");return;
+        }
+        FacePath.Box box=new FacePath.Box(l,t,r-l,b-t,-1,appearance,true,false);
+        selected=box;anchorMs=currentMs;selectedBody=visibleBody;
+        path.anchorManual(anchorMs,box);
+        manualCorrectionPending=true;
+        manualBoxMode=false;manualBoxBtn.setText("수동 얼굴박스 지정");
+        bodyClothing.select(anchorMs,box,visibleBody);
+        frameView.setFrame(frameView.frame,visibleFaces,path.interpolated(currentMs),path.nearest(currentMs));
+        status.setText("수동 얼굴 영역 지정 완료 · 앞 구간 보존 · '선택 얼굴 추적'을 누르면 여기서부터 다시 분석합니다.");
+        controls();
+    }
     private void startAnalysis(){
         if(selected==null||retriever==null||analysing)return;
         stopPlayback(false);
         final long start=anchorMs,end=durationMs;
         final FacePath.Box anchor=selected;
         final BodyClothing.Observation initialBody=selectedBody;
+        final boolean keepManualKeyframe=manualCorrectionPending;
+        manualCorrectionPending=false;
         cancel.set(false);analysing=true;controls();
         getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         status.setText("선택 인물 연속 분석 중… 영상은 한 번만 읽고, 놓친 구간은 앞뒤로 확인합니다.");
@@ -507,7 +552,8 @@ public final class MainActivity extends Activity {
             analysisElapsedMs=decodeMs=faceMs=poseMs=motionMs=0;
             faceInferenceAttempts=poseInferenceAttempts=poseAdaptiveExtra=decodedFrames=sampledFrames=0;
             try{
-                path.anchor(start,anchor);continuity.reset();
+                if(!keepManualKeyframe)path.anchor(start,anchor);
+                continuity.reset();
                 bodyClothing.select(start,anchor,initialBody);
                 try{reader=new SequentialFrames(this,videoUri,start,cancel);decoderMode="SEQUENTIAL_MEDIACODEC";}
                 catch(Exception unavailable){decoderMode="RETRIEVER_FALLBACK";}
@@ -584,6 +630,7 @@ public final class MainActivity extends Activity {
                 analysisElapsedMs=SystemClock.elapsedRealtime()-began;
                 analysedEndMs=Math.min(end,stopped?processed:lastKey+STEP_MS);
                 path.coverageEnd(analysedEndMs);
+                int shortGapsReviewed=path.bridgeShortConfirmedGaps();
                 diagnostics.finished(analysedEndMs,!stopped);
                 final String summary=(stopped?"분석 중단":"분석 완료")+" · "+
                     String.format(Locale.KOREA,"%.1f",analysisElapsedMs/1000.)+"초 소요"+
@@ -614,7 +661,7 @@ public final class MainActivity extends Activity {
         Intent intent=new Intent(Intent.ACTION_CREATE_DOCUMENT);
         intent.setType("text/plain");
         intent.addCategory(Intent.CATEGORY_OPENABLE);
-        intent.putExtra(Intent.EXTRA_TITLE,"LEDOA_FACE_CRASH_v0.8.5.txt");
+        intent.putExtra(Intent.EXTRA_TITLE,"LEDOA_FACE_CRASH_v0.8.6.txt");
         startActivityForResult(intent,SAVE_DIAGNOSTIC);
     }
     private void writeDiagnostic(Uri uri){
@@ -630,7 +677,7 @@ public final class MainActivity extends Activity {
     private void saveTrack(){
         if(path.points().isEmpty())return;
         Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.setType("application/json");i.addCategory(Intent.CATEGORY_OPENABLE);
-        i.putExtra(Intent.EXTRA_TITLE,"LEDOA_FACE_FLOW_TRACK_v0.8.5.json");startActivityForResult(i,SAVE_TRACK);
+        i.putExtra(Intent.EXTRA_TITLE,"LEDOA_FACE_FLOW_TRACK_v0.8.6.json");startActivityForResult(i,SAVE_TRACK);
     }
     private void writeTrack(Uri uri){
         if(uri==null)return;
@@ -645,6 +692,9 @@ public final class MainActivity extends Activity {
             obj.put("faceInferenceAttempts",faceInferenceAttempts);
             obj.put("reverseRepairedFrames",continuity.reverseCount());
             obj.put("confirmedDetectionBackfills",path.confirmedBackfillCount());
+            obj.put("shortConfirmedGapReviews",path.confirmedGapReviewCount());
+            obj.put("manualFaceKeyframes",path.manualKeyframeCount());
+            obj.put("manualCorrectionSupported",true);
             obj.put("peakCachedMotionFrames",continuity.peakCachedFrames());
             obj.put("motionSampleStepMs",50).put("analysedStartMs",anchorMs).put("analysedEndMs",analysedEndMs);
             obj.put("bodyLinked",bodyClothing.isEnabled());
@@ -677,7 +727,7 @@ public final class MainActivity extends Activity {
             obj.put("flowRejectionsElapsed",opticalBridge.rejectedElapsed());
             obj.put("flowRejectionsNoAnchor",opticalBridge.rejectedNoAnchor());
             obj.put("crashDiagnosticAvailable",true);
-            obj.put("analysisStabilityVersion","0.8.5");
+            obj.put("analysisStabilityVersion","0.8.6");
             obj.put("roiDisabledForStability",ROI_DISABLED_FOR_STABILITY);
             obj.put("flowLazyTrustedFrames",lazyFlow.trustedUpdates());
             obj.put("flowLazyPyramidBuilds",lazyFlow.lazySeeds());
@@ -720,6 +770,8 @@ public final class MainActivity extends Activity {
         private final Paint image=new Paint(Paint.FILTER_BITMAP_FLAG),line=new Paint(Paint.ANTI_ALIAS_FLAG);
         private final Paint pixel=new Paint();
         private final RectF display=new RectF();
+        private boolean drawingManual=false;
+        private float downX,downY,dragX,dragY;
         FrameView(){super(MainActivity.this);setBackgroundColor(Color.BLACK);pixel.setFilterBitmap(false);pixel.setAntiAlias(false);}
         void setFrame(Bitmap next,List<FacePath.Box> detections,FacePath.Point safe,FacePath.Point close){
             if(next!=null && frame!=next && frame!=null && !frame.isRecycled())frame.recycle();
@@ -735,7 +787,10 @@ public final class MainActivity extends Activity {
             float w=fw*scale,h=fh*scale,left=(getWidth()-w)/2f,top=(getHeight()-h)/2f;
             display.set(left,top,left+w,top+h);
             c.drawBitmap(frame,null,display,image);
-            if(interpolated!=null&&interpolated.box!=null){drawMosaic(c,interpolated.box.expanded(.18f));}
+            if(interpolated!=null&&interpolated.box!=null){
+                float margin=(interpolated.status==FacePath.Status.FLOW_ESTIMATED)? .24f:.18f;
+                drawMosaic(c,interpolated.box.expanded(margin));
+            }
             if(nearest!=null&&(nearest.status==FacePath.Status.LOST ||
                     nearest.status==FacePath.Status.UNCERTAIN ||
                     nearest.status==FacePath.Status.BODY_HELD)){
@@ -753,6 +808,13 @@ public final class MainActivity extends Activity {
             for(FacePath.Box b:faces){
                 RectF rect=rectFor(b);line.setStyle(Paint.Style.STROKE);line.setStrokeWidth(dp(1.5f));
                 line.setColor(Color.rgb(136,185,224));c.drawRect(rect,line);line.setStyle(Paint.Style.FILL);
+            }
+            if(manualBoxMode && drawingManual){
+                line.setStyle(Paint.Style.STROKE);
+                line.setColor(Color.CYAN);line.setStrokeWidth(dp(2));
+                c.drawRect(Math.min(downX,dragX),Math.min(downY,dragY),
+                           Math.max(downX,dragX),Math.max(downY,dragY),line);
+                line.setStyle(Paint.Style.FILL);
             }
             if(selected!=null&&anchorMs==currentMs){
                 line.setStyle(Paint.Style.STROKE);line.setColor(Color.YELLOW);line.setStrokeWidth(dp(3));
@@ -774,7 +836,36 @@ public final class MainActivity extends Activity {
             }finally{if(small!=null&&small!=region)small.recycle();if(region!=null)region.recycle();}
         }
         @Override public boolean onTouchEvent(MotionEvent e){
-            if(e.getActionMasked()!=MotionEvent.ACTION_UP)return true;
+            int action=e.getActionMasked();
+            if(manualBoxMode){
+                if(action==MotionEvent.ACTION_DOWN){
+                    if(frame==null||!display.contains(e.getX(),e.getY()))return true;
+                    drawingManual=true;downX=dragX=e.getX();downY=dragY=e.getY();
+                    invalidate();return true;
+                }
+                if(action==MotionEvent.ACTION_MOVE && drawingManual){
+                    dragX=Math.max(display.left,Math.min(display.right,e.getX()));
+                    dragY=Math.max(display.top,Math.min(display.bottom,e.getY()));
+                    invalidate();return true;
+                }
+                if(action==MotionEvent.ACTION_UP && drawingManual){
+                    dragX=Math.max(display.left,Math.min(display.right,e.getX()));
+                    dragY=Math.max(display.top,Math.min(display.bottom,e.getY()));
+                    drawingManual=false;invalidate();
+                    if(Math.abs(dragX-downX)<dp(18)||Math.abs(dragY-downY)<dp(18)){
+                        status.setText("두 손가락이 아니라 한 손가락으로 얼굴 좌상단부터 우하단까지 드래그해 주세요.");
+                        return true;
+                    }
+                    onManualFaceRegion((downX-display.left)/display.width(),
+                        (downY-display.top)/display.height(),
+                        (dragX-display.left)/display.width(),
+                        (dragY-display.top)/display.height());
+                    return true;
+                }
+                if(action==MotionEvent.ACTION_CANCEL){drawingManual=false;invalidate();}
+                return true;
+            }
+            if(action!=MotionEvent.ACTION_UP)return true;
             if(frame==null||!display.contains(e.getX(),e.getY()))return true;
             float u=(e.getX()-display.left)/display.width(),v=(e.getY()-display.top)/display.height();
             onFaceTap(u,v);return true;
