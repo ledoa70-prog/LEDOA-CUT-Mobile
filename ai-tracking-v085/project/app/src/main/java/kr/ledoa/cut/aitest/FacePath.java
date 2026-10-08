@@ -59,10 +59,16 @@ public final class FacePath {
     private final TreeMap<Long,Box> confirmingFrames=new TreeMap<>();
     private int confirmedBackfills=0;
     private int confirmedGapReviews=0;
-    private int manualKeyframes=0;
+    private final TreeMap<Long,Box> manualKeyframes=new TreeMap<>();
+    private int manualEditsMade=0;
     public synchronized int confirmedBackfillCount(){return confirmedBackfills;}
     public synchronized int confirmedGapReviewCount(){return confirmedGapReviews;}
-    public synchronized int manualKeyframeCount(){return manualKeyframes;}
+    public synchronized int manualKeyframeCount(){return manualKeyframes.size();}
+    public synchronized int manualEditsMade(){return manualEditsMade;}
+    public synchronized Long nextManualAfter(long ms){return manualKeyframes.higherKey(ms);}
+    public synchronized long firstTimestamp(){return frames.isEmpty()?-1:frames.firstKey();}
+    public synchronized long latestTimestamp(){return frames.isEmpty()?-1:frames.lastKey();}
+    public synchronized long coveredThrough(){return coverageEndMs;}
     public synchronized void reset(){
         frames.clear();appearanceGallery.clear();last=previous=pending=null;
         lastMs=previousMs=pendingMs=-1;lastId=-1;confirmations=0;
@@ -70,7 +76,7 @@ public final class FacePath {
         scaleRecoveredCount=scaleReasonMismatch=0;
         wrongSizeBodyRejected=0;flowEstimatedCount=0;crowdedGapBlocked=0;
         scalePending=null;scalePendingMs=-1;scalePendingCount=0;
-        confirmingFrames.clear();confirmedBackfills=0;confirmedGapReviews=0;manualKeyframes=0;coverageEndMs=-1;
+        confirmingFrames.clear();confirmedBackfills=0;confirmedGapReviews=0;manualKeyframes.clear();manualEditsMade=0;coverageEndMs=-1;
     }
     public synchronized int bodyValidatedCount(){return bodyValidatedCount;}
     public synchronized int bodyRecoveredCount(){return bodyRecoveredCount;}
@@ -120,13 +126,25 @@ public final class FacePath {
         frames.put(ms,new Point(ms,b,Status.VERIFIED,-1,"USER_SELECTED"));
     }
     /**
-     * A manual drag is the user's explicit identity confirmation, not an AI guess.
-     * Keep ALL prior video annotations, truncate only the corrected tail.
+     * User-confirmed face keyframes form hard boundaries between edited segments.
+     * Changing an earlier segment MUST NOT erase already corrected later segments.
+     * Only replace the samples between the new anchor and the NEXT manual anchor.
      */
     public synchronized void anchorManual(long ms,Box b){
-        anchor(ms,b);
+        Objects.requireNonNull(b);
+        Long next=manualKeyframes.higherKey(ms);
+        if(next==null)frames.tailMap(ms,true).clear();
+        else frames.subMap(ms,true,next,false).clear();
+        manualKeyframes.put(ms,b);
+        manualEditsMade++;
+        // Reset temporary recognition state without clearing other segments.
+        last=b;lastMs=ms;lastId=b.id;previous=null;previousMs=-1;
+        pending=null;pendingMs=-1;confirmations=0;
+        scalePending=null;scalePendingMs=-1;scalePendingCount=0;
+        confirmingFrames.clear();
+        appearanceGallery.clear();
+        if(b.appearance!=null)appearanceGallery.add(b.appearance);
         frames.put(ms,new Point(ms,b,Status.VERIFIED,-1,"MANUAL_FACE_BOX_SELECTED"));
-        manualKeyframes++;
     }
     /**
      * Only bridge <=2 consecutive 100ms missing samples. Require a geometric
