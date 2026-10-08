@@ -1,0 +1,71 @@
+name: Build LEDOA face mosaic preview v0.7.1
+on:
+  push:
+    branches: [ 'feature/ai-face-preview-v071' ]
+    paths:
+      - 'ai-preview-v071/MainActivity.patch'
+      - '.github/workflows/build-ai-face-preview-v071.yml'
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout preview branch
+        uses: actions/checkout@v4
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Extract original isolated AI face test
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/ledoa-face-v071
+          unzip -q LEDOA_CUT_AI_FACE_TEST_v0.7.0_SOURCE.zip -d /tmp/ledoa-face-v071
+          PROJECT=/tmp/ledoa-face-v071/LEDOA_CUT_AI_FACE_TEST_v0.7.0_SOURCE
+          test -f "$PROJECT/app/src/main/java/kr/ledoa/cut/aitest/MainActivity.java"
+          echo "PROJECT=$PROJECT" >> "$GITHUB_ENV"
+      - name: Add independent playback preview
+        run: |
+          set -euo pipefail
+          cd "$PROJECT/app/src/main/java/kr/ledoa/cut/aitest"
+          patch --batch --fuzz=0 -p1 < "$GITHUB_WORKSPACE/ai-preview-v071/MainActivity.patch"
+          grep -q 'togglePlayback' MainActivity.java
+          grep -q 'AI 얼굴 모자이크 TEST 0.7.1' MainActivity.java
+          python3 - <<'PY'
+          from pathlib import Path
+          import os
+          p=Path(os.environ["PROJECT"])/"app/build.gradle"
+          s=p.read_text(encoding="utf-8")
+          assert "versionCode 700" in s
+          p.write_text(s.replace("versionCode 700","versionCode 701").replace("versionName '0.7.0-ai-test'","versionName '0.7.1-ai-preview'"),encoding="utf-8")
+          PY
+      - name: Run tracker safety tests
+        run: |
+          set -euo pipefail
+          cd "$PROJECT"
+          bash tests/run.sh
+      - name: Build preview APK
+        run: |
+          set -euo pipefail
+          cd "$PROJECT"
+          gradle --no-daemon :app:assembleDebug
+      - name: Verify independent Android app
+        run: |
+          set -euo pipefail
+          APK="$PROJECT/app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK"
+          AAPT=$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -1)
+          "$AAPT" dump badging "$APK" | grep "package: name='kr.ledoa.cut.aitest'"
+          "$AAPT" dump badging "$APK" | grep "versionCode='701'"
+          sha256sum "$APK"
+      - name: Upload preview-only APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: LEDOA_AI_FACE_PREVIEW_v0.7.1_APK
+          path: /tmp/ledoa-face-v071/LEDOA_CUT_AI_FACE_TEST_v0.7.0_SOURCE/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
