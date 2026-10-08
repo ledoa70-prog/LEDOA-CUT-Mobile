@@ -220,7 +220,7 @@ public final class FacePath {
             return null;
         }
         final float similarity=appearance(c);
-        if(similarity<.84f){scaleReasonMismatch++;return null;}
+        if(similarity<.80f){scaleReasonMismatch++;scalePending=null;scalePendingCount=0;scalePendingMs=-1;return null;}
         float areaRatio=(float)scale(last,c);
         // A large zoom, not any arbitrary remote face: last face near edge,
         // substantial size shift or partially cropped detected face.
@@ -236,7 +236,7 @@ public final class FacePath {
         }else scalePendingCount=1;
         scalePending=c;scalePendingMs=ms;
         // Zooms >5x get a third detection to mitigate another person's face.
-        int required=(areaRatio>5f || areaRatio<.2f)?3:2;
+        int required=(areaRatio>5f || areaRatio<.2f || similarity<.88f)?3:2;
         if(scalePendingCount>=required){
             scalePending=null;scalePendingMs=-1;scalePendingCount=0;
             return new Pick(c,Status.TRACKED,"ADAPTIVE_SCALE_REACQUIRED");
