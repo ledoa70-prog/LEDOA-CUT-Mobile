@@ -1,0 +1,86 @@
+name: Build LEDOA face tracking recovery v0.7.2
+on:
+  push:
+    branches: [ 'feature/ai-face-tracking-v072' ]
+    paths:
+      - 'ai-tracking-v072/**'
+      - '.github/workflows/build-ai-face-tracking-v072.yml'
+  workflow_dispatch:
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout isolated feature branch
+        uses: actions/checkout@v4
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Restore standalone test project
+        run: |
+          set -euo pipefail
+          mkdir -p /tmp/ledoa-face-v072
+          unzip -q LEDOA_CUT_AI_FACE_TEST_v0.7.0_SOURCE.zip -d /tmp/ledoa-face-v072
+          PROJECT=/tmp/ledoa-face-v072/LEDOA_CUT_AI_FACE_TEST_v0.7.0_SOURCE
+          test -f "$PROJECT/app/src/main/java/kr/ledoa/cut/aitest/MainActivity.java"
+          echo "PROJECT=$PROJECT" >> "$GITHUB_ENV"
+      - name: Add v0.7.1 preview and v0.7.2 adaptive tracking
+        run: |
+          set -euo pipefail
+          cp ai-tracking-v072/FacePath.java "$PROJECT/app/src/main/java/kr/ledoa/cut/aitest/FacePath.java"
+          cd "$PROJECT/app/src/main/java/kr/ledoa/cut/aitest"
+          patch --batch --fuzz=0 -p1 < "$GITHUB_WORKSPACE/ai-preview-v071/MainActivity.patch"
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          p=Path(os.environ['PROJECT'])/'app/src/main/java/kr/ledoa/cut/aitest/MainActivity.java'
+          s=p.read_text(encoding='utf8')
+          assert 'TEST 0.7.1' in s
+          assert 'LEDOA_FACE_TRACK_v0.7.1.json' in s
+          marker='if(p.box!=null)o.put("x",p.box.x).put("y",p.box.y).put("w",p.box.w).put("h",p.box.h);'
+          assert s.count(marker)==1
+          s=s.replace('TEST 0.7.1','TEST 0.7.2').replace('LEDOA_FACE_TRACK_v0.7.1.json','LEDOA_FACE_TRACK_v0.7.2.json')
+          s=s.replace(marker,'o.put("candidateCount",p.candidates).put("reason",p.reason);\n                '+marker)
+          p.write_text(s,encoding='utf8')
+          p=Path(os.environ['PROJECT'])/'app/build.gradle'
+          s=p.read_text(encoding='utf8')
+          assert 'versionCode 700' in s and "applicationId 'kr.ledoa.cut.aitest'" in s
+          s=s.replace('versionCode 700','versionCode 702').replace("versionName '0.7.0-ai-test'","versionName '0.7.2-ai-tracking'").replace("applicationId 'kr.ledoa.cut.aitest'","applicationId 'kr.ledoa.cut.aitracking'")
+          p.write_text(s,encoding='utf8')
+          p=Path(os.environ['PROJECT'])/'app/src/main/AndroidManifest.xml'
+          s=p.read_text(encoding='utf8')
+          s=s.replace('LEDOA AI 모자이크 테스트','LEDOA AI 얼굴 추적 개선').replace('LEDOA AI 모자이크 미리보기','LEDOA AI 얼굴 추적 개선')
+          p.write_text(s,encoding='utf8')
+          PY
+      - name: Run tracking safety and recovery tests
+        run: |
+          set -euo pipefail
+          cd "$PROJECT"
+          bash tests/run.sh
+          javac -d tests/out app/src/main/java/kr/ledoa/cut/aitest/FacePath.java "$GITHUB_WORKSPACE/ai-tracking-v072/FacePathV072Test.java"
+          java -cp tests/out FacePathV072Test
+      - name: Build v0.7.2 standalone APK
+        run: |
+          set -euo pipefail
+          cd "$PROJECT"
+          gradle --no-daemon :app:assembleDebug
+      - name: Verify app cannot overwrite stable editor
+        run: |
+          set -euo pipefail
+          APK="$PROJECT/app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK"
+          AAPT=$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -1)
+          "$AAPT" dump badging "$APK" | grep "package: name='kr.ledoa.cut.aitracking'"
+          "$AAPT" dump badging "$APK" | grep "versionCode='702'"
+          sha256sum "$APK"
+      - name: Upload face recovery APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: LEDOA_AI_FACE_TRACKING_v0.7.2_APK
+          path: /tmp/ledoa-face-v072/LEDOA_CUT_AI_FACE_TEST_v0.7.0_SOURCE/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
