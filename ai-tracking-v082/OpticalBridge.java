@@ -198,6 +198,15 @@ public final class OpticalBridge {
         // Fail closed: uncertain movement never becomes a legitimate face detection.
         invalidate();return null;
     }
+    private static float blankFraction(byte[] image){
+        if(image==null||image.length==0)return 1f;
+        int sample=0,blank=0;
+        for(int i=0;i<image.length;i+=4){
+            sample++;
+            if((image[i]&255)<4)blank++;
+        }
+        return blank/(float)sample;
+    }
     public Estimate advance(long ms,byte[] now,int w,int h,BodyClothing.Assist body){
         if(previous==null||lastBox==null||now==null||w!=width||h!=height||now.length!=w*h){
             reasonNoAnchor++;return null;
@@ -208,6 +217,11 @@ public final class OpticalBridge {
         if(ms-lastSeenMs>MAX_FACE_MISSING_MS){
             expired++;invalidate();return null;
         }
+        // Sudden black areas are characteristic of cuts, offscreen slides or
+        // corrupted frames, not continuously moving facial features. Reject
+        // aliasing with repetitive textures rather than jumping identities.
+        float blankJump=Math.abs(blankFraction(now)-blankFraction(previous.image[0]));
+        if(blankJump>.18f)return reject(1);
         Pyramid next=new Pyramid(now.clone(),w,h);
         ArrayList<Pair> pairs=new ArrayList<>();
         for(Pix feature:points){
