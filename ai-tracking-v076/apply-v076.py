@@ -14,20 +14,14 @@ def replace(old,new):
 
 replace("AI 얼굴+상반신 추적 TEST 0.7.5","AI 얼굴+옷 재추적 TEST 0.7.6")
 replace("LEDOA_FACE_BODY_TRACK_v0.7.5.json","LEDOA_FACE_BODY_TRACK_v0.7.6.json")
-replace("""                boolean faceEvidence=nose && (eye || mouth);
-                if(!faceEvidence)continue;
-                boxes.add(new FacePath.Box(x,y,right-x,bottom-y,
-                        face.getTrackingId()==null?-1:face.getTrackingId(),visual,faceEvidence));""",
-"""                boolean faceEvidence=nose && (eye || mouth);
-                // Screen-edge face can lose one or two landmarks. Only accept an
-                // actual ML Kit detection with at least one real facial landmark,
-                // and require two more independent frames in FacePath before masking.
+replace("boolean faceEvidence=nose && (eye || mouth);",
+"""boolean faceEvidence=nose && (eye || mouth);
+                // A partial detected face at a screen edge might have fewer landmarks.
+                // This signal is never sufficient alone: the tracker requires repeated evidence.
                 boolean onEdge=(x<.035f||right>.965f||y<.035f);
-                boolean partialEdge=!faceEvidence && onEdge && (nose || eye);
-                if(!faceEvidence && !partialEdge)continue;
-                boxes.add(new FacePath.Box(x,y,right-x,bottom-y,
-                        face.getTrackingId()==null?-1:face.getTrackingId(),
-                        visual,faceEvidence,partialEdge));""")
+                boolean partialEdge=!faceEvidence && onEdge && (nose || eye);""")
+replace("if(!faceEvidence)continue;","if(!faceEvidence && !partialEdge)continue;")
+replace("visual,faceEvidence));","visual,faceEvidence,partialEdge));")
 replace("""                            if(((ms-start)/STEP_MS)%2==0){""",
 """                            // Re-check pose more often when the face detector becomes
                             // ambiguous; the regular path remains at 200ms.
