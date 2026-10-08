@@ -126,7 +126,7 @@ g=g.replace("applicationId 'kr.ledoa.cut.aiface078'","applicationId 'kr.ledoa.cu
 gradle.write_text(g,encoding="utf-8")
 m=manifest.read_text(encoding="utf-8")
 assert "LEDOA AI ROI 얼굴 추적 v0.7.8" in m
-m.write_text(m.replace("LEDOA AI ROI 얼굴 추적 v0.7.8",
+manifest.write_text(m.replace("LEDOA AI ROI 얼굴 추적 v0.7.8",
                        "LEDOA AI 안전추적 v0.7.9"),encoding="utf-8")
 assert 'roiMemoryFailures' in s and 'tinyBodyFaceRejected' in s
 print("PASS: v0.7.9 memory limits, ROI throttling, wrong-target safe fallback integrated")
