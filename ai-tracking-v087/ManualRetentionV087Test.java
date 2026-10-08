@@ -52,9 +52,9 @@ public final class ManualRetentionV087Test {
         FacePath bounded=new FacePath();
         bounded.anchor(0,b(.3f,.1f,.2f,.15f));
         bounded.anchorManual(21000,b(.45f,.12f,.25f,.20f));
-        bounded.anchorManual(21600,b(.58f,.14f,.24f,.18f));
         for(long ms=21100;ms<21600;ms+=100)
             bounded.step(ms,Collections.emptyList());
+        bounded.anchorManual(21600,b(.58f,.14f,.24f,.18f));
         int nBefore=bounded.uncoveredCount();
         int filled=bounded.fillBetweenManualKeyframes();
         ok(filled==5,"5 previously empty samples bridged between two user keys");
@@ -67,8 +67,8 @@ public final class ManualRetentionV087Test {
         FacePath far=new FacePath();
         far.anchor(0,b(.3f,.1f,.2f,.15f));
         far.anchorManual(21000,b(.45f,.12f,.25f,.20f));
-        far.anchorManual(22000,b(.58f,.14f,.24f,.18f));
         far.step(21500,Collections.emptyList());
+        far.anchorManual(22000,b(.58f,.14f,.24f,.18f));
         ok(far.fillBetweenManualKeyframes()==0,"never infer a face across a one second gap");
         ok(far.exact(21500).box==null,"unsupported long gap remains unmasked");
         p.reset();
