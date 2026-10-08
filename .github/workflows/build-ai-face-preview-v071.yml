@@ -42,7 +42,11 @@ jobs:
           p=Path(os.environ["PROJECT"])/"app/build.gradle"
           s=p.read_text(encoding="utf-8")
           assert "versionCode 700" in s
-          p.write_text(s.replace("versionCode 700","versionCode 701").replace("versionName '0.7.0-ai-test'","versionName '0.7.1-ai-preview'"),encoding="utf-8")
+          p.write_text(s.replace("versionCode 700","versionCode 701").replace("versionName '0.7.0-ai-test'","versionName '0.7.1-ai-preview'").replace("applicationId 'kr.ledoa.cut.aitest'","applicationId 'kr.ledoa.cut.aipreview'"),encoding="utf-8")
+          manifest=Path(os.environ["PROJECT"])/"app/src/main/AndroidManifest.xml"
+          m=manifest.read_text(encoding="utf-8")
+          assert "LEDOA AI 모자이크 테스트" in m
+          manifest.write_text(m.replace("LEDOA AI 모자이크 테스트","LEDOA AI 모자이크 미리보기"),encoding="utf-8")
           PY
       - name: Run tracker safety tests
         run: |
@@ -60,7 +64,7 @@ jobs:
           APK="$PROJECT/app/build/outputs/apk/debug/app-debug.apk"
           test -s "$APK"
           AAPT=$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -1)
-          "$AAPT" dump badging "$APK" | grep "package: name='kr.ledoa.cut.aitest'"
+          "$AAPT" dump badging "$APK" | grep "package: name='kr.ledoa.cut.aipreview'"
           "$AAPT" dump badging "$APK" | grep "versionCode='701'"
           sha256sum "$APK"
       - name: Upload preview-only APK
