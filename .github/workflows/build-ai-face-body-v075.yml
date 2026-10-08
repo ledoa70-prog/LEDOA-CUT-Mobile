@@ -53,7 +53,7 @@ jobs:
           p=Path(os.environ['PROJECT'])/'app/build.gradle'
           s=p.read_text(encoding='utf8')
           assert 'versionCode 700' in s and "applicationId 'kr.ledoa.cut.aitest'" in s
-          s=s.replace('versionCode 700','versionCode 704').replace("versionName '0.7.0-ai-test'","versionName '0.7.4-quality-guard'").replace("applicationId 'kr.ledoa.cut.aitest'","applicationId 'kr.ledoa.cut.aiface075'")
+          s=s.replace('versionCode 700','versionCode 704').replace("versionName '0.7.0-ai-test'","versionName '0.7.4-quality-guard'").replace("applicationId 'kr.ledoa.cut.aitest'","applicationId 'kr.ledoa.cut.aiface074'")
           p.write_text(s,encoding='utf8')
           p=Path(os.environ['PROJECT'])/'app/src/main/AndroidManifest.xml'
           s=p.read_text(encoding='utf8')
