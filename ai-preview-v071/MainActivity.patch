@@ -1,0 +1,226 @@
+--- a/MainActivity.java
++++ b/MainActivity.java
+@@ -11,6 +11,9 @@
+ import android.media.MediaMetadataRetriever;
+ import android.net.Uri;
+ import android.os.Bundle;
++import android.os.Handler;
++import android.os.Looper;
++import android.os.SystemClock;
+ import android.view.Gravity;
+ import android.view.MotionEvent;
+ import android.view.View;
+@@ -33,6 +36,7 @@
+ import java.io.OutputStream;
+ import java.nio.charset.StandardCharsets;
+ import java.util.ArrayList;
++import java.util.Collections;
+ import java.util.List;
+ import java.util.Locale;
+ import java.util.concurrent.ExecutorService;
+@@ -61,8 +65,14 @@
+     private FrameView frameView;
+     private TextView status,clock,disclaimer;
+     private SeekBar seek;
+-    private Button openBtn,trackBtn,cancelBtn,saveBtn;
++    private Button openBtn,trackBtn,cancelBtn,saveBtn,playBtn;
+     private boolean updatingSeek=false;
++    // Standalone preview: sampled video frames with the already-calculated mosaic path.
++    // This is intentionally silent and can skip frames on slow devices; not a 30fps editor playback engine.
++    private final Handler playbackHandler=new Handler(Looper.getMainLooper());
++    private volatile boolean playing=false;
++    private long playBaseMs=0, playBaseUptime=0;
++    private static final long PLAYBACK_FRAME_GAP_MS=100;
+ 
+     @Override public void onCreate(Bundle b){
+         super.onCreate(b);
+@@ -85,37 +95,48 @@
+     private void renderUi(){
+         LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);
+         root.setBackgroundColor(Color.rgb(13,19,27));root.setPadding(dp(10),dp(6),dp(10),dp(6));
+-        root.addView(text("LEDOA CUT  |  AI 얼굴 모자이크 TEST 0.7.0",18,Color.WHITE));
++        root.addView(text("LEDOA CUT  |  AI 얼굴 모자이크 TEST 0.7.1",18,Color.WHITE));
+         root.addView(text("정식 앱과 분리 · 선택한 얼굴 1명 · 픽셀화 강도 85%",12,Color.rgb(188,199,215)));
+         frameView=new FrameView();root.addView(frameView,new LinearLayout.LayoutParams(-1,0,1));frameView.setMinimumHeight(dp(150));
+         clock=text("00:00.0 / 00:00.0",12,Color.WHITE);root.addView(clock);
+         seek=new SeekBar(this);seek.setMax(1000);root.addView(seek);
+         seek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){
+             public void onProgressChanged(SeekBar s,int value,boolean fromUser){if(fromUser && durationMs>0) clock.setText(fmt(durationMs*value/1000)+" / "+fmt(durationMs));}
+-            public void onStartTrackingTouch(SeekBar s){}
++            public void onStartTrackingTouch(SeekBar s){ stopPlayback(false); }
+             public void onStopTrackingTouch(SeekBar s){if(!analysing && durationMs>0){long target=durationMs*s.getProgress()/1000; if(target!=anchorMs){selected=null;anchorMs=-1;} preview(target);}}
+         });
+         LinearLayout buttons=new LinearLayout(this);buttons.setOrientation(LinearLayout.HORIZONTAL);
+         openBtn=btn("영상 불러오기");trackBtn=btn("선택 얼굴 추적");cancelBtn=btn("중단");saveBtn=btn("추적 데이터 저장");
+         for(Button button:new Button[]{openBtn,trackBtn,cancelBtn})buttons.addView(button,new LinearLayout.LayoutParams(0,dp(52),1));
+-        root.addView(buttons);root.addView(saveBtn,new LinearLayout.LayoutParams(-1,dp(45)));
++        root.addView(buttons);
++        LinearLayout playbackRow=new LinearLayout(this);playbackRow.setOrientation(LinearLayout.HORIZONTAL);
++        playBtn=btn("▶ 모자이크 재생");
++        playbackRow.addView(playBtn,new LinearLayout.LayoutParams(0,dp(47),1));
++        root.addView(playbackRow);
++        root.addView(saveBtn,new LinearLayout.LayoutParams(-1,dp(45)));
+         status=text("영상 불러오기 → 얼굴이 보이는 곳에서 일시정지 → 얼굴 터치 → 추적",13,Color.rgb(244,204,112));
+         root.addView(status);
+-        disclaimer=text("독립 검증용: 모자이크 미리보기만 제공합니다. MP4 내보내기는 누락 프레임 검사 후 연결합니다.",11,Color.rgb(181,189,200));root.addView(disclaimer);
++        disclaimer=text("검토용 무음 프레임 재생(기기 속도에 따라 끊길 수 있음). 빨간 확인 문구가 나오면 얼굴 가림을 검토하세요. MP4 저장 기능 없음.",11,Color.rgb(181,189,200));root.addView(disclaimer);
+         setContentView(root);
+         openBtn.setOnClickListener(v->pickVideo());
+         trackBtn.setOnClickListener(v->startAnalysis());
+         cancelBtn.setOnClickListener(v->{cancel.set(true);status.setText("중단 요청 중…");});
+         saveBtn.setOnClickListener(v->saveTrack());
++        playBtn.setOnClickListener(v->togglePlayback());
+         controls();
+     }
+     private void controls(){
+-        openBtn.setEnabled(!analysing);trackBtn.setEnabled(!analysing && selected!=null);
+-        cancelBtn.setEnabled(analysing);saveBtn.setEnabled(!analysing && !path.points().isEmpty());
++        openBtn.setEnabled(!analysing && !playing);
++        trackBtn.setEnabled(!analysing && !playing && selected!=null);
++        cancelBtn.setEnabled(analysing);
++        saveBtn.setEnabled(!analysing && !playing && !path.points().isEmpty());
+         seek.setEnabled(!analysing && durationMs>0);
++        playBtn.setEnabled(!analysing && retriever!=null && durationMs>0);
++        playBtn.setText(playing?"Ⅱ 일시정지":"▶ 모자이크 재생");
+     }
+     private String fmt(long m){return String.format(Locale.KOREA,"%02d:%02d.%01d",m/60000,(m/1000)%60,(m/100)%10);}
+     private void pickVideo(){
++        stopPlayback(false);
+         Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.setType("video/*");i.addCategory(Intent.CATEGORY_OPENABLE);
+         i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);startActivityForResult(i,PICK_VIDEO);
+     }
+@@ -125,6 +146,7 @@
+         if(request==SAVE_TRACK){writeTrack(data.getData());return;}
+         if(request!=PICK_VIDEO)return;
+         Uri uri=data.getData();if(uri==null)return;
++        stopPlayback(false);
+         generation.incrementAndGet();cancel.set(true);
+         status.setText("영상 정보를 읽는 중…");
+         worker.execute(()->{
+@@ -134,13 +156,79 @@
+                 long ms=Long.parseLong(duration==null?"0":duration);
+                 if(ms<=0)throw new IllegalArgumentException("영상 길이를 읽지 못했습니다.");
+                 MediaMetadataRetriever old=retriever;retriever=r;
+-                if(old!=null)old.release();videoUri=uri;
++                if(old!=null){try{old.release();}catch(java.io.IOException e){android.util.Log.w("LEDOA-AI","Previous video release failed",e);}}videoUri=uri;
+                 durationMs=ms;currentMs=0;anchorMs=-1;selected=null;path.reset();
+                 runOnUiThread(()->{status.setText("원하는 얼굴을 터치해 주세요.");controls();});
+                 preview(0);
+             }catch(Exception e){runOnUiThread(()->status.setText("영상 열기 실패: "+e.getMessage()));}
+         });
+     }
++    /** Preview animation without repeated ML Kit detection: decoded snapshots + saved face path.
++     * Frames are scheduled sequentially, never queued faster than decoding. Playback clock is
++     * elapsed realtime; heavy decoding simply skips image frames instead of accumulating lag.
++     */
++    private void togglePlayback(){
++        if(playing){stopPlayback(true);return;}
++        if(analysing||retriever==null||durationMs<=0)return;
++        if(currentMs>=durationMs-100)currentMs=0;
++        playing=true;
++        playBaseMs=currentMs;
++        playBaseUptime=SystemClock.uptimeMillis();
++        int token=generation.incrementAndGet();
++        controls();
++        status.setText("모자이크 검토 재생 중 · 무음 프레임 재생 · Ⅱ 버튼으로 일시정지");
++        decodePlaybackFrame(token);
++    }
++    private void stopPlayback(boolean reloadPausedFrame){
++        if(!playing)return;
++        playing=false;
++        generation.incrementAndGet();
++        playbackHandler.removeCallbacksAndMessages(null);
++        controls();
++        if(reloadPausedFrame){
++            status.setText("일시정지 · 얼굴을 터치해 보정하거나 재생을 계속하세요.");
++            preview(currentMs);
++        }
++    }
++    private void decodePlaybackFrame(final int token){
++        if(!playing||token!=generation.get())return;
++        final long ms=Math.min(durationMs,playBaseMs+Math.max(0,SystemClock.uptimeMillis()-playBaseUptime));
++        worker.execute(()->{
++            if(!playing||token!=generation.get())return;
++            Bitmap bitmap=null;
++            try{
++                bitmap=bitmapAt(ms);
++                if(bitmap==null)throw new IllegalStateException("해당 프레임을 읽을 수 없습니다.");
++                final Bitmap ready=bitmap;
++                runOnUiThread(()->{
++                    if(!playing||token!=generation.get()){
++                        if(!ready.isRecycled())ready.recycle();return;
++                    }
++                    currentMs=ms;
++                    visibleFaces=Collections.emptyList();
++                    frameView.setFrame(ready,visibleFaces,path.interpolated(ms),path.nearest(ms));
++                    updatingSeek=true;
++                    seek.setProgress((int)(1000.0*ms/durationMs));
++                    updatingSeek=false;
++                    clock.setText(fmt(ms)+" / "+fmt(durationMs));
++                    if(ms>=durationMs){
++                        stopPlayback(false);
++                        status.setText("끝까지 검토했습니다. 모자이크 누락 구간은 일시정지·재선택하여 확인하세요.");
++                    }else{
++                        playbackHandler.postDelayed(()->decodePlaybackFrame(token),PLAYBACK_FRAME_GAP_MS);
++                    }
++                });
++            }catch(Exception e){
++                if(bitmap!=null&&!bitmap.isRecycled())bitmap.recycle();
++                final String detail=e.getMessage();
++                runOnUiThread(()->{
++                    if(token!=generation.get())return;
++                    stopPlayback(false);
++                    status.setText("프레임 재생 오류: "+detail);
++                });
++            }
++        });
++    }
+     private Bitmap bitmapAt(long ms){
+         if(retriever==null)return null;
+         // This returns a displayed-rotation bitmap on supported Android implementations.
+@@ -180,6 +268,7 @@
+         });
+     }
+     private void onFaceTap(float u,float v){
++        if(playing){status.setText("먼저 Ⅱ 일시정지를 누른 뒤 얼굴을 선택해 주세요.");return;}
+         if(analysing||visibleFaces==null)return;
+         FacePath.Box picked=null;
+         for(FacePath.Box b:visibleFaces)if(b.expanded(.08f).contains(u,v)){
+@@ -194,6 +283,7 @@
+     }
+     private void startAnalysis(){
+         if(selected==null||retriever==null||analysing)return;
++        stopPlayback(false);
+         final long start=anchorMs,end=Math.min(durationMs,start+30_000);
+         final FacePath.Box anchor=selected;
+         cancel.set(false);analysing=true;controls();
+@@ -225,7 +315,7 @@
+     private void saveTrack(){
+         if(path.points().isEmpty())return;
+         Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.setType("application/json");i.addCategory(Intent.CATEGORY_OPENABLE);
+-        i.putExtra(Intent.EXTRA_TITLE,"LEDOA_FACE_TRACK_v0.7.0.json");startActivityForResult(i,SAVE_TRACK);
++        i.putExtra(Intent.EXTRA_TITLE,"LEDOA_FACE_TRACK_v0.7.1.json");startActivityForResult(i,SAVE_TRACK);
+     }
+     private void writeTrack(Uri uri){
+         if(uri==null)return;
+@@ -246,8 +336,10 @@
+         }catch(Exception e){status.setText("좌표 저장 실패: "+e.getMessage());}
+     }
+     @Override protected void onDestroy(){
++        stopPlayback(false);
++        playbackHandler.removeCallbacksAndMessages(null);
+         cancel.set(true);generation.incrementAndGet();worker.shutdownNow();
+-        if(retriever!=null)retriever.release();
++        if(retriever!=null){try{retriever.release();}catch(java.io.IOException e){android.util.Log.w("LEDOA-AI","Video release failed",e);}}
+         if(detector!=null)detector.close();
+         super.onDestroy();
+     }
+@@ -275,7 +367,7 @@
+             c.drawBitmap(frame,null,display,image);
+             if(interpolated!=null&&interpolated.box!=null){drawMosaic(c,interpolated.box.expanded(.18f));}
+             if(nearest!=null&&(nearest.status==FacePath.Status.LOST||nearest.status==FacePath.Status.UNCERTAIN)){
+-                line.setColor(Color.YELLOW);line.setTextSize(dp(17));c.drawText("추적 확인 필요",left+dp(14),top+dp(26),line);
++                line.setColor(Color.RED);line.setTextSize(dp(17));c.drawText("추적 확인 필요 (이 구간은 가림이 없습니다)",left+dp(8),top+dp(26),line);
+             }
+             for(FacePath.Box b:faces){
+                 RectF rect=rectFor(b);line.setStyle(Paint.Style.STROKE);line.setStrokeWidth(dp(1.5f));
