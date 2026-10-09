@@ -12,8 +12,8 @@ import java.nio.charset.StandardCharsets;
  * Works even when Android kills the process and no Java exception is delivered.
  */
 final class CrashDiagnostics {
-    private static final String PREFS="face_analysis_state_v088";
-    private static final String CRASH_FILE="analysis_error_v088.txt";
+    private static final String PREFS="face_analysis_state_v089";
+    private static final String CRASH_FILE="analysis_error_v089.txt";
     private final Context context;
     private final SharedPreferences preferences;
     private final Thread.UncaughtExceptionHandler priorHandler;
@@ -77,7 +77,7 @@ final class CrashDiagnostics {
     private void recordCrash(Throwable error,String where){
         try{
             StringBuilder b=new StringBuilder();
-            b.append("LEDOA AI face diagnostics v0.8.8\n");
+            b.append("LEDOA AI face diagnostics v0.8.9\n");
             b.append("reason=").append(where).append("\n");
             b.append("lastFrameMs=").append(ms).append("\n");
             b.append("stage=").append(stage).append("\n");
@@ -99,7 +99,7 @@ final class CrashDiagnostics {
     }
     String export(){
         StringBuilder b=new StringBuilder();
-        b.append("LEDOA AI FACE v0.8.8 DIAGNOSTICS\n");
+        b.append("LEDOA AI FACE v0.8.9 DIAGNOSTICS\n");
         b.append("previousAnalysisInterrupted=").append(preferences.getBoolean("analysisActive",false)).append("\n");
         b.append("lastSavedFrameMs=").append(preferences.getLong("lastProgressMs",-1)).append("\n");
         b.append("lastSavedStage=").append(preferences.getString("lastStage","UNKNOWN")).append("\n");
