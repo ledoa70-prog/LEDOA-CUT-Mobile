@@ -1,0 +1,72 @@
+name: Build and verify LEDOA Mosaic v0.9.0
+on:
+  push:
+    branches: [feature/mosaic-editor-v090]
+    paths: ['ai-mosaic-v090/**', '.github/workflows/build-mosaic-v090.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Core regression tests
+        run: bash ai-mosaic-v090/run-tests.sh
+      - name: Prepare synthetic test clips and existing signing identity
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          mkdir -p "$HOME/.android" ai-mosaic-v090/project/app/src/androidTest/assets
+          base64 -d signing/v037_debug.keystore.b64 > "$HOME/.android/debug.keystore"
+          chmod 600 "$HOME/.android/debug.keystore"
+          ASSETS=ai-mosaic-v090/project/app/src/androidTest/assets
+          ffmpeg -hide_banner -loglevel error -f lavfi -i testsrc2=size=320x240:rate=30:duration=2 -f lavfi -i sine=frequency=440:sample_rate=48000:duration=2 -c:v libx264 -pix_fmt yuv420p -c:a aac -y "$ASSETS/sample.mp4"
+          ffmpeg -hide_banner -loglevel error -i "$ASSETS/sample.mp4" -c copy -metadata:s:v rotate=90 -y "$ASSETS/rotated.mp4"
+          curl --fail --location --retry 2 https://raw.githubusercontent.com/scikit-image/scikit-image/v0.25.2/skimage/data/astronaut.png -o /tmp/astronaut.png
+          ffmpeg -hide_banner -loglevel error -loop 1 -i /tmp/astronaut.png -f lavfi -i sine=frequency=440:sample_rate=48000 -t 3 -vf "scale=480:480" -r 30 -c:v libx264 -pix_fmt yuv420p -c:a aac -y "$ASSETS/faces.mp4"
+      - name: Compile application and instrumentation
+        working-directory: ai-mosaic-v090/project
+        run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - name: Android device verification
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 29
+          arch: x86_64
+          target: default
+          profile: pixel_2
+          disable-animations: true
+          script: |
+            cd ai-mosaic-v090/project
+            gradle --no-daemon :app:connectedDebugAndroidTest
+            adb pull /sdcard/Android/data/kr.ledoa.cut.aiface0864/files ../../device-evidence
+      - name: Verify installable APK
+        run: |
+          APK=ai-mosaic-v090/project/app/build/outputs/apk/debug/app-debug.apk
+          SIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)
+          "$SIGNER" verify --verbose "$APK"
+          cp "$APK" LEDOA_MOSAIC_EDITOR_v0.9.0.apk
+          sha256sum LEDOA_MOSAIC_EDITOR_v0.9.0.apk
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: LEDOA_MOSAIC_v0.9.0_RESULTS
+          path: |
+            LEDOA_MOSAIC_EDITOR_v0.9.0.apk
+            device-evidence/
+            ai-mosaic-v090/project/app/build/reports/androidTests/
+            ai-mosaic-v090/project/app/build/outputs/androidTest-results/
+          if-no-files-found: error
