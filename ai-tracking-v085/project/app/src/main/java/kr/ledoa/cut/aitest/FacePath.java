@@ -44,6 +44,9 @@ public final class FacePath {
     }
     private final TreeMap<Long,Point> frames=new TreeMap<>();
     private final ArrayList<float[]> appearanceGallery=new ArrayList<>();
+    // v0.8.6.2: immutable descriptor from a deliberate user's face selection.
+    // Later AI decisions MUST NOT replace this identity anchor.
+    private float[] selectedOriginalAppearance=null;
     private Box last,previous,pending;private int confirmations=0;
     private long lastMs=-1,previousMs=-1,pendingMs=-1;
     private int lastId=-1;
@@ -64,7 +67,7 @@ public final class FacePath {
     public synchronized int confirmedGapReviewCount(){return confirmedGapReviews;}
     public synchronized int manualKeyframeCount(){return manualKeyframes;}
     public synchronized void reset(){
-        frames.clear();appearanceGallery.clear();last=previous=pending=null;
+        frames.clear();appearanceGallery.clear();selectedOriginalAppearance=null;last=previous=pending=null;
         lastMs=previousMs=pendingMs=-1;lastId=-1;confirmations=0;
         bodyValidatedCount=bodyRecoveredCount=edgeRecoveredCount=0;
         scaleRecoveredCount=scaleReasonMismatch=0;
@@ -116,7 +119,8 @@ public final class FacePath {
     public synchronized void anchor(long ms,Box b){
         Objects.requireNonNull(b);frames.tailMap(ms,true).clear();coverageEndMs=-1;confirmingFrames.clear();
         last=b;lastMs=ms;lastId=b.id;previous=null;previousMs=-1;pending=null;pendingMs=-1;confirmations=0;scalePending=null;scalePendingMs=-1;scalePendingCount=0;
-        appearanceGallery.clear();if(b.appearance!=null)appearanceGallery.add(b.appearance);
+        selectedOriginalAppearance=b.appearance==null?null:Arrays.copyOf(b.appearance,b.appearance.length);
+        appearanceGallery.clear();if(selectedOriginalAppearance!=null)appearanceGallery.add(Arrays.copyOf(selectedOriginalAppearance,selectedOriginalAppearance.length));
         frames.put(ms,new Point(ms,b,Status.VERIFIED,-1,"USER_SELECTED"));
     }
     /**
@@ -173,6 +177,13 @@ public final class FacePath {
         if(b.appearance==null||appearanceGallery.isEmpty())return -1;
         float best=-1;
         for(float[] ref:appearanceGallery)best=Math.max(best,FaceAppearance.score(ref,b.appearance));
+        // Cap gallery similarity using the ORIGINAL face. Stops gradual
+        // drift from turning another face into a new identity anchor.
+        if(selectedOriginalAppearance!=null){
+            float original=FaceAppearance.score(selectedOriginalAppearance,b.appearance);
+            if(original<0)return -1;
+            best=Math.min(best,original+.10f);
+        }
         return best;
     }
     private static boolean duplicate(Box a,Box b){
@@ -235,6 +246,19 @@ public final class FacePath {
                 chosen=scale==null?reacquire(ms,gap,cs,chosen):scale;
             }
         }
+        // Never accept the first face seen after a prolonged gap, even when
+        // motion/appearance matching labels it TRACKED.
+        if(gap>=350 && chosen.status==Status.TRACKED &&
+           "MOTION_AND_APPEARANCE_MATCH".equals(chosen.reason)){
+            chosen=new Pick(null,Status.UNCERTAIN,"IDENTITY_GUARD_GAP_RECONFIRM");
+            chosen=reacquire(ms,gap,cs,chosen);
+        }
+        chosen=guardCandidate(ms,gap,chosen);
+        if(chosen.status!=Status.TRACKED && chosen.reason.startsWith("IDENTITY_GUARD_")){
+            pending=null;pendingMs=-1;confirmations=0;
+            scalePending=null;scalePendingMs=-1;scalePendingCount=0;
+            confirmingFrames.clear();
+        }
         if(chosen.status==Status.TRACKED&&!confirmingFrames.isEmpty()){
             // Preserve the real candidate boxes that led to a successful two/three
             // frame reacquisition; waiting for confirmation must not erase them.
@@ -262,11 +286,42 @@ public final class FacePath {
             if(chosen.reason.equals("ADAPTIVE_SCALE_REACQUIRED"))scaleRecoveredCount++;
             scalePending=null;scalePendingMs=-1;scalePendingCount=0;
             previous=last;previousMs=lastMs;last=chosen.box;lastMs=ms;lastId=chosen.box.id;
-            if(chosen.box.appearance!=null && appearanceGallery.size()<7 && appearance(chosen.box)>.78f)
-                appearanceGallery.add(chosen.box.appearance);
+            if(chosen.box.appearance!=null && appearanceGallery.size()<7 && appearance(chosen.box)>.82f)
+                appearanceGallery.add(Arrays.copyOf(chosen.box.appearance,chosen.box.appearance.length));
             pending=null;pendingMs=-1;confirmations=0;
         }
         return point;
+    }
+    /** Before a candidate updates last/appearanceGallery, reject impossible jumps.
+     * Provisional optical-flow positions are negative evidence only: they can
+     * flag a sudden region jump but can never authorize a person's identity.
+     */
+    private Pick guardCandidate(long ms,long gap,Pick chosen){
+        if(chosen.status!=Status.TRACKED || chosen.box==null)return chosen;
+        Box candidate=chosen.box;
+        if(selectedOriginalAppearance!=null){
+            float original=FaceAppearance.score(selectedOriginalAppearance,candidate.appearance);
+            float minimum=gap>=350?.78f:.55f;
+            if(original<minimum)
+                return new Pick(null,Status.UNCERTAIN,"IDENTITY_GUARD_ORIGINAL_MISMATCH_REVIEW");
+        }else if(gap>=350){
+            return new Pick(null,Status.UNCERTAIN,"IDENTITY_GUARD_NO_ORIGINAL_ID_REVIEW");
+        }
+        if(last!=null && gap>0 && gap<=250){
+            double relative=scale(last,candidate);
+            if(relative>3.0 || relative<1.0/3.0)
+                return new Pick(null,Status.UNCERTAIN,"IDENTITY_GUARD_DETECTION_SCALE_JUMP");
+        }
+        Map.Entry<Long,Point> preceding=frames.lowerEntry(ms);
+        if(preceding!=null && ms-preceding.getKey()<=160){
+            Point p=preceding.getValue();
+            if(p.box!=null && p.status==Status.FLOW_ESTIMATED){
+                double relative=scale(p.box,candidate);
+                if(relative>2.8 || relative<1.0/2.8)
+                    return new Pick(null,Status.UNCERTAIN,"IDENTITY_GUARD_PROVISIONAL_SCALE_JUMP");
+            }
+        }
+        return chosen;
     }
     private Pick chooseWithBody(long ms,long gap,List<Box> cs,BodyClothing.Assist body){
         if(cs.isEmpty())return null;
@@ -432,7 +487,7 @@ public final class FacePath {
         if(pending!=null && ms-pendingMs<=240 && pending.dist(winner)<.20f && scale(pending,winner)>.35 && scale(pending,winner)<3.0){
             confirmations++;pending=winner;pendingMs=ms;
         }else{pending=winner;pendingMs=ms;confirmations=1;}
-        int needed=(gap>850 || (gap>=350 && candidates.size()>=3))?3:2;
+        int needed=gap>=350?3:2;
         if(confirmations>=needed){pending=null;confirmations=0;return new Pick(winner,Status.TRACKED,"REACQUIRED_APPEARANCE_STABLE");}
         return new Pick(null,Status.UNCERTAIN,"REACQUIRE_CONFIRMING_"+confirmations+"_OF_"+needed);
     }
