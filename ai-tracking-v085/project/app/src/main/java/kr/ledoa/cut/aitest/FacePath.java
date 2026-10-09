@@ -111,7 +111,7 @@ public final class FacePath {
      */
     public synchronized Point putContinuity(long ms,Box box,float confidence,String reason){
         Point p=frames.get(ms);
-        if(p==null||p.status==Status.TRACKED||p.status==Status.VERIFIED||box==null||confidence<.80f)return p;
+        if(identityLocked||p==null||p.status==Status.TRACKED||p.status==Status.VERIFIED||box==null||confidence<.80f)return p;
         if(p.box!=null)return p;
         Point n=new Point(ms,box,Status.FLOW_ESTIMATED,p.candidates,reason);
         frames.put(ms,n);flowEstimatedCount++;return n;
@@ -125,7 +125,7 @@ public final class FacePath {
      */
     public synchronized Point putMotionEstimate(long ms,Box prediction,float confidence){
         Point original=frames.get(ms);
-        if(original==null||original.status==Status.TRACKED||original.status==Status.VERIFIED||
+        if(identityLocked||original==null||original.status==Status.TRACKED||original.status==Status.VERIFIED||
            original.box!=null||prediction==null||confidence<.72f) return original;
         if(original.candidates!=0)return original; // Never override an ambiguous detected face.
         Point provisional=new Point(ms,prediction,Status.FLOW_ESTIMATED,0,
@@ -314,6 +314,9 @@ public final class FacePath {
         // must never silently authorize a new person's face after target loss.
         // A new manual face selection explicitly resets this lock.
         if(identityLocked || gap>=280){
+            // Track why multi-person recovery was suppressed without silently
+            // substituting a different face after the selected person leaves.
+            if(!identityLocked && gap>=350 && cs.size()>=3)crowdedGapBlocked++;
             lockIdentity();
             lockedFrames++;
             chosen=new Pick(null,cs.isEmpty()?Status.LOST:Status.UNCERTAIN,
