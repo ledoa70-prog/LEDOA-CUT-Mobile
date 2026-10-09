@@ -56,6 +56,9 @@ public final class FacePath {
     private int wrongSizeBodyRejected=0;
     private int flowEstimatedCount=0;
     private int crowdedGapBlocked=0;
+    private final boolean selectedPersonOnly;
+    public FacePath(){this(false);} // Original algorithm for legacy regression comparisons.
+    public FacePath(boolean selectedPersonOnly){this.selectedPersonOnly=selectedPersonOnly;}
     private boolean identityLocked=false;
     private float[] selectedAppearance=null;
     private int identityLockEvents=0;
@@ -313,7 +316,7 @@ public final class FacePath {
         // Identity is user-locked. In a crowd, clothing/color and position
         // must never silently authorize a new person's face after target loss.
         // A new manual face selection explicitly resets this lock.
-        if(identityLocked || gap>=280){
+        if(selectedPersonOnly && (identityLocked || gap>=280)){
             // Track why multi-person recovery was suppressed without silently
             // substituting a different face after the selected person leaves.
             if(!identityLocked && gap>=350 && cs.size()>=3)crowdedGapBlocked++;
@@ -321,7 +324,7 @@ public final class FacePath {
             lockedFrames++;
             chosen=new Pick(null,cs.isEmpty()?Status.LOST:Status.UNCERTAIN,
                 "SELECTED_PERSON_LOST_MANUAL_RESELECT_REQUIRED");
-        }else if(chosen.status==Status.TRACKED && chosen.box!=null){
+        }else if(selectedPersonOnly && chosen.status==Status.TRACKED && chosen.box!=null){
             float similarity=selectedAppearance==null?-1f:
                 FaceAppearance.score(selectedAppearance,chosen.box.appearance);
             double sizeRatio=scale(last,chosen.box);
