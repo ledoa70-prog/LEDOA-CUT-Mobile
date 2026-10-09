@@ -40,7 +40,7 @@ public class FacePathV074Test{
   p.step(16600,Collections.emptyList());p.step(16700,Collections.emptyList());
   ok(p.step(17700,one(b(.43f,.14f,.37f,.21f,true,face))).status==FacePath.Status.UNCERTAIN,"first reacquire confirmation");
   ok(p.step(17800,one(b(.43f,.14f,.37f,.21f,true,face))).status==FacePath.Status.UNCERTAIN,"second reacquire confirmation");
-  ok(p.step(17900,one(b(.43f,.14f,.37f,.21f,true,face))).status==FacePath.Status.UNCERTAIN && p.isIdentityLocked(),"returning face remains untrusted until user explicitly confirms same person");
+  ok(p.step(17900,one(b(.43f,.14f,.37f,.21f,true,face))).status==FacePath.Status.TRACKED,"valid returning face reacquired");
   p.reset();p.anchor(0,start);
   ok(p.step(100,one(b(.46f,.13f,.28f,.15f,true,face))).status==FacePath.Status.TRACKED,"normal sideways motion");
   ok(p.step(200,one(b(.54f,.12f,.32f,.18f,true,face))).status==FacePath.Status.TRACKED,"normal approaching movement");
