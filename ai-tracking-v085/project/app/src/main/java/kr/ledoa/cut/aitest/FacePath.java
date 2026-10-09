@@ -324,6 +324,12 @@ public final class FacePath {
             lockedFrames++;
             chosen=new Pick(null,cs.isEmpty()?Status.LOST:Status.UNCERTAIN,
                 "SELECTED_PERSON_LOST_MANUAL_RESELECT_REQUIRED");
+        }else if(selectedPersonOnly && chosen.status!=Status.TRACKED &&
+                 cs.size()==1 && cs.get(0).w>.88f && last.w<.65f){
+            // A failed oversized ML detection must not be treated as a
+            // normal gap that can later reconnect a different person's face.
+            lockIdentity();lockedFrames++;
+            chosen=new Pick(null,Status.UNCERTAIN,"SELECTED_PERSON_OVERSIZE_REVIEW");
         }else if(selectedPersonOnly && chosen.status==Status.TRACKED && chosen.box!=null){
             float similarity=selectedAppearance==null?-1f:
                 FaceAppearance.score(selectedAppearance,chosen.box.appearance);
