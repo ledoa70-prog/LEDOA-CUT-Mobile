@@ -1,0 +1,83 @@
+name: Build LEDOA v0.8.6.4 Identity Guard TEST
+on:
+  push:
+    branches: [ feature/ai-face-recovery-v0864 ]
+    paths: [ 'ai-tracking-v085/**', 'ai-tracking-v086/**', 'ai-tracking-v0861/**', 'ai-tracking-v0862/**', 'ai-tracking-v0863/**', 'ai-tracking-v0864/**', '.github/workflows/build-ai-face-range-v0861.yml' ]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Regression checks
+        run: |
+          set -euo pipefail
+          bash ai-tracking-v0861/run-tests.sh
+          javac -cp ai-tracking-v085/test-out -d ai-tracking-v085/test-out ai-tracking-v0862/IdentityGuardV0862Test.java
+          java -cp ai-tracking-v085/test-out kr.ledoa.cut.aitest.IdentityGuardV0862Test
+          javac -cp ai-tracking-v085/test-out -d ai-tracking-v085/test-out ai-tracking-v0863/RecoveryV0863Test.java
+          java -cp ai-tracking-v085/test-out kr.ledoa.cut.aitest.RecoveryV0863Test
+          javac -cp ai-tracking-v085/test-out -d ai-tracking-v085/test-out ai-tracking-v0864/MultiviewV0864Test.java
+          java -cp ai-tracking-v085/test-out kr.ledoa.cut.aitest.MultiviewV0864Test
+      - name: Check manual correction plus strict time range wiring v0.8.6.4
+        run: |
+          set -euo pipefail
+          grep -q 'path.bridgeShortConfirmedGaps()' ai-tracking-v085/project/app/src/main/java/kr/ledoa/cut/aitest/MainActivity.java
+          grep -q 'onManualFaceRegion' ai-tracking-v085/project/app/src/main/java/kr/ledoa/cut/aitest/MainActivity.java
+          grep -q 'MANUAL_FACE_BOX_SELECTED' ai-tracking-v085/project/app/src/main/java/kr/ledoa/cut/aitest/FacePath.java
+          grep -q 'LEDOA_FACE_FLOW_TRACK_v0.8.6.4.json' ai-tracking-v085/project/app/src/main/java/kr/ledoa/cut/aitest/MainActivity.java
+          grep -q 'trackRangeStartMs=0;trackRangeEndMs=ms;' ai-tracking-v085/project/app/src/main/java/kr/ledoa/cut/aitest/MainActivity.java
+          grep -q 'applyTrackingRange()' ai-tracking-v085/project/app/src/main/java/kr/ledoa/cut/aitest/MainActivity.java
+          grep -q 'final long start=anchorMs,end=trackRangeEndMs;' ai-tracking-v085/project/app/src/main/java/kr/ledoa/cut/aitest/MainActivity.java
+          grep -q 'if(ms>=end){frame.recycle();break;}' ai-tracking-v085/project/app/src/main/java/kr/ledoa/cut/aitest/MainActivity.java
+          grep -q 'if(!trackingInside(p.ms))continue;' ai-tracking-v085/project/app/src/main/java/kr/ledoa/cut/aitest/MainActivity.java
+          grep -q 'trackWindowEndExclusive' ai-tracking-v085/project/app/src/main/java/kr/ledoa/cut/aitest/MainActivity.java
+          grep -q 'trackRangeStartMs' ai-tracking-v085/project/app/src/main/java/kr/ledoa/cut/aitest/MainActivity.java
+          grep -q 'trackingInside(currentMs)' ai-tracking-v085/project/app/src/main/java/kr/ledoa/cut/aitest/MainActivity.java
+          grep -q 'new TrackWindow(start,end,durationMs)' ai-tracking-v085/project/app/src/main/java/kr/ledoa/cut/aitest/MainActivity.java
+      - name: Restore existing test signing identity
+        run: |
+          mkdir -p "$HOME/.android"
+          base64 -d signing/v037_debug.keystore.b64 > "$HOME/.android/debug.keystore"
+          chmod 600 "$HOME/.android/debug.keystore"
+      - name: Build standalone ARM64 patch
+        working-directory: ai-tracking-v085/project
+        run: gradle --no-daemon :app:assembleDebug
+      - name: Verify standalone APK
+        run: |
+          set -euo pipefail
+          APK=ai-tracking-v085/project/app/build/outputs/apk/debug/app-debug.apk
+          AAPT=$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -1)
+          SIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)
+          "$AAPT" dump badging "$APK" | tee /tmp/ledoa-v0864-badging.txt
+          grep -q "package: name='kr.ledoa.cut.aiface0864'" /tmp/ledoa-v0864-badging.txt
+          grep -q "versionCode='864'" /tmp/ledoa-v0864-badging.txt
+          "$SIGNER" verify "$APK"
+          cp "$APK" LEDOA_AI_FACE_MULTIVIEW_v0.8.6.4.apk
+          sha256sum LEDOA_AI_FACE_MULTIVIEW_v0.8.6.4.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LEDOA_AI_FACE_MULTIVIEW_v0.8.6.4_APK
+          path: LEDOA_AI_FACE_MULTIVIEW_v0.8.6.4.apk
+          if-no-files-found: error
+
+      - name: Package clean v0.8.6.4 source backup
+        run: |
+          set -euo pipefail
+          zip -rq LEDOA_AI_FACE_v0.8.6.4_FULL_SOURCE.zip ai-tracking-v07* ai-tracking-v08* .github/workflows/build-ai-face-multiview-v0864.yml -x '*/build/*' '*/.gradle/*' '*/test-out/*'
+          unzip -t LEDOA_AI_FACE_v0.8.6.4_FULL_SOURCE.zip | tail -1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LEDOA_AI_FACE_v0.8.6.4_FULL_SOURCE
+          path: LEDOA_AI_FACE_v0.8.6.4_FULL_SOURCE.zip
+          if-no-files-found: error
