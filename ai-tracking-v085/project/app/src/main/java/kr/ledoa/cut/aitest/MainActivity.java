@@ -556,11 +556,17 @@ public final class MainActivity extends Activity {
             if(analysing||token!=generation.get())return;
             Bitmap frame=null;
             try{
-                frame=bitmapAt(currentMs);
-                List<FacePath.Box> boxes=detect(frame);
+                final long previewMs=currentMs;
+                frame=bitmapAt(previewMs);
+                // Outside the selected range, only decode the picture for
+                // timeline navigation. Do not invoke any face/body AI.
+                List<FacePath.Box> boxes=trackingInside(previewMs)?
+                    detect(frame):Collections.emptyList();
                 BodyClothing.Observation pose=null;
-                try{pose=PoseBodyAdapter.detect(poseDetector,frame);}
-                catch(Exception e){android.util.Log.w("LEDOA-AI","Pose unavailable for selection",e);}
+                if(trackingInside(previewMs)){
+                    try{pose=PoseBodyAdapter.detect(poseDetector,frame);}
+                    catch(Exception e){android.util.Log.w("LEDOA-AI","Pose unavailable for selection",e);}
+                }
                 final BodyClothing.Observation poseForUi=pose;
                 if(token!=generation.get()){if(frame!=null)frame.recycle();return;}
                 Bitmap result=frame;long shown=currentMs;
@@ -572,7 +578,9 @@ public final class MainActivity extends Activity {
                         trackingInside(shown)?path.nearest(shown):null);
                     updatingSeek=true;seek.setProgress((int)(1000.0*shown/durationMs));updatingSeek=false;
                     clock.setText(fmt(shown)+" / "+fmt(durationMs));
-                    status.setText(completion!=null?completion:(selected==null?"터치해서 가릴 얼굴을 선택하세요.":"노란 얼굴 상자 선택됨 · 추적 또는 해당 시점에서 재선택 가능"));
+                    status.setText(completion!=null?completion:
+                        !trackingInside(shown)?"추적 범위 밖 · 이 시간에는 분석과 모자이크를 적용하지 않습니다.":
+                        (selected==null?"터치해서 가릴 얼굴을 선택하세요.":"노란 얼굴 상자 선택됨 · 추적 또는 해당 시점에서 재선택 가능"));
                     controls();
                 });
             }catch(Exception e){if(frame!=null)frame.recycle();runOnUiThread(()->status.setText("프레임 분석 실패: "+e.getMessage()));}
