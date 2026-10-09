@@ -3,12 +3,12 @@ android {
     namespace 'kr.ledoa.cut.aitest'
     compileSdk 35
     defaultConfig {
-        applicationId 'kr.ledoa.cut.aiface0861'
+        applicationId 'kr.ledoa.cut.aiface0862'
         minSdk 26
         targetSdk 28 // Test-only: avoid migration side effects; update after modern API regression tests.
         ndk { abiFilters 'arm64-v8a' }
-        versionCode 861
-        versionName '0.8.6.1-range-select'
+        versionCode 862
+        versionName '0.8.6.2-identity-guard'
     }
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
 }
