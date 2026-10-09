@@ -58,7 +58,7 @@ public final class MainActivity extends Activity {
     private final ExecutorService worker=Executors.newSingleThreadExecutor();
     private final AtomicBoolean cancel=new AtomicBoolean(false);
     private final AtomicInteger generation=new AtomicInteger(0);
-    private final FacePath path=new FacePath();
+    private final FacePath path=new FacePath(true);
     private FaceDetector detector;
     private FaceDetector roiDetector;
     private int roiAttempts=0,roiAccepted=0,roiDiscarded=0,roiAmbiguous=0;
