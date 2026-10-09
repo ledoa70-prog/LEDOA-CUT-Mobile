@@ -34,7 +34,7 @@ jobs:
           grep -q 'manualKeyframes.higherKey(ms)' ai-tracking-v085/project/app/src/main/java/kr/ledoa/cut/aitest/FacePath.java
           grep -q 'manualInterpolatedReviewFrames' ai-tracking-v085/project/app/src/main/java/kr/ledoa/cut/aitest/MainActivity.java
           grep -q 'identityLocked' ai-tracking-v085/project/app/src/main/java/kr/ledoa/cut/aitest/FacePath.java
-          grep -q 'SELECTED_PERSON_LOST_MANUAL_RESELECT_REQUIRED' ai-tracking-v085/project/app/src/main/java/kr/ledoa/cut/aitest/FacePath.java
+          grep -q 'SELECTED_PERSON_LONG_GAP_MANUAL_RESELECT_REQUIRED' ai-tracking-v085/project/app/src/main/java/kr/ledoa/cut/aitest/FacePath.java
           grep -q 'if(path.isIdentityLocked())' ai-tracking-v085/project/app/src/main/java/kr/ledoa/cut/aitest/MainActivity.java
           grep -q 'smallW=Math.max(8,Math.min(14' ai-tracking-v085/project/app/src/main/java/kr/ledoa/cut/aitest/MainActivity.java
           grep -q 'pixel.setFilterBitmap(true)' ai-tracking-v085/project/app/src/main/java/kr/ledoa/cut/aitest/MainActivity.java
