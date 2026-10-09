@@ -967,6 +967,13 @@ public final class MainActivity extends Activity {
                 c.drawText("자동 보완 가림 · 직접 확인 필요",
                     left+dp(6),top+dp(45),line);
             }
+            if(trackingInside(currentMs) && nearest!=null &&
+               "FLOW_GUIDED_REACQUIRED_REVIEW".equals(nearest.reason) &&
+               Math.abs(nearest.ms-currentMs)<=120){
+                line.setColor(Color.YELLOW);line.setTextSize(dp(14));
+                c.drawText("얼굴 재추적 후보 · 같은 사람인지 직접 확인",
+                    left+dp(6),top+dp(63),line);
+            }
             for(FacePath.Box b:faces){
                 RectF rect=rectFor(b);line.setStyle(Paint.Style.STROKE);line.setStrokeWidth(dp(1.5f));
                 line.setColor(Color.rgb(136,185,224));c.drawRect(rect,line);line.setStyle(Paint.Style.FILL);
