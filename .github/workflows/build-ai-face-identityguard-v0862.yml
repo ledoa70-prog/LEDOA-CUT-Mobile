@@ -66,3 +66,14 @@ jobs:
           name: LEDOA_AI_FACE_IDENTITY_GUARD_v0.8.6.2_APK
           path: LEDOA_AI_FACE_IDENTITY_GUARD_v0.8.6.2.apk
           if-no-files-found: error
+
+      - name: Package clean v0.8.6.2 source backup
+        run: |
+          set -euo pipefail
+          zip -rq LEDOA_AI_FACE_v0.8.6.2_FULL_SOURCE.zip ai-tracking-v07* ai-tracking-v08* .github/workflows/build-ai-face-identityguard-v0862.yml -x '*/build/*' '*/.gradle/*' '*/test-out/*'
+          unzip -t LEDOA_AI_FACE_v0.8.6.2_FULL_SOURCE.zip | tail -1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LEDOA_AI_FACE_v0.8.6.2_FULL_SOURCE
+          path: LEDOA_AI_FACE_v0.8.6.2_FULL_SOURCE.zip
+          if-no-files-found: error
