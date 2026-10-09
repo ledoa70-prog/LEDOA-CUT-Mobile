@@ -2,7 +2,7 @@ name: Build LEDOA v0.8.6.4 Identity Guard TEST
 on:
   push:
     branches: [ feature/ai-face-recovery-v0864 ]
-    paths: [ 'ai-tracking-v085/**', 'ai-tracking-v086/**', 'ai-tracking-v0861/**', 'ai-tracking-v0862/**', 'ai-tracking-v0863/**', 'ai-tracking-v0864/**', '.github/workflows/build-ai-face-range-v0861.yml' ]
+    paths: [ 'ai-tracking-v085/**', 'ai-tracking-v086/**', 'ai-tracking-v0861/**', 'ai-tracking-v0862/**', 'ai-tracking-v0863/**', 'ai-tracking-v0864/**', '.github/workflows/build-ai-face-multiview-v0864.yml' ]
   workflow_dispatch:
 permissions:
   contents: read
