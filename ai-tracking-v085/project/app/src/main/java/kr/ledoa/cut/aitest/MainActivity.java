@@ -137,7 +137,7 @@ public final class MainActivity extends Activity {
     private void renderUi(){
         LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(Color.rgb(13,19,27));root.setPadding(dp(10),dp(6),dp(10),dp(6));
-        root.addView(text("LEDOA CUT  |  AI 다중 수동보정 TEST 0.8.7",18,Color.WHITE));
+        root.addView(text("LEDOA CUT  |  AI 선택 인물 고정 TEST 0.8.8",18,Color.WHITE));
         root.addView(text("정식 앱과 분리 · 얼굴+상반신 옷 보조 추적 · 모자이크 85%",12,Color.rgb(188,199,215)));
         frameView=new FrameView();root.addView(frameView,new LinearLayout.LayoutParams(-1,0,1));frameView.setMinimumHeight(dp(150));
         clock=text("00:00.0 / 00:00.0",12,Color.WHITE);root.addView(clock);
@@ -628,14 +628,19 @@ public final class MainActivity extends Activity {
                         FacePath.Point point=path.step(ms,found,assist);lastKey=ms;total++;
                         time=SystemClock.elapsedRealtime();
                         diagnostics.progress(ms,"BIDIRECTIONAL_HEAD_MOTION");
-                        continuity.process(ms,gray.pixels,gray.w,gray.h,point,assist);
+                        if(path.isIdentityLocked()){
+                            // A motion estimate must not move a mask onto a bystander
+                            // after the selected person's identity became uncertain.
+                            continuity.reset();
+                        }else continuity.process(ms,gray.pixels,gray.w,gray.h,point,assist);
                         motionMs+=SystemClock.elapsedRealtime()-time;
                         long now=SystemClock.elapsedRealtime();
                         if(now-lastUi>=400){
                             lastUi=now;final long position=ms,spent=now-began;
                             final int holes=path.uncoveredCount();
                             runOnUiThread(()->{if(!isDestroyed())status.setText("분석 "+fmt(position-start)+" / "+fmt(end-start)+
-                                " · 경과 "+String.format(Locale.KOREA,"%.1f",spent/1000.)+"초 · 미확인 "+holes);});
+                                " · 경과 "+String.format(Locale.KOREA,"%.1f",spent/1000.)+"초 · 미확인 "+holes+
+                    (path.isIdentityLocked()?" · 인물 재지정 필요":""));});
                         }
                     }finally{if(!frame.isRecycled())frame.recycle();}
                 }
@@ -680,7 +685,7 @@ public final class MainActivity extends Activity {
         Intent intent=new Intent(Intent.ACTION_CREATE_DOCUMENT);
         intent.setType("text/plain");
         intent.addCategory(Intent.CATEGORY_OPENABLE);
-        intent.putExtra(Intent.EXTRA_TITLE,"LEDOA_FACE_CRASH_v0.8.7.txt");
+        intent.putExtra(Intent.EXTRA_TITLE,"LEDOA_FACE_CRASH_v0.8.8.txt");
         startActivityForResult(intent,SAVE_DIAGNOSTIC);
     }
     private void writeDiagnostic(Uri uri){
@@ -696,7 +701,7 @@ public final class MainActivity extends Activity {
     private void saveTrack(){
         if(path.points().isEmpty())return;
         Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.setType("application/json");i.addCategory(Intent.CATEGORY_OPENABLE);
-        i.putExtra(Intent.EXTRA_TITLE,"LEDOA_FACE_FLOW_TRACK_v0.8.7.json");startActivityForResult(i,SAVE_TRACK);
+        i.putExtra(Intent.EXTRA_TITLE,"LEDOA_FACE_FLOW_TRACK_v0.8.8.json");startActivityForResult(i,SAVE_TRACK);
     }
     private void writeTrack(Uri uri){
         if(uri==null)return;
@@ -752,7 +757,12 @@ public final class MainActivity extends Activity {
             obj.put("flowRejectionsElapsed",opticalBridge.rejectedElapsed());
             obj.put("flowRejectionsNoAnchor",opticalBridge.rejectedNoAnchor());
             obj.put("crashDiagnosticAvailable",true);
-            obj.put("analysisStabilityVersion","0.8.7");
+            obj.put("analysisStabilityVersion","0.8.8");
+            obj.put("onlySelectedPersonMode",true);
+            obj.put("identityLockEvents",path.identityLockEvents());
+            obj.put("identityLockedFrames",path.lockedFrames());
+            obj.put("manualReidentifyRequiredOnLoss",true);
+            obj.put("mosaicRendering","SOFT_PIXEL_BILINEAR_14_CELLS");
             obj.put("roiDisabledForStability",ROI_DISABLED_FOR_STABILITY);
             obj.put("flowLazyTrustedFrames",lazyFlow.trustedUpdates());
             obj.put("flowLazyPyramidBuilds",lazyFlow.lazySeeds());
@@ -797,7 +807,13 @@ public final class MainActivity extends Activity {
         private final RectF display=new RectF();
         private boolean drawingManual=false;
         private float downX,downY,dragX,dragY;
-        FrameView(){super(MainActivity.this);setBackgroundColor(Color.BLACK);pixel.setFilterBitmap(false);pixel.setAntiAlias(false);}
+        FrameView(){
+            super(MainActivity.this);
+            setBackgroundColor(Color.BLACK);
+            // Bilinear scaling softens the previous nine large jagged tiles.
+            // The small bitmap still destroys most fine facial detail.
+            pixel.setFilterBitmap(true);pixel.setAntiAlias(true);
+        }
         void setFrame(Bitmap next,List<FacePath.Box> detections,FacePath.Point safe,FacePath.Point close){
             if(next!=null && frame!=next && frame!=null && !frame.isRecycled())frame.recycle();
             frame=next;faces=detections;interpolated=safe;nearest=close;invalidate();
@@ -854,10 +870,14 @@ public final class MainActivity extends Activity {
             Bitmap region=null,small=null;
             try{
                 region=Bitmap.createBitmap(frame,crop.left,crop.top,crop.width(),crop.height());
-                int smallW=Math.max(2,Math.min(9,crop.width()/2));
-                int smallH=Math.max(2,(int)Math.round(smallW*crop.height()/(double)crop.width()));
-                small=Bitmap.createScaledBitmap(region,smallW,smallH,false);
-                c.drawBitmap(small,null,rectFor(b),pixel); // alpha is 100%, pixelation strength = 85.
+                // More, smaller color cells and bilinear filtering result in
+                // a finer, soft-edged mosaic without restoring facial details.
+                // Strong, fully opaque anonymisation remains mandatory.
+                int smallW=Math.max(8,Math.min(14,crop.width()/10));
+                int smallH=Math.max(6,Math.min(24,
+                    (int)Math.round(smallW*crop.height()/(double)crop.width())));
+                small=Bitmap.createScaledBitmap(region,smallW,smallH,true);
+                c.drawBitmap(small,null,rectFor(b),pixel); // 85% strength; full opacity.
             }finally{if(small!=null&&small!=region)small.recycle();if(region!=null)region.recycle();}
         }
         @Override public boolean onTouchEvent(MotionEvent e){
