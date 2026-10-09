@@ -56,6 +56,20 @@ public final class FacePath {
     private int wrongSizeBodyRejected=0;
     private int flowEstimatedCount=0;
     private int crowdedGapBlocked=0;
+    private boolean identityLocked=false;
+    private float[] selectedAppearance=null;
+    private int identityLockEvents=0;
+    private int lockedFrames=0;
+    public synchronized boolean isIdentityLocked(){return identityLocked;}
+    public synchronized int identityLockEvents(){return identityLockEvents;}
+    public synchronized int lockedFrames(){return lockedFrames;}
+    private void lockIdentity(){
+        if(!identityLocked)identityLockEvents++;
+        identityLocked=true;
+        pending=null;pendingMs=-1;confirmations=0;
+        scalePending=null;scalePendingMs=-1;scalePendingCount=0;
+        confirmingFrames.clear();
+    }
     private final TreeMap<Long,Box> confirmingFrames=new TreeMap<>();
     private int confirmedBackfills=0;
     private int confirmedGapReviews=0;
@@ -73,6 +87,7 @@ public final class FacePath {
     public synchronized long coveredThrough(){return coverageEndMs;}
     public synchronized void reset(){
         frames.clear();appearanceGallery.clear();last=previous=pending=null;
+        identityLocked=false;selectedAppearance=null;identityLockEvents=lockedFrames=0;
         lastMs=previousMs=pendingMs=-1;lastId=-1;confirmations=0;
         bodyValidatedCount=bodyRecoveredCount=edgeRecoveredCount=0;
         scaleRecoveredCount=scaleReasonMismatch=0;
@@ -125,6 +140,7 @@ public final class FacePath {
         Objects.requireNonNull(b);frames.tailMap(ms,true).clear();manualKeyframes.tailMap(ms,true).clear();coverageEndMs=-1;confirmingFrames.clear();
         last=b;lastMs=ms;lastId=b.id;previous=null;previousMs=-1;pending=null;pendingMs=-1;confirmations=0;scalePending=null;scalePendingMs=-1;scalePendingCount=0;
         appearanceGallery.clear();if(b.appearance!=null)appearanceGallery.add(b.appearance);
+        selectedAppearance=b.appearance;identityLocked=false;
         frames.put(ms,new Point(ms,b,Status.VERIFIED,-1,"USER_SELECTED"));
     }
     /**
@@ -146,6 +162,7 @@ public final class FacePath {
         confirmingFrames.clear();
         appearanceGallery.clear();
         if(b.appearance!=null)appearanceGallery.add(b.appearance);
+        selectedAppearance=b.appearance;identityLocked=false;
         frames.put(ms,new Point(ms,b,Status.VERIFIED,-1,"MANUAL_FACE_BOX_SELECTED"));
     }
     /**
@@ -291,6 +308,31 @@ public final class FacePath {
             else{
                 Pick scale=tryAdaptiveScale(ms,gap,cs);
                 chosen=scale==null?reacquire(ms,gap,cs,chosen):scale;
+            }
+        }
+        // Identity is user-locked. In a crowd, clothing/color and position
+        // must never silently authorize a new person's face after target loss.
+        // A new manual face selection explicitly resets this lock.
+        if(identityLocked || gap>=280){
+            lockIdentity();
+            lockedFrames++;
+            chosen=new Pick(null,cs.isEmpty()?Status.LOST:Status.UNCERTAIN,
+                "SELECTED_PERSON_LOST_MANUAL_RESELECT_REQUIRED");
+        }else if(chosen.status==Status.TRACKED && chosen.box!=null){
+            float similarity=selectedAppearance==null?-1f:
+                FaceAppearance.score(selectedAppearance,chosen.box.appearance);
+            double sizeRatio=scale(last,chosen.box);
+            boolean oversized=chosen.box.w>.88f &&
+               last.w<.65f && gap<=180;
+            boolean suddenSize=gap<=180 && (sizeRatio<.35 || sizeRatio>2.3);
+            boolean wrongAppearance=similarity>=0&&similarity<.74f;
+            if(oversized||suddenSize||wrongAppearance){
+                lockIdentity();
+                lockedFrames++;
+                chosen=new Pick(null,Status.UNCERTAIN,
+                    oversized?"SELECTED_PERSON_OVERSIZE_REVIEW":
+                    suddenSize?"SELECTED_PERSON_FACE_SIZE_JUMP_REVIEW":
+                    "SELECTED_PERSON_APPEARANCE_CHANGED_RESELECT_REQUIRED");
             }
         }
         if(chosen.status==Status.TRACKED&&!confirmingFrames.isEmpty()){
