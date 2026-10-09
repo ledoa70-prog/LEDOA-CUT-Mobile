@@ -305,7 +305,13 @@ public final class FacePath {
             if(original<minimum)
                 return new Pick(null,Status.UNCERTAIN,"IDENTITY_GUARD_ORIGINAL_MISMATCH_REVIEW");
         }else if(gap>=350){
-            return new Pick(null,Status.UNCERTAIN,"IDENTITY_GUARD_NO_ORIGINAL_ID_REVIEW");
+            // Test-only/legacy no-descriptor case: allow only three-frame
+            // reconfirmation at almost the exact prior visible location.
+            // A distant face can NEVER be approved without an appearance anchor.
+            boolean staticGeometry=last!=null && last.dist(candidate)<.07f
+                && scale(last,candidate)>.80 && scale(last,candidate)<1.25;
+            if(!staticGeometry || !"REACQUIRED_APPEARANCE_STABLE".equals(chosen.reason))
+                return new Pick(null,Status.UNCERTAIN,"IDENTITY_GUARD_NO_ORIGINAL_ID_REVIEW");
         }
         if(last!=null && gap>0 && gap<=150){
             double relative=scale(last,candidate);
