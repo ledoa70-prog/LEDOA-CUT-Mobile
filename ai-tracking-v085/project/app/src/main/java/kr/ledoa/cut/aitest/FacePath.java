@@ -307,7 +307,7 @@ public final class FacePath {
         }else if(gap>=350){
             return new Pick(null,Status.UNCERTAIN,"IDENTITY_GUARD_NO_ORIGINAL_ID_REVIEW");
         }
-        if(last!=null && gap>0 && gap<=250){
+        if(last!=null && gap>0 && gap<=150){
             double relative=scale(last,candidate);
             if(relative>3.0 || relative<1.0/3.0)
                 return new Pick(null,Status.UNCERTAIN,"IDENTITY_GUARD_DETECTION_SCALE_JUMP");
