@@ -1,0 +1,70 @@
+name: Build LEDOA balanced face identity and soft mosaic v0.8.9
+on:
+  push:
+    branches: [ feature/ai-face-balanced-lock-v089 ]
+    paths: [ 'ai-tracking-v073/**', 'ai-tracking-v085/**', 'ai-tracking-v086/**', 'ai-tracking-v087/**', 'ai-tracking-v088/**', 'ai-tracking-v089/**', '.github/workflows/build-ai-face-balanced-lock-v089.yml' ]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+      - name: Regression checks
+        run: bash ai-tracking-v089/run-tests.sh
+      - name: Check v0.8.9 selected-person balanced recovery and soft mosaic guards
+        run: |
+          set -euo pipefail
+          grep -q 'path.bridgeShortConfirmedGaps()' ai-tracking-v085/project/app/src/main/java/kr/ledoa/cut/aitest/MainActivity.java
+          grep -q 'onManualFaceRegion' ai-tracking-v085/project/app/src/main/java/kr/ledoa/cut/aitest/MainActivity.java
+          grep -q 'MANUAL_FACE_BOX_SELECTED' ai-tracking-v085/project/app/src/main/java/kr/ledoa/cut/aitest/FacePath.java
+          grep -q 'LEDOA_FACE_FLOW_TRACK_v0.8.9.json' ai-tracking-v085/project/app/src/main/java/kr/ledoa/cut/aitest/MainActivity.java
+          grep -q 'path.fillBetweenManualKeyframes()' ai-tracking-v085/project/app/src/main/java/kr/ledoa/cut/aitest/MainActivity.java
+          grep -q 'path.nextManualAfter(start)' ai-tracking-v085/project/app/src/main/java/kr/ledoa/cut/aitest/MainActivity.java
+          grep -q 'manualAnchorsPreserved' ai-tracking-v085/project/app/src/main/java/kr/ledoa/cut/aitest/MainActivity.java
+          grep -q 'manualKeyframes.higherKey(ms)' ai-tracking-v085/project/app/src/main/java/kr/ledoa/cut/aitest/FacePath.java
+          grep -q 'manualInterpolatedReviewFrames' ai-tracking-v085/project/app/src/main/java/kr/ledoa/cut/aitest/MainActivity.java
+          grep -q 'identityLocked' ai-tracking-v085/project/app/src/main/java/kr/ledoa/cut/aitest/FacePath.java
+          grep -q 'SELECTED_PERSON_LOST_MANUAL_RESELECT_REQUIRED' ai-tracking-v085/project/app/src/main/java/kr/ledoa/cut/aitest/FacePath.java
+          grep -q 'if(path.isIdentityLocked())' ai-tracking-v085/project/app/src/main/java/kr/ledoa/cut/aitest/MainActivity.java
+          grep -q 'smallW=Math.max(8,Math.min(14' ai-tracking-v085/project/app/src/main/java/kr/ledoa/cut/aitest/MainActivity.java
+          grep -q 'pixel.setFilterBitmap(true)' ai-tracking-v085/project/app/src/main/java/kr/ledoa/cut/aitest/MainActivity.java
+          grep -q 'identityLockEvents' ai-tracking-v085/project/app/src/main/java/kr/ledoa/cut/aitest/MainActivity.java
+          grep -q 'appearanceFluctuationFrames' ai-tracking-v085/project/app/src/main/java/kr/ledoa/cut/aitest/MainActivity.java
+          grep -q 'gap>=500' ai-tracking-v085/project/app/src/main/java/kr/ledoa/cut/aitest/FacePath.java
+          grep -q 'CONTINUOUS_MOTION_APPEARANCE_SHIFT' ai-tracking-v085/project/app/src/main/java/kr/ledoa/cut/aitest/FacePath.java
+          grep -q 'identityLockThresholdMs' ai-tracking-v085/project/app/src/main/java/kr/ledoa/cut/aitest/MainActivity.java
+      - name: Restore existing test signing identity
+        run: |
+          mkdir -p "$HOME/.android"
+          base64 -d signing/v037_debug.keystore.b64 > "$HOME/.android/debug.keystore"
+          chmod 600 "$HOME/.android/debug.keystore"
+      - name: Build standalone ARM64 patch
+        working-directory: ai-tracking-v085/project
+        run: gradle --no-daemon :app:assembleDebug
+      - name: Verify standalone APK
+        run: |
+          set -euo pipefail
+          APK=ai-tracking-v085/project/app/build/outputs/apk/debug/app-debug.apk
+          AAPT=$(find "$ANDROID_HOME/build-tools" -type f -name aapt | sort -V | tail -1)
+          SIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)
+          "$AAPT" dump badging "$APK" | tee /tmp/ledoa-v089-badging.txt
+          grep -q "package: name='kr.ledoa.cut.aiface089'" /tmp/ledoa-v089-badging.txt
+          grep -q "versionCode='809'" /tmp/ledoa-v089-badging.txt
+          "$SIGNER" verify "$APK"
+          cp "$APK" LEDOA_AI_FACE_BALANCED_SOFT_v0.8.9.apk
+          sha256sum LEDOA_AI_FACE_BALANCED_SOFT_v0.8.9.apk
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LEDOA_AI_FACE_BALANCED_SOFT_v0.8.9_APK
+          path: LEDOA_AI_FACE_BALANCED_SOFT_v0.8.9.apk
+          if-no-files-found: error
