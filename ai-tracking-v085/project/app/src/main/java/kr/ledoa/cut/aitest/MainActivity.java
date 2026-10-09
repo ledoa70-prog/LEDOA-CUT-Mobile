@@ -18,6 +18,8 @@ import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
+import android.text.InputType;
 import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.TextView;
@@ -83,6 +85,10 @@ public final class MainActivity extends Activity {
     private MediaMetadataRetriever retriever;
     private Uri videoUri;
     private long durationMs=0,currentMs=0,anchorMs=-1;
+    // Explicit half-open range [start,end). No mosaic or analysis outside it.
+    private volatile long trackRangeStartMs=0,trackRangeEndMs=0;
+    private EditText rangeStartInput,rangeEndInput;
+    private Button rangeFromBtn,rangeToBtn,rangeApplyBtn;
     private volatile boolean analysing=false;
     private FacePath.Box selected;
     private List<FacePath.Box> visibleFaces=new ArrayList<>();
@@ -136,7 +142,7 @@ public final class MainActivity extends Activity {
     private void renderUi(){
         LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(Color.rgb(13,19,27));root.setPadding(dp(10),dp(6),dp(10),dp(6));
-        root.addView(text("LEDOA CUT  |  AI 수동보정 연속추적 TEST 0.8.6",18,Color.WHITE));
+        root.addView(text("LEDOA CUT  |  AI 지정구간 추적 TEST 0.8.6.1",18,Color.WHITE));
         root.addView(text("정식 앱과 분리 · 얼굴+상반신 옷 보조 추적 · 모자이크 85%",12,Color.rgb(188,199,215)));
         frameView=new FrameView();root.addView(frameView,new LinearLayout.LayoutParams(-1,0,1));frameView.setMinimumHeight(dp(150));
         clock=text("00:00.0 / 00:00.0",12,Color.WHITE);root.addView(clock);
@@ -146,6 +152,36 @@ public final class MainActivity extends Activity {
             public void onStartTrackingTouch(SeekBar s){ stopPlayback(false); }
             public void onStopTrackingTouch(SeekBar s){if(!analysing && durationMs>0){long target=durationMs*s.getProgress()/1000; if(target!=anchorMs){selected=null;anchorMs=-1;} preview(target);}}
         });
+        // Compact two-row control: direct millisecond time editing OR capture
+        // the visible playhead; explicit apply resets only this test track.
+        LinearLayout timeFields=new LinearLayout(this);
+        timeFields.setOrientation(LinearLayout.HORIZONTAL);
+        timeFields.addView(text("시작",12,Color.WHITE),new LinearLayout.LayoutParams(dp(44),dp(42)));
+        rangeStartInput=new EditText(this);
+        rangeStartInput.setSingleLine(true);
+        rangeStartInput.setText("00:00.000");
+        rangeStartInput.setTextSize(14);
+        rangeStartInput.setTextColor(Color.WHITE);
+        rangeStartInput.setInputType(InputType.TYPE_CLASS_TEXT);
+        rangeStartInput.setSelectAllOnFocus(true);
+        timeFields.addView(rangeStartInput,new LinearLayout.LayoutParams(0,dp(42),1));
+        timeFields.addView(text("종료",12,Color.WHITE),new LinearLayout.LayoutParams(dp(44),dp(42)));
+        rangeEndInput=new EditText(this);
+        rangeEndInput.setSingleLine(true);
+        rangeEndInput.setText("00:00.000");
+        rangeEndInput.setTextSize(14);
+        rangeEndInput.setTextColor(Color.WHITE);
+        rangeEndInput.setInputType(InputType.TYPE_CLASS_TEXT);
+        rangeEndInput.setSelectAllOnFocus(true);
+        timeFields.addView(rangeEndInput,new LinearLayout.LayoutParams(0,dp(42),1));
+        root.addView(timeFields);
+        LinearLayout rangeButtons=new LinearLayout(this);rangeButtons.setOrientation(LinearLayout.HORIZONTAL);
+        rangeFromBtn=btn("현재→시작");
+        rangeToBtn=btn("현재→종료");
+        rangeApplyBtn=btn("구간 적용");
+        for(Button b:new Button[]{rangeFromBtn,rangeToBtn,rangeApplyBtn})
+            rangeButtons.addView(b,new LinearLayout.LayoutParams(0,dp(42),1));
+        root.addView(rangeButtons);
         LinearLayout buttons=new LinearLayout(this);buttons.setOrientation(LinearLayout.HORIZONTAL);
         openBtn=btn("영상 불러오기");trackBtn=btn("선택 얼굴 추적");cancelBtn=btn("중단");saveBtn=btn("추적 데이터 저장");
         for(Button button:new Button[]{openBtn,trackBtn,cancelBtn})buttons.addView(button,new LinearLayout.LayoutParams(0,dp(52),1));
@@ -167,6 +203,15 @@ public final class MainActivity extends Activity {
         trackBtn.setOnClickListener(v->startAnalysis());
         cancelBtn.setOnClickListener(v->{cancel.set(true);status.setText("중단 요청 중…");});
         saveBtn.setOnClickListener(v->saveTrack());
+        rangeFromBtn.setOnClickListener(v->{
+            if(durationMs>0&&!analysing&&!playing)
+                rangeStartInput.setText(TrackWindow.formatTime(currentMs));
+        });
+        rangeToBtn.setOnClickListener(v->{
+            if(durationMs>0&&!analysing&&!playing)
+                rangeEndInput.setText(TrackWindow.formatTime(currentMs));
+        });
+        rangeApplyBtn.setOnClickListener(v->applyTrackingRange());
         diagnosticBtn.setOnClickListener(v->saveDiagnostic());
         playBtn.setOnClickListener(v->togglePlayback());
         manualBoxBtn.setOnClickListener(v->{
@@ -187,9 +232,46 @@ public final class MainActivity extends Activity {
         saveBtn.setEnabled(!analysing && !playing && !path.points().isEmpty());
         if(diagnosticBtn!=null)diagnosticBtn.setEnabled(!analysing && !playing);
         seek.setEnabled(!analysing && durationMs>0);
+        boolean editable=!analysing&&!playing&&durationMs>0;
+        rangeFromBtn.setEnabled(editable);rangeToBtn.setEnabled(editable);
+        rangeApplyBtn.setEnabled(editable);
+        rangeStartInput.setEnabled(editable);rangeEndInput.setEnabled(editable);
         playBtn.setEnabled(!analysing && retriever!=null && durationMs>0);
         if(manualBoxBtn!=null)manualBoxBtn.setEnabled(!analysing&&!playing&&frameView.frame!=null);
         playBtn.setText(playing?"Ⅱ 일시정지":"▶ 모자이크 재생");
+    }
+    private boolean trackingInside(long ms){
+        return trackRangeEndMs>trackRangeStartMs &&
+            ms>=trackRangeStartMs && ms<trackRangeEndMs;
+    }
+    private boolean rangeInputsMatchApplied(){
+        return rangeStartInput.getText().toString().trim().equals(
+                    TrackWindow.formatTime(trackRangeStartMs)) &&
+               rangeEndInput.getText().toString().trim().equals(
+                    TrackWindow.formatTime(trackRangeEndMs));
+    }
+    private void applyTrackingRange(){
+        if(analysing||playing||durationMs<=0)return;
+        try{
+            long start=TrackWindow.parseTime(rangeStartInput.getText().toString());
+            long end=TrackWindow.parseTime(rangeEndInput.getText().toString());
+            TrackWindow window=new TrackWindow(start,end,durationMs);
+            // Prevent accidentally keeping masks from another selected range.
+            trackRangeStartMs=window.startMs;
+            trackRangeEndMs=window.endMs;
+            rangeStartInput.setText(TrackWindow.formatTime(start));
+            rangeEndInput.setText(TrackWindow.formatTime(end));
+            selected=null;anchorMs=-1;selectedBody=null;
+            manualBoxMode=false;manualCorrectionPending=false;
+            manualBoxBtn.setText("수동 얼굴박스 지정");
+            path.reset();bodyClothing.reset();continuity.reset();
+            analysedEndMs=0;analysisElapsedMs=0;
+            preview(start,"추적 구간 "+TrackWindow.formatTime(start)+" ~ "+
+                TrackWindow.formatTime(end)+" · 시작 화면에서 얼굴을 선택해 주세요.");
+            controls();
+        }catch(IllegalArgumentException e){
+            status.setText("구간 입력 오류: "+e.getMessage());
+        }
     }
     private String fmt(long m){return String.format(Locale.KOREA,"%02d:%02d.%01d",m/60000,(m/1000)%60,(m/100)%10);}
     private void pickVideo(){
@@ -216,11 +298,17 @@ public final class MainActivity extends Activity {
                 MediaMetadataRetriever old=retriever;retriever=r;
                 if(old!=null){try{old.release();}catch(java.io.IOException e){android.util.Log.w("LEDOA-AI","Previous video release failed",e);}}videoUri=uri;
                 durationMs=ms;currentMs=0;anchorMs=-1;selected=null;path.reset();manualBoxMode=false;manualCorrectionPending=false;
+                trackRangeStartMs=0;trackRangeEndMs=ms;
                 bodyClothing.reset();visibleBody=null;
                 roiAttempts=roiAccepted=roiDiscarded=roiAmbiguous=0;
                 roiThrottled=roiMemoryFailures=0;roiDisabled=false;roiLastScanMs=-10000;
                 opticalBridge.reset();
-                runOnUiThread(()->{status.setText("원하는 얼굴을 터치해 주세요.");controls();});
+                runOnUiThread(()->{
+                    rangeStartInput.setText(TrackWindow.formatTime(0));
+                    rangeEndInput.setText(TrackWindow.formatTime(ms));
+                    status.setText("시작·종료를 정해 '구간 적용'을 누르거나 전체 영상에서 얼굴을 선택하세요.");
+                    controls();
+                });
                 preview(0);
             }catch(Exception e){runOnUiThread(()->status.setText("영상 열기 실패: "+e.getMessage()));}
         });
@@ -268,7 +356,9 @@ public final class MainActivity extends Activity {
                     }
                     currentMs=ms;
                     visibleFaces=Collections.emptyList();
-                    frameView.setFrame(ready,visibleFaces,path.interpolated(ms),path.nearest(ms));
+                    frameView.setFrame(ready,visibleFaces,
+                        trackingInside(ms)?path.interpolated(ms):null,
+                        trackingInside(ms)?path.nearest(ms):null);
                     updatingSeek=true;
                     seek.setProgress((int)(1000.0*ms/durationMs));
                     updatingSeek=false;
@@ -477,7 +567,9 @@ public final class MainActivity extends Activity {
                 runOnUiThread(()->{
                     if(token!=generation.get()){if(result!=null)result.recycle();return;}
                     visibleFaces=boxes;visibleBody=poseForUi;
-                    frameView.setFrame(result,boxes,path.interpolated(shown),path.nearest(shown));
+                    frameView.setFrame(result,boxes,
+                        trackingInside(shown)?path.interpolated(shown):null,
+                        trackingInside(shown)?path.nearest(shown):null);
                     updatingSeek=true;seek.setProgress((int)(1000.0*shown/durationMs));updatingSeek=false;
                     clock.setText(fmt(shown)+" / "+fmt(durationMs));
                     status.setText(completion!=null?completion:(selected==null?"터치해서 가릴 얼굴을 선택하세요.":"노란 얼굴 상자 선택됨 · 추적 또는 해당 시점에서 재선택 가능"));
@@ -489,6 +581,14 @@ public final class MainActivity extends Activity {
     private void onFaceTap(float u,float v){
         if(playing){status.setText("먼저 Ⅱ 일시정지를 누른 뒤 얼굴을 선택해 주세요.");return;}
         if(analysing||visibleFaces==null)return;
+        if(!trackingInside(currentMs)){
+            status.setText("설정한 추적 구간 밖입니다. 구간 시작 화면에서 얼굴을 선택하세요.");return;
+        }
+        if(path.exact(trackRangeStartMs)==null && currentMs!=trackRangeStartMs){
+            status.setText("구간 시작 "+TrackWindow.formatTime(trackRangeStartMs)+
+                "에서 먼저 얼굴을 선택해 주세요.");
+            preview(trackRangeStartMs);return;
+        }
         FacePath.Box picked=null;
         for(FacePath.Box b:visibleFaces)if(b.expanded(.08f).contains(u,v)){
             if(picked==null||b.area()<picked.area())picked=b;
@@ -510,6 +610,13 @@ public final class MainActivity extends Activity {
      */
     private void onManualFaceRegion(float x1,float y1,float x2,float y2){
         if(analysing||playing||frameView.frame==null)return;
+        if(!trackingInside(currentMs)){
+            status.setText("설정한 추적 구간에서만 수동 얼굴 박스를 지정할 수 있습니다.");return;
+        }
+        if(path.exact(trackRangeStartMs)==null && currentMs!=trackRangeStartMs){
+            status.setText("먼저 추적 시작 화면에서 얼굴을 선택해 주세요.");
+            preview(trackRangeStartMs);return;
+        }
         float l=Math.max(0,Math.min(x1,x2)),t=Math.max(0,Math.min(y1,y2));
         float r=Math.min(1,Math.max(x1,x2)),b=Math.min(1,Math.max(y1,y2));
         if(r-l<.065f||b-t<.045f||r-l>.90f||b-t>.90f){
@@ -535,8 +642,18 @@ public final class MainActivity extends Activity {
     }
     private void startAnalysis(){
         if(selected==null||retriever==null||analysing)return;
+        if(!rangeInputsMatchApplied()){
+            status.setText("시작·종료 시각을 변경했다면 먼저 '구간 적용'을 눌러주세요.");return;
+        }
+        if(anchorMs<trackRangeStartMs||anchorMs>=trackRangeEndMs){
+            status.setText("추적 시작 얼굴이 지정 구간 밖에 있습니다. 다시 선택해 주세요.");return;
+        }
+        if(path.exact(trackRangeStartMs)==null){
+            status.setText("구간 시작 화면에서 얼굴을 먼저 지정해 주세요.");
+            preview(trackRangeStartMs);return;
+        }
         stopPlayback(false);
-        final long start=anchorMs,end=durationMs;
+        final long start=anchorMs,end=trackRangeEndMs;
         final FacePath.Box anchor=selected;
         final BodyClothing.Observation initialBody=selectedBody;
         final boolean keepManualKeyframe=manualCorrectionPending;
@@ -585,6 +702,9 @@ public final class MainActivity extends Activity {
                     }else frame=bitmapAt(requested);
                     decodeMs+=SystemClock.elapsedRealtime()-time;
                     if(frame==null)throw new java.io.IOException("영상 프레임을 읽지 못했습니다.");
+                    // Some decoders return a later timestamp than requested:
+                    // do not analyze or cache any frame at/after the end.
+                    if(ms>=end){frame.recycle();break;}
                     if(ms<=processed){frame.recycle();continue;}
                     if(ms-lastKey>=STEP_MS)key=true;
                     sampledFrames++;processed=ms;
@@ -684,6 +804,10 @@ public final class MainActivity extends Activity {
         try{
             JSONObject obj=new JSONObject();obj.put("schema",1).put("kind","preview-test-only");
             obj.put("strength",85).put("opacity",100).put("frameStepMs",STEP_MS).put("durationMs",durationMs);
+            obj.put("trackWindowStartMs",trackRangeStartMs);
+            obj.put("trackWindowEndMs",trackRangeEndMs);
+            obj.put("trackWindowEndExclusive",true);
+            obj.put("trackingOnlyInsideSelectedWindow",true);
             obj.put("reviewCount",path.reviewCount());
             obj.put("uncoveredCount",path.uncoveredCount());
             obj.put("analysisElapsedMs",analysisElapsedMs);
@@ -740,6 +864,7 @@ public final class MainActivity extends Activity {
             // Do not disclose device-local document URIs or raw clothing features.
             JSONArray arr=new JSONArray();
             for(FacePath.Point p:path.points()){
+                if(!trackingInside(p.ms))continue;
                 JSONObject o=new JSONObject().put("ms",p.ms).put("status",p.status.name());
                 o.put("candidateCount",p.candidates).put("reason",p.reason);
                 if(p.box!=null)o.put("x",p.box.x).put("y",p.box.y).put("w",p.box.w).put("h",p.box.h);
@@ -787,11 +912,11 @@ public final class MainActivity extends Activity {
             float w=fw*scale,h=fh*scale,left=(getWidth()-w)/2f,top=(getHeight()-h)/2f;
             display.set(left,top,left+w,top+h);
             c.drawBitmap(frame,null,display,image);
-            if(interpolated!=null&&interpolated.box!=null){
+            if(trackingInside(currentMs)&&interpolated!=null&&interpolated.box!=null){
                 float margin=(interpolated.status==FacePath.Status.FLOW_ESTIMATED)? .24f:.18f;
                 drawMosaic(c,interpolated.box.expanded(margin));
             }
-            if(nearest!=null&&(nearest.status==FacePath.Status.LOST ||
+            if(trackingInside(currentMs)&&nearest!=null&&(nearest.status==FacePath.Status.LOST ||
                     nearest.status==FacePath.Status.UNCERTAIN ||
                     nearest.status==FacePath.Status.BODY_HELD)){
                 line.setColor(Color.RED);line.setTextSize(dp(15));
@@ -800,7 +925,7 @@ public final class MainActivity extends Activity {
                     :"추적 확인 필요 (이 구간은 가림이 없습니다)",
                     left+dp(8),top+dp(26),line);
             }
-            if(nearest!=null && (nearest.status==FacePath.Status.FLOW_ESTIMATED||nearest.status==FacePath.Status.DETECTION_BRIDGED)){
+            if(trackingInside(currentMs)&&nearest!=null && (nearest.status==FacePath.Status.FLOW_ESTIMATED||nearest.status==FacePath.Status.DETECTION_BRIDGED)){
                 line.setColor(Color.YELLOW);line.setTextSize(dp(14));
                 c.drawText("자동 보완 가림 · 직접 확인 필요",
                     left+dp(6),top+dp(45),line);
