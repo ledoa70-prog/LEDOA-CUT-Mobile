@@ -2,7 +2,7 @@ name: Build LEDOA selected-person identity lock and soft mosaic v0.8.8
 on:
   push:
     branches: [ feature/ai-face-identitylock-v088 ]
-    paths: [ 'ai-tracking-v085/**', 'ai-tracking-v086/**', 'ai-tracking-v087/**', 'ai-tracking-v088/**', '.github/workflows/build-ai-face-identitylock-v088.yml' ]
+    paths: [ 'ai-tracking-v073/**', 'ai-tracking-v085/**', 'ai-tracking-v086/**', 'ai-tracking-v087/**', 'ai-tracking-v088/**', '.github/workflows/build-ai-face-identitylock-v088.yml' ]
   workflow_dispatch:
 permissions:
   contents: read
