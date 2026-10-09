@@ -131,7 +131,7 @@ public final class MainActivity extends Activity {
                 .setDetectorMode(PoseDetectorOptions.SINGLE_IMAGE_MODE).build();
         poseDetector=PoseDetection.getClient(poseOptions);
         renderUi();
-        if(interrupted)status.setText("이전 얼굴 추적이 중단됐습니다. '진단 기록 저장'으로 v0.8.6.1 오류 정보를 보내주세요.");
+        if(interrupted)status.setText("이전 얼굴 추적이 중단됐습니다. '진단 기록 저장'으로 v0.8.6.3 오류 정보를 보내주세요.");
     }
     private TextView text(String message,int size,int color){
         TextView t=new TextView(this);t.setText(message);t.setTextSize(size);t.setTextColor(color);
@@ -142,7 +142,7 @@ public final class MainActivity extends Activity {
     private void renderUi(){
         LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(Color.rgb(13,19,27));root.setPadding(dp(10),dp(6),dp(10),dp(6));
-        root.addView(text("LEDOA CUT  |  AI 지정구간 추적 TEST 0.8.6.1",18,Color.WHITE));
+        root.addView(text("LEDOA CUT  |  AI 지정구간 추적 TEST 0.8.6.3",18,Color.WHITE));
         root.addView(text("정식 앱과 분리 · 얼굴+상반신 옷 보조 추적 · 모자이크 85%",12,Color.rgb(188,199,215)));
         frameView=new FrameView();root.addView(frameView,new LinearLayout.LayoutParams(-1,0,1));frameView.setMinimumHeight(dp(150));
         clock=text("00:00.0 / 00:00.0",12,Color.WHITE);root.addView(clock);
@@ -789,7 +789,7 @@ public final class MainActivity extends Activity {
         Intent intent=new Intent(Intent.ACTION_CREATE_DOCUMENT);
         intent.setType("text/plain");
         intent.addCategory(Intent.CATEGORY_OPENABLE);
-        intent.putExtra(Intent.EXTRA_TITLE,"LEDOA_FACE_CRASH_v0.8.6.1.txt");
+        intent.putExtra(Intent.EXTRA_TITLE,"LEDOA_FACE_CRASH_v0.8.6.3.txt");
         startActivityForResult(intent,SAVE_DIAGNOSTIC);
     }
     private void writeDiagnostic(Uri uri){
@@ -805,7 +805,7 @@ public final class MainActivity extends Activity {
     private void saveTrack(){
         if(path.points().isEmpty())return;
         Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.setType("application/json");i.addCategory(Intent.CATEGORY_OPENABLE);
-        i.putExtra(Intent.EXTRA_TITLE,"LEDOA_FACE_FLOW_TRACK_v0.8.6.1.json");startActivityForResult(i,SAVE_TRACK);
+        i.putExtra(Intent.EXTRA_TITLE,"LEDOA_FACE_FLOW_TRACK_v0.8.6.3.json");startActivityForResult(i,SAVE_TRACK);
     }
     private void writeTrack(Uri uri){
         if(uri==null)return;
@@ -817,6 +817,8 @@ public final class MainActivity extends Activity {
             obj.put("trackWindowEndExclusive",true);
             obj.put("trackingOnlyInsideSelectedWindow",true);
             obj.put("reviewCount",path.reviewCount());
+            obj.put("identityGuardFlowRecoveries",path.flowGuidedRecoveryCount());
+            obj.put("identityGuardRejections",path.identityGuardRejectedCount());
             obj.put("uncoveredCount",path.uncoveredCount());
             obj.put("analysisElapsedMs",analysisElapsedMs);
             obj.put("decodeMs",decodeMs).put("faceInferenceMs",faceMs).put("poseInferenceMs",poseMs).put("motionMs",motionMs);
@@ -859,7 +861,7 @@ public final class MainActivity extends Activity {
             obj.put("flowRejectionsElapsed",opticalBridge.rejectedElapsed());
             obj.put("flowRejectionsNoAnchor",opticalBridge.rejectedNoAnchor());
             obj.put("crashDiagnosticAvailable",true);
-            obj.put("analysisStabilityVersion","0.8.6.1");
+            obj.put("analysisStabilityVersion","0.8.6.3");
             obj.put("roiDisabledForStability",ROI_DISABLED_FOR_STABILITY);
             obj.put("flowLazyTrustedFrames",lazyFlow.trustedUpdates());
             obj.put("flowLazyPyramidBuilds",lazyFlow.lazySeeds());
