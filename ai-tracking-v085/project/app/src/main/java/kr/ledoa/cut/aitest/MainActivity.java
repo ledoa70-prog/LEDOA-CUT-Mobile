@@ -131,7 +131,7 @@ public final class MainActivity extends Activity {
                 .setDetectorMode(PoseDetectorOptions.SINGLE_IMAGE_MODE).build();
         poseDetector=PoseDetection.getClient(poseOptions);
         renderUi();
-        if(interrupted)status.setText("이전 얼굴 추적이 중단됐습니다. '진단 기록 저장'으로 v0.8.6 오류 정보를 보내주세요.");
+        if(interrupted)status.setText("이전 얼굴 추적이 중단됐습니다. '진단 기록 저장'으로 v0.8.6.1 오류 정보를 보내주세요.");
     }
     private TextView text(String message,int size,int color){
         TextView t=new TextView(this);t.setText(message);t.setTextSize(size);t.setTextColor(color);
@@ -781,7 +781,7 @@ public final class MainActivity extends Activity {
         Intent intent=new Intent(Intent.ACTION_CREATE_DOCUMENT);
         intent.setType("text/plain");
         intent.addCategory(Intent.CATEGORY_OPENABLE);
-        intent.putExtra(Intent.EXTRA_TITLE,"LEDOA_FACE_CRASH_v0.8.6.txt");
+        intent.putExtra(Intent.EXTRA_TITLE,"LEDOA_FACE_CRASH_v0.8.6.1.txt");
         startActivityForResult(intent,SAVE_DIAGNOSTIC);
     }
     private void writeDiagnostic(Uri uri){
@@ -797,7 +797,7 @@ public final class MainActivity extends Activity {
     private void saveTrack(){
         if(path.points().isEmpty())return;
         Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.setType("application/json");i.addCategory(Intent.CATEGORY_OPENABLE);
-        i.putExtra(Intent.EXTRA_TITLE,"LEDOA_FACE_FLOW_TRACK_v0.8.6.json");startActivityForResult(i,SAVE_TRACK);
+        i.putExtra(Intent.EXTRA_TITLE,"LEDOA_FACE_FLOW_TRACK_v0.8.6.1.json");startActivityForResult(i,SAVE_TRACK);
     }
     private void writeTrack(Uri uri){
         if(uri==null)return;
@@ -851,7 +851,7 @@ public final class MainActivity extends Activity {
             obj.put("flowRejectionsElapsed",opticalBridge.rejectedElapsed());
             obj.put("flowRejectionsNoAnchor",opticalBridge.rejectedNoAnchor());
             obj.put("crashDiagnosticAvailable",true);
-            obj.put("analysisStabilityVersion","0.8.6");
+            obj.put("analysisStabilityVersion","0.8.6.1");
             obj.put("roiDisabledForStability",ROI_DISABLED_FOR_STABILITY);
             obj.put("flowLazyTrustedFrames",lazyFlow.trustedUpdates());
             obj.put("flowLazyPyramidBuilds",lazyFlow.lazySeeds());
