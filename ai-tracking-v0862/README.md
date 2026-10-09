@@ -1,0 +1,22 @@
+# LEDOA AI FACE v0.8.6.2 identity guard test patch
+
+Base branch: feature/ai-face-v086-range-main (v0.8.6.1)
+App package: kr.ledoa.cut.aiface0862 (independently installable, does not replace 0.8.6.1)
+Android source: ai-tracking-v085/project
+
+## Patch
+- User-selected appearance reference copied once and protected from drift.
+- Long tracking gaps require three confirmed observations before the same person is marked TRACKED.
+- Provisional optical-flow box cannot authorize a sudden >2.8x area jump at the next <=160ms sample.
+- Extraordinary 100ms confirmed-face scale jumps are review-required.
+- Prior reviewed/uncertain frame records preserved; no MP4 export added.
+
+## Regression
+- Existing: bash ai-tracking-v0861/run-tests.sh
+- New: javac -cp ai-tracking-v085/test-out -d ai-tracking-v085/test-out ai-tracking-v0862/IdentityGuardV0862Test.java
+- New: java -cp ai-tracking-v085/test-out kr.ledoa.cut.aitest.IdentityGuardV0862Test
+- Build workflow: .github/workflows/build-ai-face-identityguard-v0862.yml
+
+## Limitations
+Code review only until GitHub Actions completes and a real Android video tracking run is verified.
+Do not present this as a tested mosaic result or safe anonymization.
