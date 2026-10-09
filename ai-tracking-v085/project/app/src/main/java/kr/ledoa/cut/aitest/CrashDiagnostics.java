@@ -77,7 +77,7 @@ final class CrashDiagnostics {
     private void recordCrash(Throwable error,String where){
         try{
             StringBuilder b=new StringBuilder();
-            b.append("LEDOA AI face diagnostics v0.8.6.1\n");
+            b.append("LEDOA AI face diagnostics v0.8.6.3\n");
             b.append("reason=").append(where).append("\n");
             b.append("lastFrameMs=").append(ms).append("\n");
             b.append("stage=").append(stage).append("\n");
@@ -99,7 +99,7 @@ final class CrashDiagnostics {
     }
     String export(){
         StringBuilder b=new StringBuilder();
-        b.append("LEDOA AI FACE v0.8.6.1 DIAGNOSTICS\n");
+        b.append("LEDOA AI FACE v0.8.6.3 DIAGNOSTICS\n");
         b.append("previousAnalysisInterrupted=").append(preferences.getBoolean("analysisActive",false)).append("\n");
         b.append("lastSavedFrameMs=").append(preferences.getLong("lastProgressMs",-1)).append("\n");
         b.append("lastSavedStage=").append(preferences.getString("lastStage","UNKNOWN")).append("\n");
