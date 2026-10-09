@@ -44,6 +44,13 @@ public final class FacePath {
     }
     private final TreeMap<Long,Point> frames=new TreeMap<>();
     private final ArrayList<float[]> appearanceGallery=new ArrayList<>();
+    private long lastGallerySampleMs=-1;
+    // Scores only; no facial pixels/embeddings are exported in the diagnostic JSON.
+    private final TreeMap<Long,float[]> similarityEvidence=new TreeMap<>();
+    public synchronized float[] similarityEvidence(long ms){
+        float[] scores=similarityEvidence.get(ms);
+        return scores==null?null:Arrays.copyOf(scores,scores.length);
+    }
     // v0.8.6.2: immutable descriptor from a deliberate user's face selection.
     // Later AI decisions MUST NOT replace this identity anchor.
     private float[] selectedOriginalAppearance=null;
@@ -71,7 +78,8 @@ public final class FacePath {
     public synchronized int confirmedGapReviewCount(){return confirmedGapReviews;}
     public synchronized int manualKeyframeCount(){return manualKeyframes;}
     public synchronized void reset(){
-        frames.clear();appearanceGallery.clear();selectedOriginalAppearance=null;last=previous=pending=null;
+        frames.clear();appearanceGallery.clear();similarityEvidence.clear();
+        selectedOriginalAppearance=null;lastGallerySampleMs=-1;last=previous=pending=null;
         flowGuidedRecoveries=0;identityGuardRejections=0;
         lastMs=previousMs=pendingMs=-1;lastId=-1;confirmations=0;
         bodyValidatedCount=bodyRecoveredCount=edgeRecoveredCount=0;
@@ -122,10 +130,13 @@ public final class FacePath {
     public synchronized Box lastReliableBox(){return last;}
     public synchronized long lastReliableTimestamp(){return lastMs;}
     public synchronized void anchor(long ms,Box b){
-        Objects.requireNonNull(b);frames.tailMap(ms,true).clear();coverageEndMs=-1;confirmingFrames.clear();
+        Objects.requireNonNull(b);frames.tailMap(ms,true).clear();
+        similarityEvidence.tailMap(ms,true).clear();
+        coverageEndMs=-1;confirmingFrames.clear();
         last=b;lastMs=ms;lastId=b.id;previous=null;previousMs=-1;pending=null;pendingMs=-1;confirmations=0;scalePending=null;scalePendingMs=-1;scalePendingCount=0;
         selectedOriginalAppearance=b.appearance==null?null:Arrays.copyOf(b.appearance,b.appearance.length);
         appearanceGallery.clear();if(selectedOriginalAppearance!=null)appearanceGallery.add(Arrays.copyOf(selectedOriginalAppearance,selectedOriginalAppearance.length));
+        lastGallerySampleMs=ms;
         frames.put(ms,new Point(ms,b,Status.VERIFIED,-1,"USER_SELECTED"));
     }
     /**
@@ -178,6 +189,17 @@ public final class FacePath {
         return filled;
     }
     private static double scale(Box a,Box b){return b.area()/Math.max(.0001f,a.area());}
+    private float originalSimilarity(Box b){
+        if(b==null||b.appearance==null||selectedOriginalAppearance==null)return -1;
+        return FaceAppearance.score(selectedOriginalAppearance,b.appearance);
+    }
+    private float trustedGallerySimilarity(Box b){
+        if(b==null||b.appearance==null||appearanceGallery.isEmpty())return -1;
+        float best=-1;
+        for(float[] reference:appearanceGallery)
+            best=Math.max(best,FaceAppearance.score(reference,b.appearance));
+        return best;
+    }
     private float appearance(Box b){
         if(b.appearance==null||appearanceGallery.isEmpty())return -1;
         float best=-1;
@@ -185,7 +207,7 @@ public final class FacePath {
         // Cap gallery similarity using the ORIGINAL face. Stops gradual
         // drift from turning another face into a new identity anchor.
         if(selectedOriginalAppearance!=null){
-            float original=FaceAppearance.score(selectedOriginalAppearance,b.appearance);
+            float original=originalSimilarity(b);
             if(original<0)return -1;
             best=Math.min(best,original+.10f);
         }
@@ -216,6 +238,12 @@ public final class FacePath {
         Map.Entry<Long,Point> tail=frames.lastEntry();
         if(tail!=null&&ms<=tail.getKey())throw new IllegalArgumentException("Samples must be chronological");
         List<Box> cs=unique(found);
+        float highestOriginal=-1,highestTrusted=-1;
+        for(Box b:cs){
+            highestOriginal=Math.max(highestOriginal,originalSimilarity(b));
+            highestTrusted=Math.max(highestTrusted,trustedGallerySimilarity(b));
+        }
+        similarityEvidence.put(ms,new float[]{highestOriginal,highestTrusted});
         long gap=ms-lastMs;
         Pick chosen=chooseMotion(last,previous,lastId,gap,cs);
         // Multi-person privacy regression: 21.2s produced a one-frame TRACKED
@@ -294,8 +322,17 @@ public final class FacePath {
             if(chosen.reason.equals("ADAPTIVE_SCALE_REACQUIRED"))scaleRecoveredCount++;
             scalePending=null;scalePendingMs=-1;scalePendingCount=0;
             previous=last;previousMs=lastMs;last=chosen.box;lastMs=ms;lastId=chosen.box.id;
-            if(chosen.box.appearance!=null && appearanceGallery.size()<7 && appearance(chosen.box)>.82f)
+            // Collect distinct, REAL continuously verified face appearances every
+            // 200ms, including later head poses. Never learn from provisional or
+            // reacquired/review-required frames, which can poison identity.
+            boolean clean="MOTION_AND_APPEARANCE_MATCH".equals(chosen.reason) ||
+                "FACE_BODY_CORROBORATED".equals(chosen.reason);
+            if(clean && chosen.box.appearance!=null && appearanceGallery.size()<12 &&
+               (lastGallerySampleMs<0 || ms-lastGallerySampleMs>=200) &&
+               originalSimilarity(chosen.box)>=.62f){
                 appearanceGallery.add(Arrays.copyOf(chosen.box.appearance,chosen.box.appearance.length));
+                lastGallerySampleMs=ms;
+            }
             pending=null;pendingMs=-1;confirmations=0;
         }
         return point;
@@ -316,7 +353,11 @@ public final class FacePath {
                 boolean confirmed="REACQUIRED_APPEARANCE_STABLE".equals(chosen.reason);
                 boolean single=candidate.faceEvidence && !candidate.edgePartial &&
                     detectedCount==1;
-                if(original>=.73f && confirmed && single && nearRecentFlow(ms,candidate)){
+                boolean strongOriginal=original>=.73f;
+                boolean multiview=appearanceGallery.size()>1 && original>=.62f &&
+                    trustedGallerySimilarity(candidate)>=.79f;
+                if((strongOriginal||multiview) && confirmed && single &&
+                   nearRecentFlow(ms,candidate)){
                     chosen=new Pick(candidate,Status.TRACKED,"FLOW_GUIDED_REACQUIRED_REVIEW");
                 }else{
                     return new Pick(null,Status.UNCERTAIN,
@@ -509,6 +550,14 @@ public final class FacePath {
             double relativeArea=scale(last,b);
             if(relativeArea<.32||relativeArea>4.6)continue;
             float value=appearance(b);
+            // A turned head can mismatch the initial frontal/downward frame.
+            // Vetted gallery + recent optical flow SUPPORTS three-frame checking.
+            if(candidates.size()==1 && b.faceEvidence && !b.edgePartial &&
+               selectedOriginalAppearance!=null && appearanceGallery.size()>1 &&
+               originalSimilarity(b)>=.62f && trustedGallerySimilarity(b)>=.79f &&
+               nearRecentFlow(ms,b)){
+                value=Math.max(value,.76f);
+            }
             if(value<0){
                 // Tests without appearance signals: recovery only very near the lost location.
                 if(gap>650||last.dist(b)>.28)continue;
