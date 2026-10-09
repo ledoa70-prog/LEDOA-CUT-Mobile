@@ -30,7 +30,7 @@ public final class FacePathV073Test {
     p=f.step(1100,list(box(.56f,.25f,.24f,49,ref)));
     ok(p.status==FacePath.Status.UNCERTAIN,"still waiting for confirmation");
     p=f.step(1200,list(box(.57f,.25f,.25f,8,ref)));
-    ok(p.status==FacePath.Status.UNCERTAIN && f.isIdentityLocked(),"fail closed after long absence, even when visual color resembles the original face");
+    ok(p.status==FacePath.Status.TRACKED && p.reason.equals("REACQUIRED_APPEARANCE_STABLE"),"recover despite ID changes");
     f.reset();f.anchor(0,box(.2f,.2f,.2f,1,ref));
     f.step(100,Collections.emptyList());f.step(200,Collections.emptyList());
     p=f.step(300,list(box(.53f,.25f,.24f,70,diff)));
