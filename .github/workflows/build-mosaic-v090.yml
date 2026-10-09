@@ -28,6 +28,9 @@ jobs:
           mkdir -p "$HOME/.android" ai-mosaic-v090/project/app/src/androidTest/assets
           base64 -d signing/v037_debug.keystore.b64 > "$HOME/.android/debug.keystore"
           chmod 600 "$HOME/.android/debug.keystore"
+          mkdir -p ai-mosaic-v090/project/app/src/main/assets
+          curl --fail --location --retry 2 https://media.githubusercontent.com/media/opencv/opencv_zoo/47534e27c9851bb1128ccc0102f1145e27f23f98/models/face_recognition_sface/face_recognition_sface_2021dec_int8.onnx -o ai-mosaic-v090/project/app/src/main/assets/sface_int8.onnx
+          echo '2b0e941e6f16cc048c20aee0c8e31f569118f65d702914540f7bfdc14048d78a  ai-mosaic-v090/project/app/src/main/assets/sface_int8.onnx' | sha256sum --check
           ASSETS=ai-mosaic-v090/project/app/src/androidTest/assets
           ffmpeg -hide_banner -loglevel error -f lavfi -i testsrc2=size=320x240:rate=30:duration=2 -f lavfi -i sine=frequency=440:sample_rate=48000:duration=2 -c:v libx264 -pix_fmt yuv420p -c:a aac -y "$ASSETS/sample.mp4"
           ffmpeg -hide_banner -loglevel error -i "$ASSETS/sample.mp4" -c copy -metadata:s:v rotate=90 -y "$ASSETS/rotated.mp4"
@@ -60,12 +63,14 @@ jobs:
           "$SIGNER" verify --verbose "$APK"
           cp "$APK" LEDOA_MOSAIC_EDITOR_v0.9.0.apk
           sha256sum LEDOA_MOSAIC_EDITOR_v0.9.0.apk
+          zip -rq LEDOA_MOSAIC_EDITOR_v0.9.0_SOURCE.zip ai-mosaic-v090 .github/workflows/build-mosaic-v090.yml -x '*/build/*' '*/.gradle/*' '*/test-out/*' '*/src/androidTest/assets/*' 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: LEDOA_MOSAIC_v0.9.0_RESULTS
           path: |
             LEDOA_MOSAIC_EDITOR_v0.9.0.apk
+            LEDOA_MOSAIC_EDITOR_v0.9.0_SOURCE.zip
             device-evidence/
             ai-mosaic-v090/project/app/build/reports/androidTests/
             ai-mosaic-v090/project/app/build/outputs/androidTest-results/

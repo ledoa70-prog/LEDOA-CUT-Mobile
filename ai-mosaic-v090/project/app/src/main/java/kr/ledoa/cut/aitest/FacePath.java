@@ -276,6 +276,7 @@ public final class FacePath {
         }
         similarityEvidence.put(ms,new float[]{highestOriginal,highestTrusted});
         long gap=ms-lastMs;
+        if(FaceAppearance.learned(selectedOriginalAppearance))return learnedStep(ms,gap,cs);
         if(scenePending){
             Pick shot=sceneRecovery(ms,cs);
             Point p=new Point(ms,shot.box,shot.status,cs.size(),shot.reason);frames.put(ms,p);
@@ -373,6 +374,46 @@ public final class FacePath {
             pending=null;pendingMs=-1;confirmations=0;
         }
         return point;
+    }
+    /** SFace path: identity is supported by a learned descriptor, not color.
+     * No descriptors are persisted. Temporal votes and runner-up separation are
+     * still required after a shot change, disappearance or large spatial jump. */
+    private Point learnedStep(long ms,long gap,List<Box> candidates){
+        Box best=null;float score=-1,runner=-1,original=-1;
+        for(Box b:candidates){
+            float o=originalSimilarity(b),g=trustedGallerySimilarity(b);
+            if(!FaceAppearance.learned(b.appearance))continue;
+            float value=.65f*o+.35f*g;
+            if(value>score){runner=score;score=value;best=b;original=o;}else runner=Math.max(runner,value);
+        }
+        boolean continuous=!scenePending&&gap<=250&&best!=null&&last!=null
+            &&last.dist(best)<Math.max(.12f,Math.max(last.w,last.h)*1.15f)
+            &&scale(last,best)>.32&&scale(last,best)<3;
+        float threshold=continuous?.72f:.78f;
+        String reason;
+        if(best==null||original<threshold||score<threshold||runner>=0&&score-runner<(continuous?.045f:.075f)){
+            pending=null;confirmations=0;confirmingFrames.clear();
+            reason=best==null?"NO_FACE_DETECTED":"EMBEDDING_IDENTITY_UNCERTAIN_REVIEW";
+            Point p=new Point(ms,null,best==null?Status.LOST:Status.UNCERTAIN,candidates.size(),reason);frames.put(ms,p);return p;
+        }
+        if(!continuous){
+            if(pending!=null&&ms-pendingMs<=240&&pending.dist(best)<.22f&&scale(pending,best)>.35&&scale(pending,best)<3)confirmations++;
+            else{confirmations=1;confirmingFrames.clear();}
+            pending=best;pendingMs=ms;confirmingFrames.put(ms,best);
+            if(confirmations<3){Point p=new Point(ms,null,Status.UNCERTAIN,candidates.size(),"EMBEDDING_CONFIRMING_"+confirmations+"_OF_3");frames.put(ms,p);return p;}
+            reason=scenePending?"SCENE_EMBEDDING_REACQUIRED_REVIEW":"EMBEDDING_REACQUIRED_REVIEW";
+            // Backfill only actual detections that just passed the same identity vote.
+            for(Map.Entry<Long,Box> e:confirmingFrames.entrySet())if(e.getKey()<ms){
+                Point old=frames.get(e.getKey());if(old!=null&&old.box==null){frames.put(e.getKey(),new Point(e.getKey(),e.getValue(),Status.DETECTION_BRIDGED,old.candidates,"EMBEDDING_CONFIRMED_BACKFILL_REVIEW"));confirmedBackfills++;}
+            }
+        }else reason="EMBEDDING_CONTINUOUS";
+        Point p=new Point(ms,best,Status.TRACKED,candidates.size(),reason);frames.put(ms,p);
+        previous=continuous?last:null;previousMs=lastMs;last=best;lastMs=ms;lastId=best.id;
+        if(continuous&&original>=.78f&&ms-lastGallerySampleMs>=400){
+            if(appearanceGallery.size()>=12)appearanceGallery.remove(1);
+            appearanceGallery.add(Arrays.copyOf(best.appearance,best.appearance.length));lastGallerySampleMs=ms;
+        }
+        scenePending=false;pending=null;confirmations=0;confirmingFrames.clear();return p;
     }
     /** Before a candidate updates last/appearanceGallery, reject impossible jumps.
      * Provisional optical-flow positions are negative evidence only: they can

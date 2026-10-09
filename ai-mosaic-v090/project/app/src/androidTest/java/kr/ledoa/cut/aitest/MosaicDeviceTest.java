@@ -44,6 +44,15 @@ public class MosaicDeviceTest {
   }
  }
  double error(Bitmap a,Bitmap b,float l,float t,float r,float d){double sum=0;int n=0;for(int y=(int)(t*a.getHeight());y<d*a.getHeight();y+=3)for(int x=(int)(l*a.getWidth());x<r*a.getWidth();x+=3){int p=a.getPixel(x,y),q=b.getPixel(x,y);sum+=Math.abs(((p>>16)&255)-((q>>16)&255))+Math.abs(((p>>8)&255)-((q>>8)&255))+Math.abs((p&255)-(q&255));n+=3;}return sum/n;}
+ @Test public void learnedIdentityIsStableUnderLighting()throws Exception{
+  File input=fixture("faces.mp4");MediaMetadataRetriever r=new MediaMetadataRetriever();r.setDataSource(input.getPath());Bitmap first=r.getFrameAtTime(0),changed=first.copy(Bitmap.Config.ARGB_8888,true);
+  android.graphics.Canvas canvas=new android.graphics.Canvas(changed);android.graphics.Paint paint=new android.graphics.Paint();paint.setColorFilter(new android.graphics.ColorMatrixColorFilter(new float[]{.8f,0,0,0,10,0,.8f,0,0,10,0,0,.8f,0,10,0,0,0,1,0}));canvas.drawBitmap(first,0,0,paint);
+  com.google.mlkit.vision.face.FaceDetector detector=com.google.mlkit.vision.face.FaceDetection.getClient(new com.google.mlkit.vision.face.FaceDetectorOptions.Builder().setPerformanceMode(2).setLandmarkMode(1).build());
+  try(FaceIdentity id=new FaceIdentity(context)){
+   java.util.List<com.google.mlkit.vision.face.Face> a=com.google.android.gms.tasks.Tasks.await(detector.process(com.google.mlkit.vision.common.InputImage.fromBitmap(first,0))),b=com.google.android.gms.tasks.Tasks.await(detector.process(com.google.mlkit.vision.common.InputImage.fromBitmap(changed,0)));
+   assertFalse(a.isEmpty());assertFalse(b.isEmpty());id.begin(first);float[] x=id.describe(a.get(0));id.begin(changed);float[] y=id.describe(b.get(0));assertEquals(128,x.length);assertTrue("same face under changed lighting",FaceAppearance.score(x,y)>.85f);
+  }finally{detector.close();first.recycle();changed.recycle();r.release();}
+ }
  @Test public void cancelledExportLeavesNoPartialFile()throws Exception{File out=new File(context.getFilesDir(),"cancel.mp4");try{MosaicExport.run(context,Uri.fromFile(fixture("sample.mp4")),out,new MosaicTimeline(),new AtomicBoolean(true),p->{});fail("cancel must stop");}catch(InterruptedException expected){}assertFalse(out.exists());}
  static Object field(Object o,String name){try{Field f=o.getClass().getDeclaredField(name);f.setAccessible(true);return f.get(o);}catch(Exception e){throw new RuntimeException(e);}}
  @Test public void openAnalyseReplayUi()throws Exception{

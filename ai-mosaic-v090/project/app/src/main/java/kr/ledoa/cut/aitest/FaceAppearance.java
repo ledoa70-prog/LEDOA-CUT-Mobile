@@ -37,7 +37,14 @@ public final class FaceAppearance {
         for(int i=0;i<TEXTURE;i++)v[COLOR+i]=(samples[i]-avg)/std;
         return v;
     }
+    public static boolean learned(float[] a){return a!=null&&a.length==128;}
     public static float score(float[] a,float[] b){
+        if(learned(a)&&learned(b)){
+            double dot=0,aa=0,bb=0;for(int i=0;i<128;i++){dot+=a[i]*b[i];aa+=a[i]*a[i];bb+=b[i]*b[i];}
+            if(aa*bb<1e-12)return -1;
+            // Similarity index, not a probability. .5 + .5 * cosine.
+            return (float)(.5+.5*Math.max(-1,Math.min(1,dot/Math.sqrt(aa*bb))));
+        }
         if(a==null||b==null||a.length!=COLOR+TEXTURE||b.length!=COLOR+TEXTURE)return -1;
         float intersection=0;
         for(int i=0;i<COLOR;i++)intersection+=Math.min(a[i],b[i]);
