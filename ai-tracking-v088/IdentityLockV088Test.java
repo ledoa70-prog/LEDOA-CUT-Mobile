@@ -10,7 +10,7 @@ public final class IdentityLockV088Test {
         return new FacePath.Box(x,y,w,h,id,null,true,false);
     }
     public static void main(String[] args){
-        FacePath p=new FacePath();
+        FacePath p=new FacePath(true);
         FacePath.Box selected=box(.30f,.32f,.30f,.18f,100);
         p.anchor(0,selected);
         FacePath.Point current=p.step(100,Collections.singletonList(
@@ -44,7 +44,7 @@ public final class IdentityLockV088Test {
         ok(p.step(750,Collections.singletonList(
             box(.41f,.33f,.21f,.14f,100))).status==FacePath.Status.TRACKED,
             "chosen face can be tracked again after manual confirmation");
-        FacePath huge=new FacePath();
+        FacePath huge=new FacePath(true);
         huge.anchor(0,box(.30f,.30f,.27f,.17f,7));
         FacePath.Point enlarged=huge.step(100,Collections.singletonList(
             box(0,.12f,.96f,.75f,9)));
