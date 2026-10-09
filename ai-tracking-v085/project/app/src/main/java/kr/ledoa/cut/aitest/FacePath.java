@@ -63,6 +63,8 @@ public final class FacePath {
     private float[] selectedAppearance=null;
     private int identityLockEvents=0;
     private int lockedFrames=0;
+    private int appearanceFluctuationFrames=0;
+    public synchronized int appearanceFluctuationFrames(){return appearanceFluctuationFrames;}
     public synchronized boolean isIdentityLocked(){return identityLocked;}
     public synchronized int identityLockEvents(){return identityLockEvents;}
     public synchronized int lockedFrames(){return lockedFrames;}
@@ -90,7 +92,7 @@ public final class FacePath {
     public synchronized long coveredThrough(){return coverageEndMs;}
     public synchronized void reset(){
         frames.clear();appearanceGallery.clear();last=previous=pending=null;
-        identityLocked=false;selectedAppearance=null;identityLockEvents=lockedFrames=0;
+        identityLocked=false;selectedAppearance=null;identityLockEvents=lockedFrames=appearanceFluctuationFrames=0;
         lastMs=previousMs=pendingMs=-1;lastId=-1;confirmations=0;
         bodyValidatedCount=bodyRecoveredCount=edgeRecoveredCount=0;
         scaleRecoveredCount=scaleReasonMismatch=0;
@@ -316,35 +318,28 @@ public final class FacePath {
         // Identity is user-locked. In a crowd, clothing/color and position
         // must never silently authorize a new person's face after target loss.
         // A new manual face selection explicitly resets this lock.
-        if(selectedPersonOnly && (identityLocked || gap>=280)){
-            // Track why multi-person recovery was suppressed without silently
-            // substituting a different face after the selected person leaves.
-            if(!identityLocked && gap>=350 && cs.size()>=3)crowdedGapBlocked++;
+        // v0.8.9: only a sustained absence, not one changed lighting angle
+        // or one oversized detector box, may hard-lock the selected identity.
+        // In the user's 18.6s sample v0.8.8 locked at 1.2s from a normal
+        // appearance fluctuation, leaving 175 frames uncovered. At 9.5-10.3s,
+        // by contrast, the true target is undetected for >500ms and the old
+        // algorithm latched onto a different person. Protect that real gap.
+        if(selectedPersonOnly && (identityLocked || gap>=500)){
+            if(!identityLocked && gap>=500 && cs.size()>=2)crowdedGapBlocked++;
             lockIdentity();
             lockedFrames++;
             chosen=new Pick(null,cs.isEmpty()?Status.LOST:Status.UNCERTAIN,
-                "SELECTED_PERSON_LOST_MANUAL_RESELECT_REQUIRED");
-        }else if(selectedPersonOnly && chosen.status!=Status.TRACKED &&
-                 cs.size()==1 && cs.get(0).w>.88f && last.w<.65f){
-            // A failed oversized ML detection must not be treated as a
-            // normal gap that can later reconnect a different person's face.
-            lockIdentity();lockedFrames++;
-            chosen=new Pick(null,Status.UNCERTAIN,"SELECTED_PERSON_OVERSIZE_REVIEW");
+                "SELECTED_PERSON_LONG_GAP_MANUAL_RESELECT_REQUIRED");
         }else if(selectedPersonOnly && chosen.status==Status.TRACKED && chosen.box!=null){
             float similarity=selectedAppearance==null?-1f:
                 FaceAppearance.score(selectedAppearance,chosen.box.appearance);
-            double sizeRatio=scale(last,chosen.box);
-            boolean oversized=chosen.box.w>.88f &&
-               last.w<.65f && gap<=180;
-            boolean suddenSize=gap<=180 && (sizeRatio<.35 || sizeRatio>2.3);
-            boolean wrongAppearance=similarity>=0&&similarity<.74f;
-            if(oversized||suddenSize||wrongAppearance){
-                lockIdentity();
-                lockedFrames++;
-                chosen=new Pick(null,Status.UNCERTAIN,
-                    oversized?"SELECTED_PERSON_OVERSIZE_REVIEW":
-                    suddenSize?"SELECTED_PERSON_FACE_SIZE_JUMP_REVIEW":
-                    "SELECTED_PERSON_APPEARANCE_CHANGED_RESELECT_REQUIRED");
+            // Smooth natural appearance shifts are harmless WHEN the primary
+            // motion/scale gate has independently accepted this real face.
+            // A coarse color descriptor must never be a one-frame kill switch.
+            if(similarity>=0 && similarity<.74f){
+                appearanceFluctuationFrames++;
+                chosen=new Pick(chosen.box,Status.TRACKED,
+                    "CONTINUOUS_MOTION_APPEARANCE_SHIFT");
             }
         }
         if(chosen.status==Status.TRACKED&&!confirmingFrames.isEmpty()){
