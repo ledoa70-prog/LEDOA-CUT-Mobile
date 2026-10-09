@@ -47,6 +47,10 @@ public final class FacePath {
     // v0.8.6.2: immutable descriptor from a deliberate user's face selection.
     // Later AI decisions MUST NOT replace this identity anchor.
     private float[] selectedOriginalAppearance=null;
+    // v0.8.6.3 recovery is review-required; never replace the initial identity anchor.
+    private int flowGuidedRecoveries=0, identityGuardRejections=0;
+    public synchronized int flowGuidedRecoveryCount(){return flowGuidedRecoveries;}
+    public synchronized int identityGuardRejectedCount(){return identityGuardRejections;}
     private Box last,previous,pending;private int confirmations=0;
     private long lastMs=-1,previousMs=-1,pendingMs=-1;
     private int lastId=-1;
@@ -68,6 +72,7 @@ public final class FacePath {
     public synchronized int manualKeyframeCount(){return manualKeyframes;}
     public synchronized void reset(){
         frames.clear();appearanceGallery.clear();selectedOriginalAppearance=null;last=previous=pending=null;
+        flowGuidedRecoveries=0;identityGuardRejections=0;
         lastMs=previousMs=pendingMs=-1;lastId=-1;confirmations=0;
         bodyValidatedCount=bodyRecoveredCount=edgeRecoveredCount=0;
         scaleRecoveredCount=scaleReasonMismatch=0;
@@ -253,7 +258,10 @@ public final class FacePath {
             chosen=new Pick(null,Status.UNCERTAIN,"IDENTITY_GUARD_GAP_RECONFIRM");
             chosen=reacquire(ms,gap,cs,chosen);
         }
-        chosen=guardCandidate(ms,gap,chosen);
+        chosen=guardCandidate(ms,gap,chosen,cs.size());
+        if(chosen.status==Status.TRACKED && "FLOW_GUIDED_REACQUIRED_REVIEW".equals(chosen.reason))
+            flowGuidedRecoveries++;
+        if(chosen.reason.startsWith("IDENTITY_GUARD_"))identityGuardRejections++;
         if(chosen.status!=Status.TRACKED && chosen.reason.startsWith("IDENTITY_GUARD_")){
             pending=null;pendingMs=-1;confirmations=0;
             scalePending=null;scalePendingMs=-1;scalePendingCount=0;
@@ -296,14 +304,25 @@ public final class FacePath {
      * Provisional optical-flow positions are negative evidence only: they can
      * flag a sudden region jump but can never authorize a person's identity.
      */
-    private Pick guardCandidate(long ms,long gap,Pick chosen){
+    private Pick guardCandidate(long ms,long gap,Pick chosen,int detectedCount){
         if(chosen.status!=Status.TRACKED || chosen.box==null)return chosen;
         Box candidate=chosen.box;
         if(selectedOriginalAppearance!=null){
             float original=FaceAppearance.score(selectedOriginalAppearance,candidate.appearance);
             float minimum=gap>=350?.78f:.55f;
-            if(original<minimum)
-                return new Pick(null,Status.UNCERTAIN,"IDENTITY_GUARD_ORIGINAL_MISMATCH_REVIEW");
+            if(original<minimum){
+                // Changed pose can score lower than the fixed v0.8.6.2 cutoff.
+                // Re-link only after three real detections + independent recent optical flow.
+                boolean confirmed="REACQUIRED_APPEARANCE_STABLE".equals(chosen.reason);
+                boolean single=candidate.faceEvidence && !candidate.edgePartial &&
+                    detectedCount==1;
+                if(original>=.73f && confirmed && single && nearRecentFlow(ms,candidate)){
+                    chosen=new Pick(candidate,Status.TRACKED,"FLOW_GUIDED_REACQUIRED_REVIEW");
+                }else{
+                    return new Pick(null,Status.UNCERTAIN,
+                        "IDENTITY_GUARD_ORIGINAL_MISMATCH_REVIEW");
+                }
+            }
         }else if(gap>=350){
             // Test-only/legacy no-descriptor case: allow only three-frame
             // reconfirmation at almost the exact prior visible location.
@@ -328,6 +347,18 @@ public final class FacePath {
             }
         }
         return chosen;
+    }
+    // Optical flow is supporting evidence; it cannot independently confirm a face.
+    private boolean nearRecentFlow(long ms,Box detected){
+        NavigableMap<Long,Point> prior=frames.headMap(ms,false).descendingMap();
+        for(Map.Entry<Long,Point> entry:prior.entrySet()){
+            if(ms-entry.getKey()>1100)break;
+            Point p=entry.getValue();
+            if(p.status!=Status.FLOW_ESTIMATED || p.box==null)continue;
+            double ratio=scale(p.box,detected);
+            return p.box.dist(detected)<.30f && ratio>.40 && ratio<2.5;
+        }
+        return false;
     }
     private Pick chooseWithBody(long ms,long gap,List<Box> cs,BodyClothing.Assist body){
         if(cs.isEmpty())return null;
@@ -504,7 +535,9 @@ public final class FacePath {
     }
     public synchronized void review(long ms,Box b){anchor(ms,b);}
     public synchronized List<Point> points(){return new ArrayList<>(frames.values());}
-    public synchronized int reviewCount(){int n=0;for(Point p:frames.values())if(p.status!=Status.TRACKED&&p.status!=Status.VERIFIED)n++;return n;}
+    public synchronized int reviewCount(){int n=0;for(Point p:frames.values())
+        if((p.status!=Status.TRACKED&&p.status!=Status.VERIFIED)||
+           "FLOW_GUIDED_REACQUIRED_REVIEW".equals(p.reason))n++;return n;}
     public synchronized Point nearest(long ms){
         Map.Entry<Long,Point> a=frames.floorEntry(ms),b=frames.ceilingEntry(ms);
         if(a==null)return b==null?null:b.getValue();if(b==null)return a.getValue();
