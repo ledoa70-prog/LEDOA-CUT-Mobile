@@ -36,16 +36,6 @@ jobs:
           ffmpeg -hide_banner -loglevel error -i "$ASSETS/sample.mp4" -c copy -metadata:s:v rotate=90 -y "$ASSETS/rotated.mp4"
           curl --fail --location --retry 2 https://raw.githubusercontent.com/scikit-image/scikit-image/v0.25.2/skimage/data/astronaut.png -o /tmp/astronaut.png
           ffmpeg -hide_banner -loglevel error -loop 1 -i /tmp/astronaut.png -f lavfi -i sine=frequency=440:sample_rate=48000 -t 3 -vf "scale=480:480" -r 30 -c:v libx264 -pix_fmt yuv420p -c:a aac -y "$ASSETS/faces.mp4"
-      - name: Prepare offline source-video validation toolkit
-        run: |
-          mkdir -p validation-tools
-          python3 -m pip download --only-binary=:all: --no-deps opencv-python-headless==4.10.0.84 -d validation-tools
-          cp ai-mosaic-v090/project/app/src/main/assets/sface_int8.onnx validation-tools/
-          curl --fail --location --retry 2 https://media.githubusercontent.com/media/opencv/opencv_zoo/47534e27c9851bb1128ccc0102f1145e27f23f98/models/face_detection_yunet/face_detection_yunet_2023mar.onnx -o validation-tools/yunet.onnx
-      - uses: actions/upload-artifact@v4
-        with:
-          name: LEDOA_OFFLINE_VALIDATION_TOOLS
-          path: validation-tools/
       - name: Compile application and instrumentation
         working-directory: ai-mosaic-v090/project
         run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
@@ -70,6 +60,10 @@ jobs:
           APK=ai-mosaic-v090/project/app/build/outputs/apk/debug/app-debug.apk
           SIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)
           "$SIGNER" verify --verbose "$APK"
+          AAPT=$(find "$ANDROID_HOME/build-tools" -name aapt | sort -V | tail -1)
+          "$AAPT" dump badging "$APK" > APK_METADATA.txt
+          "$AAPT" dump permissions "$APK" >> APK_METADATA.txt
+          if grep -q 'android.permission.INTERNET' APK_METADATA.txt; then echo 'Unexpected network permission'; exit 1; fi
           cp "$APK" LEDOA_MOSAIC_EDITOR_v0.9.0.apk
           sha256sum LEDOA_MOSAIC_EDITOR_v0.9.0.apk
           zip -rq LEDOA_MOSAIC_EDITOR_v0.9.0_SOURCE.zip ai-mosaic-v090 .github/workflows/build-mosaic-v090.yml -x '*/build/*' '*/.gradle/*' '*/test-out/*' '*/src/androidTest/assets/*' 
@@ -80,6 +74,7 @@ jobs:
           path: |
             LEDOA_MOSAIC_EDITOR_v0.9.0.apk
             LEDOA_MOSAIC_EDITOR_v0.9.0_SOURCE.zip
+            APK_METADATA.txt
             device-evidence/
             ai-mosaic-v090/project/app/build/reports/androidTests/
             ai-mosaic-v090/project/app/build/outputs/androidTest-results/
