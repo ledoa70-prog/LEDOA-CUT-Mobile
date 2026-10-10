@@ -16,7 +16,8 @@ import java.io.*;
 final class FaceIdentity implements AutoCloseable {
     private FaceRecognizerSF network;
     private final Mat rgba=new Mat(),bgr=new Mat(),aligned=new Mat(),feature=new Mat(),landmarks=new Mat(1,15,CvType.CV_32F);
-    static {System.loadLibrary(Core.NATIVE_LIBRARY_NAME);}
+    // Android AAR exports opencv_java4, while Core.NATIVE_LIBRARY_NAME is the desktop name.
+    static {System.loadLibrary("opencv_java4");}
     FaceIdentity(Context context)throws IOException{
         Core.setNumThreads(2);
         File model=new File(context.getFilesDir(),"sface-2b0e941e.onnx");

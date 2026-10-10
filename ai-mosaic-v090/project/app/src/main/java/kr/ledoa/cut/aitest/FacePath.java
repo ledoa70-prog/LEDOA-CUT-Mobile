@@ -379,19 +379,22 @@ public final class FacePath {
      * No descriptors are persisted. Temporal votes and runner-up separation are
      * still required after a shot change, disappearance or large spatial jump. */
     private Point learnedStep(long ms,long gap,List<Box> candidates){
-        Box best=null;float score=-1,runner=-1,original=-1;
+        Box best=null;float score=-1,runner=-1,original=-1,gallery=-1;
         for(Box b:candidates){
             float o=originalSimilarity(b),g=trustedGallerySimilarity(b);
             if(!FaceAppearance.learned(b.appearance))continue;
-            float value=.65f*o+.35f*g;
-            if(value>score){runner=score;score=value;best=b;original=o;}else runner=Math.max(runner,value);
+            // The first frame may be a downward/sideways pose. Use verified views
+            // together with a fixed original-identity floor, never motion alone.
+            float value=.35f*o+.65f*g;
+            if(value>score){runner=score;score=value;best=b;original=o;gallery=g;}else runner=Math.max(runner,value);
         }
         boolean continuous=!scenePending&&gap<=250&&best!=null&&last!=null
             &&last.dist(best)<Math.max(.12f,Math.max(last.w,last.h)*1.15f)
             &&scale(last,best)>.32&&scale(last,best)<3;
-        float threshold=continuous?.72f:.78f;
+        float threshold=continuous?.72f:.74f;
         String reason;
-        if(best==null||original<threshold||score<threshold||runner>=0&&score-runner<(continuous?.045f:.075f)){
+        if(best==null||original<(continuous?.62f:.65f)||gallery<(continuous?.76f:.77f)
+            ||score<threshold||runner>=0&&score-runner<(continuous?.045f:.075f)){
             pending=null;confirmations=0;confirmingFrames.clear();
             reason=best==null?"NO_FACE_DETECTED":"EMBEDDING_IDENTITY_UNCERTAIN_REVIEW";
             Point p=new Point(ms,null,best==null?Status.LOST:Status.UNCERTAIN,candidates.size(),reason);frames.put(ms,p);return p;
@@ -409,7 +412,9 @@ public final class FacePath {
         }else reason="EMBEDDING_CONTINUOUS";
         Point p=new Point(ms,best,Status.TRACKED,candidates.size(),reason);frames.put(ms,p);
         previous=continuous?last:null;previousMs=lastMs;last=best;lastMs=ms;lastId=best.id;
-        if(continuous&&original>=.78f&&ms-lastGallerySampleMs>=400){
+        // Only strongly original-supported continuous detections teach a new view.
+        // Reacquisition candidates and weaker matches never update the gallery.
+        if(continuous&&original>=.70f&&gallery>=.82f&&score>=.78f&&ms-lastGallerySampleMs>=400){
             if(appearanceGallery.size()>=12)appearanceGallery.remove(1);
             appearanceGallery.add(Arrays.copyOf(best.appearance,best.appearance.length));lastGallerySampleMs=ms;
         }
