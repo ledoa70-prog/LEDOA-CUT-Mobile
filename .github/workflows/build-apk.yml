@@ -8,6 +8,9 @@ on:
       - 'LEDOA_CUT_Mobile_Shorts_Standalone_v0.6.6_SOURCE.zip'
       - '.github/workflows/build-apk.yml'
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -158,11 +161,23 @@ jobs:
           PY
           grep -nE 'SHORTS · v0.7.8|v078-hard-mobile-preview' "$HTML"
 
+      - name: Apply v0.7.9 preview decoder recovery patch
+        run: |
+          set -euo pipefail
+          APPJS=$(find buildsrc -type f -name app.js | head -1)
+          HTML=$(find buildsrc -type f -name index.html | head -1)
+          test -s "$APPJS"
+          cat tools/preview_watchdog_v079.js >> "$APPJS"
+          node --check "$APPJS"
+          sed -i 's/SHORTS · v0.7.8/SHORTS · v0.7.9/g' "$HTML"
+          grep -q '__LEDOA_PREVIEW_WATCHDOG_V079__' "$APPJS"
+          echo "v0.7.9 decoder recovery source patch verified"
+
       - name: Verify packaged web assets before Android build
         run: |
           set -euo pipefail
           HTML=$(find buildsrc -type f -name index.html | head -1)
-          grep -q 'SHORTS · v0.7.8' "$HTML"
+          grep -q 'SHORTS · v0.7.9' "$HTML"
           grep -q 'v078-hard-mobile-preview' "$HTML"
           echo "SOURCE VERIFIED: v0.7.8 identity + preview patch present"
 
@@ -171,10 +186,10 @@ jobs:
           set -euo pipefail
           echo "Using $APP_GRADLE"
           if grep -q 'versionCode[[:space:]]*=' "$APP_GRADLE"; then
-            sed -i -E 's/versionCode[[:space:]]*=[[:space:]]*[0-9]+/versionCode = 708/' "$APP_GRADLE"
+            sed -i -E 's/versionCode[[:space:]]*=[[:space:]]*[0-9]+/versionCode = 709/' "$APP_GRADLE"
           fi
           if grep -q 'versionName[[:space:]]*=' "$APP_GRADLE"; then
-            sed -i -E 's/versionName[[:space:]]*=[[:space:]]*"[^"]*"/versionName = "0.7.8"/' "$APP_GRADLE"
+            sed -i -E 's/versionName[[:space:]]*=[[:space:]]*"[^"]*"/versionName = "0.7.9"/' "$APP_GRADLE"
           fi
           grep -E 'applicationId|versionCode|versionName' "$APP_GRADLE" || true
 
@@ -201,16 +216,28 @@ jobs:
           if [ -f signing/v037_debug.keystore.b64 ]; then
             base64 -d signing/v037_debug.keystore.b64 > /tmp/ledoa-release.keystore
             "$ZIPALIGN" -f 4 "$APK" /tmp/ledoa-aligned.apk
-            "$APKSIGNER" sign --ks /tmp/ledoa-release.keystore --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out LEDOA_CUT_Mobile_v0.7.5_EXACT_VIEWER_WIDTH.apk /tmp/ledoa-aligned.apk
-            "$APKSIGNER" verify --verbose --print-certs LEDOA_CUT_Mobile_v0.7.5_EXACT_VIEWER_WIDTH.apk
+            "$APKSIGNER" sign --ks /tmp/ledoa-release.keystore --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out LEDOA_CUT_Mobile_v0.7.9_PREVIEW_RECOVERY.apk /tmp/ledoa-aligned.apk
+            "$APKSIGNER" verify --verbose --print-certs LEDOA_CUT_Mobile_v0.7.9_PREVIEW_RECOVERY.apk
           else
-            cp "$APK" LEDOA_CUT_Mobile_v0.7.5_EXACT_VIEWER_WIDTH.apk
+            cp "$APK" LEDOA_CUT_Mobile_v0.7.9_PREVIEW_RECOVERY.apk
           fi
-          sha256sum LEDOA_CUT_Mobile_v0.7.5_EXACT_VIEWER_WIDTH.apk
+          sha256sum LEDOA_CUT_Mobile_v0.7.9_PREVIEW_RECOVERY.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: LEDOA_CUT_Mobile_v0.7.5_EXACT_VIEWER_WIDTH
-          path: LEDOA_CUT_Mobile_v0.7.5_EXACT_VIEWER_WIDTH.apk
+          name: LEDOA_CUT_Mobile_v0.7.9_PREVIEW_RECOVERY
+          path: LEDOA_CUT_Mobile_v0.7.9_PREVIEW_RECOVERY.apk
           if-no-files-found: error
+
+      - name: Publish signed v0.7.9 release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          APK=LEDOA_CUT_Mobile_v0.7.9_PREVIEW_RECOVERY.apk
+          if gh release view v0.7.9 >/dev/null 2>&1; then
+            gh release upload v0.7.9 "$APK" --clobber
+          else
+            gh release create v0.7.9 "$APK" --title 'LEDOA CUT 모바일 v0.7.9' --notes '3~5분 가로 영상 반복 편집 중 미리보기 디코더 정지 복구. 기존 편집 및 저장 기능 유지.'
+          fi
