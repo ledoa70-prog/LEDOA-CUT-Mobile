@@ -173,6 +173,24 @@ jobs:
           grep -q '__LEDOA_PREVIEW_WATCHDOG_V079__' "$APPJS"
           echo "v0.7.9 decoder recovery source patch verified"
 
+      - name: Restore bundled Korean fonts and verify checksums
+        run: |
+          set -euo pipefail
+          APPJS=$(find buildsrc -type f -name app.js | head -1)
+          ASSETS=$(dirname "$APPJS")
+          mkdir -p "$ASSETS/fonts"
+          if [ ! -s "$ASSETS/fonts/GowunDodum-Regular.ttf" ]; then
+            curl -fL --retry 3 --silent --show-error 'https://raw.githubusercontent.com/google/fonts/main/ofl/gowundodum/GowunDodum-Regular.ttf' -o "$ASSETS/fonts/GowunDodum-Regular.ttf"
+          fi
+          if [ ! -s "$ASSETS/fonts/NanumPenScript-Regular.ttf" ]; then
+            curl -fL --retry 3 --silent --show-error 'https://raw.githubusercontent.com/google/fonts/main/ofl/nanumpenscript/NanumPenScript-Regular.ttf' -o "$ASSETS/fonts/NanumPenScript-Regular.ttf"
+          fi
+          echo 'a6e457933227483a11758fd0947bc74422a106d46f0bf057fdaa5af94a30067d  '"$ASSETS/fonts/GowunDodum-Regular.ttf" | sha256sum -c -
+          echo '6f0d1ab29c7894010dc88831fb7a0a51edb79136e450344183de5b1a8b52bd43  '"$ASSETS/fonts/NanumPenScript-Regular.ttf" | sha256sum -c -
+          curl -fL --retry 3 --silent --show-error 'https://raw.githubusercontent.com/google/fonts/main/ofl/gowundodum/OFL.txt' -o "$ASSETS/fonts/GowunDodum-OFL.txt"
+          curl -fL --retry 3 --silent --show-error 'https://raw.githubusercontent.com/google/fonts/main/ofl/nanumpenscript/OFL.txt' -o "$ASSETS/fonts/NanumPenScript-OFL.txt"
+          echo 'Bundled font assets and licences verified.'
+
       - name: Verify packaged web assets before Android build
         run: |
           set -euo pipefail
