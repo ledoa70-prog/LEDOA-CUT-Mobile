@@ -1,4 +1,4 @@
-name: Build and verify LEDOA Mosaic v0.9.0
+name: Build and verify LEDOA Mosaic v0.9.1
 on:
   push:
     branches: [feature/mosaic-editor-v090]
@@ -21,13 +21,15 @@ jobs:
           gradle-version: '8.9'
       - name: Core regression tests
         run: bash ai-mosaic-v090/run-tests.sh
-      - name: Prepare synthetic test clips and existing signing identity
+      - name: Prepare test clips and explicit fixed signing identity
         run: |
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg
-          mkdir -p "$HOME/.android" ai-mosaic-v090/project/app/src/androidTest/assets
-          base64 -d signing/v037_debug.keystore.b64 > "$HOME/.android/debug.keystore"
-          chmod 600 "$HOME/.android/debug.keystore"
+          mkdir -p ai-mosaic-v090/project/app/src/androidTest/assets
+          base64 -d signing/v037_debug.keystore.b64 > "$RUNNER_TEMP/ledoa-mosaic.keystore"
+          chmod 600 "$RUNNER_TEMP/ledoa-mosaic.keystore"
+          KEY_DIGEST=$(keytool -exportcert -keystore "$RUNNER_TEMP/ledoa-mosaic.keystore" -storepass android -alias androiddebugkey | sha256sum | cut -d " " -f 1)
+          test "$KEY_DIGEST" = 8e22f0146da302cc42cdc1ceeed3c5515e02d2208c5edbec963b9e0d42c9cfca
           mkdir -p ai-mosaic-v090/project/app/src/main/assets
           curl --fail --location --retry 2 https://media.githubusercontent.com/media/opencv/opencv_zoo/47534e27c9851bb1128ccc0102f1145e27f23f98/models/face_recognition_sface/face_recognition_sface_2021dec_int8.onnx -o ai-mosaic-v090/project/app/src/main/assets/sface_int8.onnx
           echo '2b0e941e6f16cc048c20aee0c8e31f569118f65d702914540f7bfdc14048d78a  ai-mosaic-v090/project/app/src/main/assets/sface_int8.onnx' | sha256sum --check
@@ -38,43 +40,49 @@ jobs:
           ffmpeg -hide_banner -loglevel error -loop 1 -i /tmp/astronaut.png -f lavfi -i sine=frequency=440:sample_rate=48000 -t 3 -vf "scale=480:480" -r 30 -c:v libx264 -pix_fmt yuv420p -c:a aac -y "$ASSETS/faces.mp4"
       - name: Compile application and instrumentation
         working-directory: ai-mosaic-v090/project
-        run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
+        run: gradle --no-daemon -PledoaSigningStore="$RUNNER_TEMP/ledoa-mosaic.keystore" :app:assembleDebug :app:assembleDebugAndroidTest
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Android device verification
+      - name: Android 16 install and device verification
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 29
+          api-level: 36
           arch: x86_64
-          target: default
+          target: google_apis
           profile: pixel_2
           disable-animations: true
           script: |
-            gradle --no-daemon -p ai-mosaic-v090/project :app:connectedDebugAndroidTest
-            adb pull /sdcard/Android/data/kr.ledoa.cut.aiface0864/files device-evidence
+            bash -o pipefail -c 'bash ai-mosaic-v090/ci/verify-install.sh | tee INSTALL_TEST.txt'
+            gradle --no-daemon -PledoaSigningStore="$RUNNER_TEMP/ledoa-mosaic.keystore" -p ai-mosaic-v090/project :app:connectedDebugAndroidTest
+            adb pull /sdcard/Android/data/kr.ledoa.cut.mosaic/files device-evidence
       - name: Verify installable APK
         run: |
           APK=ai-mosaic-v090/project/app/build/outputs/apk/debug/app-debug.apk
           SIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)
-          "$SIGNER" verify --verbose "$APK"
+          "$SIGNER" verify --verbose --print-certs "$APK" | tee APK_SIGNING.txt
+          grep -q "Signer #1 certificate SHA-256 digest: 8e22f0146da302cc42cdc1ceeed3c5515e02d2208c5edbec963b9e0d42c9cfca" APK_SIGNING.txt
           AAPT=$(find "$ANDROID_HOME/build-tools" -name aapt | sort -V | tail -1)
           "$AAPT" dump badging "$APK" > APK_METADATA.txt
           "$AAPT" dump permissions "$APK" >> APK_METADATA.txt
+          grep -q "package: name='kr.ledoa.cut.mosaic'" APK_METADATA.txt
+          grep -q "versionCode='901'" APK_METADATA.txt
           if grep -q 'android.permission.INTERNET' APK_METADATA.txt; then echo 'Unexpected network permission'; exit 1; fi
-          cp "$APK" LEDOA_MOSAIC_EDITOR_v0.9.0.apk
-          sha256sum LEDOA_MOSAIC_EDITOR_v0.9.0.apk
-          zip -rq LEDOA_MOSAIC_EDITOR_v0.9.0_SOURCE.zip ai-mosaic-v090 .github/workflows/build-mosaic-v090.yml -x '*/build/*' '*/.gradle/*' '*/test-out/*' '*/src/androidTest/assets/*' 
+          cp "$APK" LEDOA_MOSAIC_EDITOR_v0.9.1.apk
+          sha256sum LEDOA_MOSAIC_EDITOR_v0.9.1.apk
+          zip -rq LEDOA_MOSAIC_EDITOR_v0.9.1_SOURCE.zip ai-mosaic-v090 .github/workflows/build-mosaic-v090.yml -x '*/build/*' '*/.gradle/*' '*/test-out/*' '*/src/androidTest/assets/*' 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: LEDOA_MOSAIC_v0.9.0_RESULTS
+          name: LEDOA_MOSAIC_v0.9.1_RESULTS
           path: |
-            LEDOA_MOSAIC_EDITOR_v0.9.0.apk
-            LEDOA_MOSAIC_EDITOR_v0.9.0_SOURCE.zip
+            LEDOA_MOSAIC_EDITOR_v0.9.1.apk
+            LEDOA_MOSAIC_EDITOR_v0.9.1_SOURCE.zip
             APK_METADATA.txt
+            APK_SIGNING.txt
+            INSTALL_TEST.txt
             device-evidence/
             ai-mosaic-v090/project/app/build/reports/androidTests/
             ai-mosaic-v090/project/app/build/outputs/androidTest-results/

@@ -1,7 +1,9 @@
-# LEDOA 모자이크 v0.9.0
+# LEDOA 모자이크 v0.9.1
 
 v0.8.6.4 AI 얼굴 추적 앱을 기반으로 만든 네이티브 모자이크 편집기입니다.
-기존 AI 추적 앱(kr.ledoa.cut.aiface0864)을 업데이트하며, 자막·오버레이가 있는 LEDOA CUT 본앱은 별도입니다.
+v0.9.1은 독립 패키지 `kr.ledoa.cut.mosaic`로 설치됩니다. 기존 AI 추적 앱과 LEDOA CUT 본앱을 삭제하거나 덮어쓰지 않습니다. 이전 앱의 작업 데이터가 자동으로 이동되지는 않습니다.
+
+v0.9.0의 설치 실패는 기존 v0.8.6.4와 같은 패키지 ID에 서로 다른 인증서를 사용한 것이 원인입니다. 실제 v0.8.6.4 인증서는 `bb03460b…237c490`, v0.9.0은 `4b31f623…64740f`이며, 보관된 키로 기존 인증서를 복구할 수 없어 독립 설치로 변경했습니다. v0.9.1부터는 키 경로를 명시하고 인증서 SHA-256을 빌드에서 검사합니다.
 
 ## 사용법
 1. 영상 열기 → 휴대폰 영상 선택
@@ -33,8 +35,8 @@ v0.8.6.4 AI 얼굴 추적 앱을 기반으로 만든 네이티브 모자이크 �
 
 ## 빌드
 Java 17 / Gradle 8.9 / Android SDK 35 / Android Gradle Plugin 8.7.3.
-프로젝트는 project/입니다. `gradle :app:assembleDebug`로 빌드합니다.
-정식 배포 APK는 기존 테스트 앱의 저장소 서명으로 빌드합니다. 기본 로컬 디버그 키로 재빌드하면 기존 설치 위에 업데이트할 수 없습니다.
+프로젝트는 project/입니다. 저장소의 `signing/v037_debug.keystore.b64`를 디코딩한 키를 명시하여 `gradle -PledoaSigningStore=/absolute/path/to/ledoa.keystore :app:assembleDebug`로 빌드합니다.
+키를 생략하면 빌드는 실패하며 자동 생성 디버그 키로 대체하지 않습니다. 이번 직접 설치 테스트 앱의 고정 인증서 SHA-256: `8e22f0146da302cc42cdc1ceeed3c5515e02d2208c5edbec963b9e0d42c9cfca`. 키 자체는 소스 ZIP에 포함하지 않습니다. 공개 저장소의 테스트 키이므로 스토어 정식 출시용 비밀 키로 취급하지 않습니다.
 
 모델: OpenCV Zoo SFace quantized, Apache-2.0. 모델 파일은 앱 assets/sface_int8.onnx에 포함됩니다.
 SHA256: 2b0e941e6f16cc048c20aee0c8e31f569118f65d702914540f7bfdc14048d78a
