@@ -204,12 +204,26 @@ jobs:
           set -euo pipefail
           echo "Using $APP_GRADLE"
           if grep -q 'versionCode[[:space:]]*=' "$APP_GRADLE"; then
-            sed -i -E 's/versionCode[[:space:]]*=[[:space:]]*[0-9]+/versionCode = 709/' "$APP_GRADLE"
+            sed -i -E 's/versionCode[[:space:]]*=[[:space:]]*[0-9]+/versionCode = 800/' "$APP_GRADLE"
           fi
           if grep -q 'versionName[[:space:]]*=' "$APP_GRADLE"; then
-            sed -i -E 's/versionName[[:space:]]*=[[:space:]]*"[^"]*"/versionName = "0.7.9"/' "$APP_GRADLE"
+            sed -i -E 's/versionName[[:space:]]*=[[:space:]]*"[^"]*"/versionName = "0.8.0"/' "$APP_GRADLE"
           fi
           grep -E 'applicationId|versionCode|versionName' "$APP_GRADLE" || true
+
+      - name: Restore v0.6.4 fonts and zero background opacity in v0.8.0
+        run: |
+          set -euo pipefail
+          APPJS=$(find buildsrc -type f -path '*/web/app.js' | head -1)
+          CSS=$(find buildsrc -type f -path '*/web/styles.css' | head -1)
+          HTML=$(find buildsrc -type f -path '*/web/index.html' | head -1)
+          python3 tools/restore_text_v080.py "$APPJS" "$CSS" "$HTML"
+          node --check "$APPJS"
+          grep -Fq "Number(\$('textBgOpacity')?.value ?? 100)" "$APPJS"
+          grep -Fq 'restoreBundledKoreanFontsV080' "$APPJS"
+          grep -Fq "@font-face{font-family:'Gowun Dodum'" "$CSS"
+          grep -Fq "@font-face{font-family:'Nanum Pen Script'" "$CSS"
+          echo "v0.8.0 subtitle opacity and fonts restored."
 
       - name: Synchronize patched web source into installable Android assets
         run: |
@@ -223,7 +237,7 @@ jobs:
           test -s "$APP_ASSETS/fonts/GowunDodum-Regular.ttf"
           test -s "$APP_ASSETS/fonts/NanumPenScript-Regular.ttf"
           grep -q '__LEDOA_PREVIEW_WATCHDOG_V079__' "$APP_ASSETS/app.js"
-          grep -q 'SHORTS · v0.7.9' "$APP_ASSETS/index.html"
+          grep -q 'SHORTS · v0.8.0' "$APP_ASSETS/index.html"
           echo 'Android app assets synchronized from final patched web.'
 
       - name: Build APK
@@ -248,34 +262,38 @@ jobs:
           unzip -p "$APK" assets/index.html | grep -q 'SHORTS · v0.7.9'
           unzip -l "$APK" | grep -q 'assets/fonts/GowunDodum-Regular.ttf'
           unzip -l "$APK" | grep -q 'assets/fonts/NanumPenScript-Regular.ttf'
-          echo "Verified patch, version and bundled fonts inside actual APK."
+          unzip -p "$APK" assets/styles.css | grep -Fq "@font-face{font-family:'Gowun Dodum'"
+          unzip -p "$APK" assets/styles.css | grep -Fq "@font-face{font-family:'Nanum Pen Script'"
+          unzip -p "$APK" assets/app.js | grep -Fq "restoreBundledKoreanFontsV080"
+          unzip -p "$APK" assets/app.js | grep -Fq "Number(\$('textBgOpacity')?.value ?? 100)"
+          echo "Verified preview recovery, zero opacity and loaded Korean font definitions inside APK."
           APKSIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)
           ZIPALIGN=$(find "$ANDROID_HOME/build-tools" -type f -name zipalign | sort -V | tail -1)
           if [ -f signing/v037_debug.keystore.b64 ]; then
             base64 -d signing/v037_debug.keystore.b64 > /tmp/ledoa-release.keystore
             "$ZIPALIGN" -f 4 "$APK" /tmp/ledoa-aligned.apk
-            "$APKSIGNER" sign --ks /tmp/ledoa-release.keystore --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out LEDOA_CUT_Mobile_v0.7.9_PREVIEW_RECOVERY.apk /tmp/ledoa-aligned.apk
-            "$APKSIGNER" verify --verbose --print-certs LEDOA_CUT_Mobile_v0.7.9_PREVIEW_RECOVERY.apk
+            "$APKSIGNER" sign --ks /tmp/ledoa-release.keystore --ks-key-alias androiddebugkey --ks-pass pass:android --key-pass pass:android --out LEDOA_CUT_Mobile_v0.8.0_TEXT_RESTORE.apk /tmp/ledoa-aligned.apk
+            "$APKSIGNER" verify --verbose --print-certs LEDOA_CUT_Mobile_v0.8.0_TEXT_RESTORE.apk
           else
-            cp "$APK" LEDOA_CUT_Mobile_v0.7.9_PREVIEW_RECOVERY.apk
+            cp "$APK" LEDOA_CUT_Mobile_v0.8.0_TEXT_RESTORE.apk
           fi
-          sha256sum LEDOA_CUT_Mobile_v0.7.9_PREVIEW_RECOVERY.apk
+          sha256sum LEDOA_CUT_Mobile_v0.8.0_TEXT_RESTORE.apk
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: LEDOA_CUT_Mobile_v0.7.9_PREVIEW_RECOVERY
-          path: LEDOA_CUT_Mobile_v0.7.9_PREVIEW_RECOVERY.apk
+          name: LEDOA_CUT_Mobile_v0.8.0_TEXT_RESTORE
+          path: LEDOA_CUT_Mobile_v0.8.0_TEXT_RESTORE.apk
           if-no-files-found: error
 
-      - name: Publish signed v0.7.9 release
+      - name: Publish signed v0.8.0 release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          APK=LEDOA_CUT_Mobile_v0.7.9_PREVIEW_RECOVERY.apk
-          if gh release view v0.7.9 >/dev/null 2>&1; then
-            gh release upload v0.7.9 "$APK" --clobber
+          APK=LEDOA_CUT_Mobile_v0.8.0_TEXT_RESTORE.apk
+          if gh release view v0.8.0 >/dev/null 2>&1; then
+            gh release upload v0.8.0 "$APK" --clobber
           else
-            gh release create v0.7.9 "$APK" --title 'LEDOA CUT 모바일 v0.7.9' --notes '3~5분 가로 영상 반복 편집 중 미리보기 디코더 정지 복구. 기존 편집 및 저장 기능 유지.'
+            gh release create v0.8.0 "$APK" --title 'LEDOA CUT 모바일 v0.8.0' --notes 'v0.6.4 기준 한글 글꼴, 자막 배경 농도 0~100% 복구. v0.7.9 미리보기 디코더 복구 유지.'
           fi
