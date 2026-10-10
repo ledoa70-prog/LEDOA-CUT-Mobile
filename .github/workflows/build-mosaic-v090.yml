@@ -36,6 +36,16 @@ jobs:
           ffmpeg -hide_banner -loglevel error -i "$ASSETS/sample.mp4" -c copy -metadata:s:v rotate=90 -y "$ASSETS/rotated.mp4"
           curl --fail --location --retry 2 https://raw.githubusercontent.com/scikit-image/scikit-image/v0.25.2/skimage/data/astronaut.png -o /tmp/astronaut.png
           ffmpeg -hide_banner -loglevel error -loop 1 -i /tmp/astronaut.png -f lavfi -i sine=frequency=440:sample_rate=48000 -t 3 -vf "scale=480:480" -r 30 -c:v libx264 -pix_fmt yuv420p -c:a aac -y "$ASSETS/faces.mp4"
+      - name: Prepare offline source-video validation toolkit
+        run: |
+          mkdir -p validation-tools
+          python3 -m pip download --only-binary=:all: --no-deps opencv-python-headless==4.10.0.84 -d validation-tools
+          cp ai-mosaic-v090/project/app/src/main/assets/sface_int8.onnx validation-tools/
+          curl --fail --location --retry 2 https://media.githubusercontent.com/media/opencv/opencv_zoo/47534e27c9851bb1128ccc0102f1145e27f23f98/models/face_detection_yunet/face_detection_yunet_2023mar.onnx -o validation-tools/yunet.onnx
+      - uses: actions/upload-artifact@v4
+        with:
+          name: LEDOA_OFFLINE_VALIDATION_TOOLS
+          path: validation-tools/
       - name: Compile application and instrumentation
         working-directory: ai-mosaic-v090/project
         run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
