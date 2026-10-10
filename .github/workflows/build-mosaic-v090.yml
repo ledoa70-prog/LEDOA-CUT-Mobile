@@ -59,10 +59,11 @@ jobs:
             bash -c 'gradle --no-daemon -PledoaSigningStore="$RUNNER_TEMP/ledoa-mosaic.keystore" -p ai-mosaic-v090/project :app:connectedDebugAndroidTest; TEST_STATUS=$?; adb pull /sdcard/Android/data/kr.ledoa.cut.mosaic/files device-evidence; exit "$TEST_STATUS"' 
       - name: Verify installable APK
         run: |
+          set -euo pipefail
           APK=ai-mosaic-v090/project/app/build/outputs/apk/debug/app-debug.apk
           SIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)
           "$SIGNER" verify --verbose --print-certs "$APK" | tee APK_SIGNING.txt
-          grep -q "Signer #1 certificate SHA-256 digest: 8e22f0146da302cc42cdc1ceeed3c5515e02d2208c5edbec963b9e0d42c9cfca" APK_SIGNING.txt
+          grep -Fq "certificate SHA-256 digest: 8e22f0146da302cc42cdc1ceeed3c5515e02d2208c5edbec963b9e0d42c9cfca" APK_SIGNING.txt
           AAPT=$(find "$ANDROID_HOME/build-tools" -name aapt | sort -V | tail -1)
           "$AAPT" dump badging "$APK" > APK_METADATA.txt
           "$AAPT" dump permissions "$APK" >> APK_METADATA.txt
@@ -79,6 +80,7 @@ jobs:
           path: |
             LEDOA_MOSAIC_EDITOR_v0.9.1.apk
             LEDOA_MOSAIC_EDITOR_v0.9.1_SOURCE.zip
+            ai-mosaic-v090/project/app/build/outputs/apk/debug/app-debug.apk
             APK_METADATA.txt
             APK_SIGNING.txt
             INSTALL_TEST.txt
