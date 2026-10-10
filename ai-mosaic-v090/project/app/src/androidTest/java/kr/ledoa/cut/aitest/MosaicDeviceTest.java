@@ -55,6 +55,19 @@ public class MosaicDeviceTest {
  }
  @Test public void cancelledExportLeavesNoPartialFile()throws Exception{File out=new File(context.getFilesDir(),"cancel.mp4");try{MosaicExport.run(context,Uri.fromFile(fixture("sample.mp4")),out,new MosaicTimeline(),new AtomicBoolean(true),p->{});fail("cancel must stop");}catch(InterruptedException expected){}assertFalse(out.exists());}
  static Object field(Object o,String name){try{Field f=o.getClass().getDeclaredField(name);f.setAccessible(true);return f.get(o);}catch(Exception e){throw new RuntimeException(e);}}
+ @Test public void selectedFaceAnalysisUsesBundledIdentity()throws Exception{
+  File input=fixture("faces.mp4");
+  try(ActivityScenario<MainActivity> scenario=ActivityScenario.launch(MainActivity.class)){
+   scenario.onActivity(a->a.onActivityResult(1001,Activity.RESULT_OK,new Intent().setData(Uri.fromFile(input))));waitReady(scenario);
+   scenario.onActivity(a->{try{
+    java.util.List<FacePath.Box> faces=(java.util.List<FacePath.Box>)field(a,"visibleFaces");assertFalse(faces.isEmpty());assertEquals(128,faces.get(0).appearance.length);
+    java.lang.reflect.Method select=MainActivity.class.getDeclaredMethod("select",FacePath.Box.class,boolean.class);select.setAccessible(true);select.invoke(a,faces.get(0),false);((Button)field(a,"track")).performClick();
+   }catch(ReflectiveOperationException e){throw new RuntimeException(e);}});
+   long deadline=SystemClock.elapsedRealtime()+60000;AtomicBoolean done=new AtomicBoolean();
+   while(SystemClock.elapsedRealtime()<deadline){scenario.onActivity(a->done.set(!(boolean)field(a,"busy")));if(done.get())break;SystemClock.sleep(100);}assertTrue("selected analysis finished",done.get());waitReady(scenario);
+   scenario.onActivity(a->{MosaicTimeline t=(MosaicTimeline)field(a,"timeline");assertFalse(t.allFaces);assertEquals(t.endMs,t.analysedEndMs);assertFalse("selected face remains masked",t.boxesAt(1500).isEmpty());assertTrue(((Button)field(a,"save")).isEnabled());});
+  }
+ }
  @Test public void openAnalyseReplayUi()throws Exception{
   File input=fixture("faces.mp4");
   try(ActivityScenario<MainActivity> scenario=ActivityScenario.launch(MainActivity.class)){

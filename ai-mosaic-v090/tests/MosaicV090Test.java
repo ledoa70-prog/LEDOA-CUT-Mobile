@@ -32,6 +32,21 @@ public final class MosaicV090Test {
   model.sceneCut(500);ok(model.step(500,List.of(lb(.3f,.3f,2))).box==null,"different learned identity blocked");
   ok(model.step(600,List.of(lb(.2f,.2f,.4),lb(.6f,.2f,.41))).box==null,"similar competing faces remain ambiguous");
   ok(FaceAppearance.score(learned(0),sig(0))<0,"never compare coarse and learned vectors");
+  FacePath poses=new FacePath();poses.anchor(0,lb(.1f,.2f,0));
+  poses.step(400,List.of(lb(.11f,.2f,.5)));poses.step(500,List.of(lb(.12f,.2f,.5)));poses.step(600,List.of(lb(.13f,.2f,.5)));
+  poses.step(700,List.of(lb(.14f,.2f,.5)));poses.step(800,List.of(lb(.15f,.2f,1.0)));
+  poses.step(900,List.of(lb(.16f,.2f,1.0)));poses.step(1000,List.of(lb(.17f,.2f,1.0)));poses.step(1100,List.of(lb(.18f,.2f,1.0)));
+  ok(poses.step(1200,List.of(lb(.19f,.2f,1.1))).box!=null,"continuous head turn uses verified views");
+  poses.sceneCut(2000);
+  ok(poses.step(2000,List.of(lb(.7f,.2f,1.2))).box==null,"changed-pose reappearance waits for confirmation");
+  poses.step(2100,List.of(lb(.71f,.2f,1.2)));
+  ok(poses.step(2200,List.of(lb(.72f,.2f,1.2))).box!=null,"original downward pose does not permanently block verified side view");
+  poses.sceneCut(2300);
+  ok(poses.step(2300,List.of(lb(.7f,.2f,2.0))).box==null,"gallery alone cannot bypass fixed original identity floor");
+  MosaicTimeline review=new MosaicTimeline();review.allFaces=true;
+  review.put(0,List.of(b(.1f,.2f)));review.put(100,List.of());review.put(200,List.of());review.put(300,List.of(b(.1f,.2f)));review.put(400,List.of());
+  ok(review.nextReview(0)==100,"review jumps to first missing segment");
+  ok(review.nextReview(150)==400,"review skips remaining samples in current missing segment");
   System.out.println("PASS: "+checks+" scene/range/multiface checks");
  }
 }

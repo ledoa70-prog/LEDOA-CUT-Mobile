@@ -45,8 +45,16 @@ public final class MosaicTimeline {
         return out;
     }
     public synchronized long nextReview(long after){
-        if(!allFaces){for(FacePath.Point p:selectedPath.points())if(p.ms>after&&(p.box==null||p.reason.contains("REVIEW")))return p.ms;}
-        else for(Map.Entry<Long,List<FacePath.Box>> e:frames.entrySet())if(e.getKey()>after&&(e.getValue().isEmpty()||cuts.contains(e.getKey())))return e.getKey();
+        boolean previousReview=false;long previousMs=-1;
+        if(!allFaces){for(FacePath.Point p:selectedPath.points()){
+            boolean review=p.box==null||p.reason.contains("REVIEW");
+            if(review&&(!previousReview||p.ms-previousMs>220||cuts.contains(p.ms))&&p.ms>after)return p.ms;
+            previousReview=review;previousMs=p.ms;
+        }}else for(Map.Entry<Long,List<FacePath.Box>> e:frames.entrySet()){
+            long ms=e.getKey();boolean review=e.getValue().isEmpty()||cuts.contains(ms);
+            if(review&&(!previousReview||ms-previousMs>220||cuts.contains(ms))&&ms>after)return ms;
+            previousReview=review;previousMs=ms;
+        }
         return -1;
     }
     public synchronized int missing(){if(!allFaces)return selectedPath.uncoveredCount();int n=0;for(List<?> f:frames.values())if(f.isEmpty())n++;return n;}
