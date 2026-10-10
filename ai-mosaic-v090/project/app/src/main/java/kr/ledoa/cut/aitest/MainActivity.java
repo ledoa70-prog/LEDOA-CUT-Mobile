@@ -75,7 +75,7 @@ public final class MainActivity extends Activity {
         stage=new FrameLayout(this);stage.setBackgroundColor(Color.BLACK);frame=new FrameView();stage.addView(frame,new FrameLayout.LayoutParams(-1,-1));root.addView(stage,new LinearLayout.LayoutParams(-1,0,1.2f));
         LinearLayout transport=row();play=button("▶ 재생",false);transport.addView(play,new LinearLayout.LayoutParams(dp(85),dp(42)));clock=label("00:00.0 / 00:00.0",13,TEXT);transport.addView(clock,new LinearLayout.LayoutParams(0,-2,1));root.addView(transport);
         seek=new SeekBar(this);seek.setMax(10000);root.addView(seek,new LinearLayout.LayoutParams(-1,dp(32)));
-        band=new BandView();root.addView(band,new LinearLayout.LayoutParams(-1,dp(12)));
+        band=new BandView();root.addView(band,new LinearLayout.LayoutParams(-1,dp(12)));root.addView(label("초록 추적 · 노랑 확인 · 빨강 누락 · 흰 선 장면 전환",10,MUTED));
         seek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onStartTrackingTouch(SeekBar s){stopPlayer(false);}public void onProgressChanged(SeekBar s,int p,boolean user){if(user)clock.setText(fmt(durationMs*p/10000)+" / "+fmt(durationMs));}public void onStopTrackingTouch(SeekBar s){if(!busy)preview(durationMs*s.getProgress()/10000,null);}});
         ScrollView scroll=new ScrollView(this);scroll.setFillViewport(false);LinearLayout panel=new LinearLayout(this);panel.setOrientation(LinearLayout.VERTICAL);scroll.addView(panel);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
         RadioGroup modes=new RadioGroup(this);modes.setOrientation(RadioGroup.HORIZONTAL);selectedMode=new RadioButton(this);selectedMode.setId(View.generateViewId());selectedMode.setText("선택 얼굴");selectedMode.setTextColor(TEXT);allMode=new RadioButton(this);allMode.setId(View.generateViewId());allMode.setText("전체 얼굴");allMode.setTextColor(TEXT);modes.addView(selectedMode,new RadioGroup.LayoutParams(0,dp(42),1));modes.addView(allMode,new RadioGroup.LayoutParams(0,dp(42),1));selectedMode.setChecked(true);panel.addView(modes);
@@ -150,7 +150,7 @@ public final class MainActivity extends Activity {
                     if(ms>=end){b.recycle();complete=true;break;}if(ms<=processed){b.recycle();continue;}
                     try{
                         processed=ms;sampled++;MotionFrames.Gray g=MotionFrames.grayscale(b);boolean cut=cuts.observe(ms,g.pixels,g.w,g.h);
-                        if(cut){timeline.cut(ms);continuity.reset();key=true;}
+                        if(cut){timeline.cut(ms);continuity.reset();if(!key){Bitmap full=bitmapAt(ms);if(full!=null){b.recycle();b=full;g=MotionFrames.grayscale(b);}}key=true;}
                         if(!key){if(!all)continuity.cache(ms,g.pixels,g.w,g.h);continue;}
                         tick=SystemClock.elapsedRealtime();List<FacePath.Box> found=detect(b,!all);detections++;inferenceMs+=SystemClock.elapsedRealtime()-tick;timeline.put(ms,found);
                         if(!all){FacePath.Point p=path.step(ms,found);continuity.process(ms,g.pixels,g.w,g.h,p,null);}

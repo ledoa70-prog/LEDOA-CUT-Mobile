@@ -53,9 +53,8 @@ jobs:
           profile: pixel_2
           disable-animations: true
           script: |
-            cd ai-mosaic-v090/project
-            gradle --no-daemon :app:connectedDebugAndroidTest
-            adb pull /sdcard/Android/data/kr.ledoa.cut.aiface0864/files ../../device-evidence
+            gradle --no-daemon -p ai-mosaic-v090/project :app:connectedDebugAndroidTest
+            adb pull /sdcard/Android/data/kr.ledoa.cut.aiface0864/files device-evidence
       - name: Verify installable APK
         run: |
           APK=ai-mosaic-v090/project/app/build/outputs/apk/debug/app-debug.apk

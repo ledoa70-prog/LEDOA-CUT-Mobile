@@ -27,13 +27,15 @@ final class MosaicPlayer extends GLSurfaceView implements GLSurfaceView.Renderer
     }
     public void onSurfaceCreated(GL10 unused,EGLConfig config){
         try{
+            final long resume=position();
+            if(texture!=null)texture.release();if(surface!=null)surface.release();
             gl=new MosaicGl();texture=new SurfaceTexture(gl.create());
             texture.setOnFrameAvailableListener(t->{frameAvailable.set(true);requestRender();});surface=new Surface(texture);
             post(()->{
                 if(released)return;
                 try{
-                    MediaPlayer p=new MediaPlayer();player=p;p.setDataSource(getContext(),uri);p.setSurface(surface);
-                    p.setOnPreparedListener(mp->{if(released)return;mp.seekTo(start,MediaPlayer.SEEK_CLOSEST);});
+                    MediaPlayer old=player;if(old!=null){try{old.stop();}catch(Exception ignored){}old.release();}MediaPlayer p=new MediaPlayer();player=p;p.setDataSource(getContext(),uri);p.setSurface(surface);
+                    p.setOnPreparedListener(mp->{if(released)return;mp.seekTo(resume,MediaPlayer.SEEK_CLOSEST);});
                     p.setOnSeekCompleteListener(mp->{if(!released){mp.start();events.ready();}});
                     p.setOnCompletionListener(mp->{if(!released)events.finished();});
                     p.setOnErrorListener((mp,a,b)->{if(!released)events.failed("영상 재생 오류 ("+a+", "+b+")");return true;});
