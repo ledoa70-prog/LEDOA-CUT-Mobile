@@ -27,6 +27,9 @@ public class MosaicDeviceTest {
    File input=fixture(name),output=new File(context.getFilesDir(),"export-"+name);
    MosaicTimeline t=new MosaicTimeline();t.allFaces=true;t.startMs=500;t.endMs=1500;t.analysedEndMs=1500;t.strength=100;t.margin=0;
    for(int ms=500;ms<1500;ms+=100)t.put(ms,List.of(new FacePath.Box(.10f,.1f,.30f,.7f,-1)));
+   MediaExtractor sourceAudio=new MediaExtractor();sourceAudio.setDataSource(input.getPath());
+   for(int i=0;i<sourceAudio.getTrackCount();i++)if(sourceAudio.getTrackFormat(i).getString(MediaFormat.KEY_MIME).startsWith("audio/")){sourceAudio.selectTrack(i);android.util.Log.i("MosaicAudioTest","first AAC timestamp us="+sourceAudio.getSampleTime());break;}
+   sourceAudio.release();
    MosaicExport.Result result=MosaicExport.run(context,Uri.fromFile(input),output,t,new AtomicBoolean(),p->{});
    assertTrue(result.frames>40);assertTrue(result.audio);assertTrue(output.length()>10000);
    MediaMetadataRetriever original=new MediaMetadataRetriever(),rendered=new MediaMetadataRetriever();original.setDataSource(input.getPath());rendered.setDataSource(output.getPath());
@@ -40,7 +43,13 @@ public class MosaicDeviceTest {
     if(ms==700)try(FileOutputStream out=new FileOutputStream(new File(context.getExternalFilesDir(null),"export-"+name+".png"))){b.compress(Bitmap.CompressFormat.PNG,100,out);}a.recycle();b.recycle();
    }
    original.release();rendered.release();
-   MediaExtractor e=new MediaExtractor();e.setDataSource(output.getPath());boolean audio=false;for(int i=0;i<e.getTrackCount();i++)if(e.getTrackFormat(i).getString(MediaFormat.KEY_MIME).startsWith("audio/"))audio=true;e.release();assertTrue("audio track copied",audio);
+   MediaExtractor e=new MediaExtractor();e.setDataSource(output.getPath());boolean audio=false;
+   for(int i=0;i<e.getTrackCount();i++)if(e.getTrackFormat(i).getString(MediaFormat.KEY_MIME).startsWith("audio/")){
+    audio=true;e.selectTrack(i);int packets=0;long first=-1,last=-1;java.nio.ByteBuffer bytes=java.nio.ByteBuffer.allocateDirect(262144);
+    while(true){bytes.clear();int count=e.readSampleData(bytes,0);if(count<0)break;long pts=e.getSampleTime();assertTrue("non-negative audio timestamp",pts>=0);if(first<0)first=pts;last=pts;packets++;e.advance();}
+    assertTrue("AAC samples copied",packets>80);assertTrue("audio starts at video start",first<50000);assertTrue("audio reaches video end",last>1900000);
+   }
+   e.release();assertTrue("audio track copied "+name,audio);
   }
  }
  double error(Bitmap a,Bitmap b,float l,float t,float r,float d){double sum=0;int n=0;for(int y=(int)(t*a.getHeight());y<d*a.getHeight();y+=3)for(int x=(int)(l*a.getWidth());x<r*a.getWidth();x+=3){int p=a.getPixel(x,y),q=b.getPixel(x,y);sum+=Math.abs(((p>>16)&255)-((q>>16)&255))+Math.abs(((p>>8)&255)-((q>>8)&255))+Math.abs((p&255)-(q&255));n+=3;}return sum/n;}

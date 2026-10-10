@@ -56,8 +56,7 @@ jobs:
           disable-animations: true
           script: |
             bash -o pipefail -c 'bash ai-mosaic-v090/ci/verify-install.sh | tee INSTALL_TEST.txt'
-            gradle --no-daemon -PledoaSigningStore="$RUNNER_TEMP/ledoa-mosaic.keystore" -p ai-mosaic-v090/project :app:connectedDebugAndroidTest
-            adb pull /sdcard/Android/data/kr.ledoa.cut.mosaic/files device-evidence
+            bash -c 'gradle --no-daemon -PledoaSigningStore="$RUNNER_TEMP/ledoa-mosaic.keystore" -p ai-mosaic-v090/project :app:connectedDebugAndroidTest; TEST_STATUS=$?; adb pull /sdcard/Android/data/kr.ledoa.cut.mosaic/files device-evidence; exit "$TEST_STATUS"' 
       - name: Verify installable APK
         run: |
           APK=ai-mosaic-v090/project/app/build/outputs/apk/debug/app-debug.apk

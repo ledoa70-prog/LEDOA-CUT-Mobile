@@ -128,11 +128,24 @@ final class MosaicExport {
             if(hasAudio){
                 int capacity=af.containsKey(MediaFormat.KEY_MAX_INPUT_SIZE)?af.getInteger(MediaFormat.KEY_MAX_INPUT_SIZE):262144;
                 ByteBuffer data=ByteBuffer.allocateDirect(Math.max(262144,capacity));MediaCodec.BufferInfo info=new MediaCodec.BufferInfo();
-                while(audio.getSampleTime()>=0){
+                int writtenAudioSamples=0;
+                // AAC may expose a negative timestamp for its encoder priming packet
+                // (Android 16 does this for MP4 edit lists). A negative timestamp is
+                // not EOF: only readSampleData() returning -1 ends extraction.
+                while(true){
                     if(cancel.get())throw new InterruptedException("저장을 취소했습니다.");
                     data.clear();int n=audio.readSampleData(data,0);if(n<0)break;
-                    info.set(0,n,audio.getSampleTime(),audio.getSampleFlags());muxer.writeSampleData(audioTrack,data,info);audio.advance();
+                    long pts=audio.getSampleTime();
+                    if(pts>=0&&n>0){
+                        int flags=audio.getSampleFlags();
+                        if((flags&MediaExtractor.SAMPLE_FLAG_ENCRYPTED)!=0)throw new IOException("암호화된 오디오는 저장할 수 없습니다.");
+                        // Extractor flags and codec flags are different enums.
+                        info.set(0,n,pts,(flags&MediaExtractor.SAMPLE_FLAG_SYNC)!=0?MediaCodec.BUFFER_FLAG_KEY_FRAME:0);
+                        data.position(0);data.limit(n);muxer.writeSampleData(audioTrack,data,info);writtenAudioSamples++;
+                    }
+                    audio.advance();
                 }
+                if(writtenAudioSamples==0)throw new IOException("오디오 트랙을 저장하지 못했습니다. 원본 영상은 변경되지 않았습니다.");
             }
             muxer.stop();muxStarted=false;success=true;progress.update(100);
             return new Result(outW,outH,frames,hasAudio);
