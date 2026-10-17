@@ -97,7 +97,8 @@ public class MosaicDeviceTest {
    scenario.onActivity(a->{((RadioButton)field(a,"manualMode")).performClick();a.onActivityResult(1001,Activity.RESULT_OK,new Intent().setData(Uri.fromFile(input)));});waitReady(scenario);
    InstrumentationRegistry.getInstrumentation().waitForIdleSync();
    scenario.onActivity(a->{
-    ((Button)field(a,"addManual")).performClick();android.view.View frame=(android.view.View)field(a,"frame");android.graphics.RectF area=(android.graphics.RectF)field(frame,"area");
+    Button add=(Button)field(a,"addManual");android.graphics.Rect visible=new android.graphics.Rect();assertTrue("manual add button visible before scrolling",add.getGlobalVisibleRect(visible));assertTrue("manual add button fully visible",visible.height()>=add.getHeight()-2);
+    add.performClick();android.view.View frame=(android.view.View)field(a,"frame");android.graphics.RectF area=(android.graphics.RectF)field(frame,"area");
     assertTrue("video preview laid out",area.width()>0&&area.height()>0);
     drag(frame,area.left+area.width()*.15f,area.top+area.height()*.2f,area.left+area.width()*.5f,area.top+area.height()*.45f);
     MosaicTimeline t=(MosaicTimeline)field(a,"timeline");assertEquals(1,t.manualTracks().size());assertEquals(1,t.manualTracks().get(0).size());
@@ -124,8 +125,10 @@ public class MosaicDeviceTest {
     ((Button)field(a,"pinPoint")).performClick();android.view.View frame=(android.view.View)field(a,"frame");android.graphics.RectF area=(android.graphics.RectF)field(frame,"area");
     drag(frame,area.left+area.width()*.25f,area.top+area.height()*.4f,area.left+area.width()*.7f,area.top+area.height()*.6f);
     assertEquals("new shot can be drawn into existing track",3,t.manualTracks().get(0).size());assertFalse(t.boxesAt((long)field(a,"currentMs")).isEmpty());
+    android.view.View band=(android.view.View)field(a,"band");Bitmap strip=Bitmap.createBitmap(band.getWidth(),band.getHeight(),Bitmap.Config.ARGB_8888);band.draw(new android.graphics.Canvas(strip));float density=a.getResources().getDisplayMetrics().density;TimelineViewport viewport=(TimelineViewport)field(a,"viewport");int px=Math.round(14*density+viewport.fraction((long)field(a,"currentMs"))*(band.getWidth()-28*density));assertEquals("current point remains visible over playhead",0xffffd387,strip.getPixel(px,Math.round(46*density)));strip.recycle();
    });
    InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+   SystemClock.sleep(150); // Wait for a display frame after invalidate(), not just an idle message queue.
    Bitmap screenshot=InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();try(FileOutputStream out=new FileOutputStream(new File(context.getExternalFilesDir(null),"manual-editor.png"))){screenshot.compress(Bitmap.CompressFormat.PNG,100,out);}screenshot.recycle();
   }
  }

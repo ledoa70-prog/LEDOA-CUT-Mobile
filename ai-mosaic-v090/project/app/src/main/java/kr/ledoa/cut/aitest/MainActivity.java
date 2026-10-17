@@ -121,6 +121,9 @@ public final class MainActivity extends Activity {
         previousPoint.setOnClickListener(v->jumpPoint(false));nextPoint.setOnClickListener(v->jumpPoint(true));pinPoint.setOnClickListener(v->pinManualPoint());deletePoint.setOnClickListener(v->removeManualPoint());
         backFrame.setOnClickListener(v->preview(currentMs-frameStepMs,null));nextFrame.setOnClickListener(v->preview(currentMs+frameStepMs,null));undoManual.setOnClickListener(v->undoManualEdit());
         splitManual.setOnClickListener(v->splitManualTrack());deleteManual.setOnClickListener(v->removeManualTrack());
+        // Put the primary manual workflow before appearance settings on small screens.
+        panel.removeView(manualActions);panel.removeView(manualPicker);panel.removeView(manualTools);
+        panel.addView(manualActions,2);panel.addView(manualPicker,3);panel.addView(manualTools,4);
         Button more=button("구간 · 진단  ▾",false);panel.addView(more,new LinearLayout.LayoutParams(-1,dp(40)));detail=new LinearLayout(this);detail.setOrientation(LinearLayout.VERTICAL);detail.setVisibility(View.GONE);panel.addView(detail);more.setOnClickListener(v->detail.setVisibility(detail.getVisibility()==View.GONE?View.VISIBLE:View.GONE));
         rangeLabel=label("적용 구간  전체 영상",12,MUTED);detail.addView(rangeLabel);LinearLayout ranges=row();rangeStart=button("현재부터",false);rangeEnd=button("현재까지",false);Button whole=button("전체 구간",false);equal(ranges,rangeStart,rangeEnd,whole);detail.addView(ranges);log=button("진단 기록 저장",false);detail.addView(log,new LinearLayout.LayoutParams(-1,dp(44)));
         status=label("1 영상 열기   2 얼굴 선택   3 자동 추적",13,0xffffd387);status.setMinLines(2);root.addView(status);
@@ -279,7 +282,7 @@ public final class MainActivity extends Activity {
             super.onDraw(c);paint.setColor(PANEL);c.drawRoundRect(0,0,getWidth(),getHeight(),dp(6),dp(6),paint);if(durationMs<=0)return;
             paint.setTextSize(dp(10));paint.setColor(MUTED);
             for(int i=0;i<5;i++){long ms=viewport.boundary(i/4f);float at=dp(14)+i*(getWidth()-dp(28))/4f;String text=String.format(Locale.KOREA,"%.2fs",ms/1000.);float width=paint.measureText(text);c.drawText(text,Math.max(dp(2),Math.min(getWidth()-width-dp(2),at-width/2)),dp(14),paint);}
-            c.save();c.clipRect(dp(10),dp(22),getWidth()-dp(10),getHeight());
+            c.save();c.clipRect(dp(7),dp(16),getWidth()-dp(7),getHeight());
             if(!timeline.manualOnly){
                 if(timeline.allFaces){for(Map.Entry<Long,List<FacePath.Box>> e:timeline.samples().entrySet()){float l=x(e.getKey()),r=x(e.getKey()+100);if(r<0||l>getWidth())continue;paint.setColor(e.getValue().isEmpty()?0xffe4aa54:0xff50c4b1);c.drawRect(l,dp(67),r,dp(74),paint);}}
                 else for(FacePath.Point p:path.points()){float l=x(p.ms),r=x(p.ms+100);if(r<0||l>getWidth())continue;paint.setColor(p.box==null?0xffec7869:p.reason.contains("REVIEW")||p.status==FacePath.Status.FLOW_ESTIMATED?0xffe4aa54:0xff50c4b1);c.drawRect(l,dp(67),r,dp(74),paint);}
@@ -289,17 +292,19 @@ public final class MainActivity extends Activity {
                 long start=gesture==1?dragStart:active.start(),end=gesture==2?dragEnd:active.end();float l=x(start),r=x(end);
                 paint.setColor(BLUE);c.drawRoundRect(l,dp(30),r,dp(61),dp(5),dp(5),paint);
                 paint.setColor(Color.WHITE);for(float handle:new float[]{l,r})if(handle>=dp(10)&&handle<=getWidth()-dp(10))c.drawRoundRect(handle-dp(5),dp(26),handle+dp(5),dp(65),dp(3),dp(3),paint);
+                paint.setColor(Color.WHITE);c.drawRect(x(currentMs)-dp(1),dp(22),x(currentMs)+dp(1),getHeight(),paint);
                 int number=0;float lastLabel=-1000;paint.setTextSize(dp(10));
                 for(Map.Entry<Long,FacePath.Box> e:active.points().entrySet()){
                     if(e.getKey()<start||e.getKey()>=end)continue;number++;float at=x(e.getKey());if(at<0||at>getWidth())continue;
+                    paint.setColor(PANEL);c.drawCircle(at,dp(46),dp(7),paint);
                     paint.setColor(Math.abs(e.getKey()-currentMs)<=frameStepMs/2?0xffffd387:Color.WHITE);c.drawCircle(at,dp(46),dp(4.5f),paint);
-                    if(at-lastLabel>dp(19)){c.drawText(String.valueOf(number),at-dp(3),dp(27),paint);lastLabel=at;}
+                    if(at-lastLabel>dp(22)){paint.setColor(PANEL);c.drawRoundRect(at-dp(8),dp(16),at+dp(8),dp(29),dp(3),dp(3),paint);paint.setColor(Color.WHITE);String numberText=String.valueOf(number);c.drawText(numberText,at-paint.measureText(numberText)/2,dp(26),paint);lastLabel=at;}
                 }
             }else{
                 paint.setColor(MUTED);paint.setTextSize(dp(12));c.drawText(timeline.manualTracks().isEmpty()?"수동 박스를 추가하면 지점이 표시됩니다":"목록에서 수동 박스를 선택하세요",dp(16),dp(48),paint);
             }
             paint.setColor(0xffbbbbbb);for(long ms:timeline.cuts())c.drawRect(x(ms),dp(67),x(ms)+dp(1),dp(76),paint);
-            paint.setColor(Color.WHITE);c.drawRect(x(currentMs)-dp(1),dp(22),x(currentMs)+dp(1),getHeight(),paint);c.restore();
+            if(active==null){paint.setColor(Color.WHITE);c.drawRect(x(currentMs)-dp(1),dp(22),x(currentMs)+dp(1),getHeight(),paint);}c.restore();
         }
         public boolean performClick(){super.performClick();return true;}
         public boolean onTouchEvent(MotionEvent e){
