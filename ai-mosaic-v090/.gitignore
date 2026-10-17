@@ -1,0 +1,6 @@
+project/.gradle/
+project/local.properties
+project/**/build/
+project/app/src/main/assets/*.onnx
+project/app/src/androidTest/assets/*.mp4
+test-out/

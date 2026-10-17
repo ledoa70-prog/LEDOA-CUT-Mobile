@@ -8,11 +8,25 @@ import java.util.*;
 public final class MosaicTimeline {
     private final TreeMap<Long,List<FacePath.Box>> frames=new TreeMap<>();
     private final TreeSet<Long> cuts=new TreeSet<>();
+    private final LinkedHashMap<Integer,ManualTrack> manualTracks=new LinkedHashMap<>();
     public final FacePath selectedPath=new FacePath();
     public volatile boolean allFaces=false;
+    public volatile boolean manualOnly=false;
     public volatile long startMs=0,endMs=0,analysedEndMs=0;
     public volatile int strength=85,margin=18;
-    public synchronized void reset(){frames.clear();cuts.clear();selectedPath.reset();analysedEndMs=0;}
+    public synchronized void reset(){resetAuto();manualTracks.clear();}
+    public synchronized void resetAuto(){frames.clear();cuts.clear();selectedPath.reset();analysedEndMs=0;}
+    public synchronized void addManual(ManualTrack track){manualTracks.put(track.id,track);}
+    public synchronized ManualTrack manual(int id){return manualTracks.get(id);}
+    public synchronized void removeManual(int id){manualTracks.remove(id);}
+    public synchronized List<ManualTrack> manualTracks(){return new ArrayList<>(manualTracks.values());}
+    public synchronized List<ManualTrack> manualSnapshot(){List<ManualTrack> out=new ArrayList<>();for(ManualTrack t:manualTracks.values())out.add(t.copy());return out;}
+    public synchronized void restoreManual(List<ManualTrack> tracks){manualTracks.clear();for(ManualTrack t:tracks)manualTracks.put(t.id,t.copy());}
+    public synchronized boolean canExport(){
+        if(!manualOnly)return endMs>startMs&&analysedEndMs>=endMs;
+        for(ManualTrack t:manualTracks.values())if(t.size()>0)return true;
+        return false;
+    }
     public synchronized void truncate(long ms){frames.tailMap(ms,true).clear();cuts.tailSet(ms,true).clear();analysedEndMs=ms;}
     public synchronized void cut(long ms){cuts.add(ms);selectedPath.sceneCut(ms);}
     public synchronized List<Long> cuts(){return new ArrayList<>(cuts);}
@@ -20,6 +34,18 @@ public final class MosaicTimeline {
     public synchronized void put(long ms,List<FacePath.Box> boxes){frames.put(ms,new ArrayList<>(boxes));}
     public synchronized NavigableMap<Long,List<FacePath.Box>> samples(){return Collections.unmodifiableNavigableMap(new TreeMap<>(frames));}
     public synchronized List<FacePath.Box> boxesAt(long ms){
+        return boxesAt(ms,-1);
+    }
+    public synchronized List<FacePath.Box> boxesAt(long ms,int omitManualId){
+        List<FacePath.Box> out=new ArrayList<>();boolean replace=false;
+        for(ManualTrack t:manualTracks.values()){
+            FacePath.Box box=t.at(ms,cuts);
+            if(box!=null){if(t.replacesSelected&&!allFaces)replace=true;if(t.id!=omitManualId)out.add(box);}
+        }
+        if(!manualOnly&&!replace)out.addAll(autoBoxesAt(ms));
+        return out;
+    }
+    public synchronized List<FacePath.Box> autoBoxesAt(long ms){
         if(ms<startMs||ms>=endMs||ms>=analysedEndMs)return Collections.emptyList();
         if(!allFaces){FacePath.Point point=selectedPath.interpolated(ms);return point==null||point.box==null?Collections.emptyList():Collections.singletonList(point.box);}
         Map.Entry<Long,List<FacePath.Box>> a=frames.floorEntry(ms),b=frames.ceilingEntry(ms);

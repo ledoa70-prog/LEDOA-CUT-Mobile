@@ -91,5 +91,54 @@ public class MosaicDeviceTest {
    InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot().compress(Bitmap.CompressFormat.PNG,100,new FileOutputStream(new File(context.getExternalFilesDir(null),"editor-phone.png")));
   }
  }
+ @Test public void manualCornersAndTimelineControls()throws Exception{
+  File input=fixture("sample.mp4");
+  try(ActivityScenario<MainActivity> scenario=ActivityScenario.launch(MainActivity.class)){
+   scenario.onActivity(a->{((RadioButton)field(a,"manualMode")).performClick();a.onActivityResult(1001,Activity.RESULT_OK,new Intent().setData(Uri.fromFile(input)));});waitReady(scenario);
+   InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+   scenario.onActivity(a->{
+    ((Button)field(a,"addManual")).performClick();android.view.View frame=(android.view.View)field(a,"frame");android.graphics.RectF area=(android.graphics.RectF)field(frame,"area");
+    assertTrue("video preview laid out",area.width()>0&&area.height()>0);
+    drag(frame,area.left+area.width()*.15f,area.top+area.height()*.2f,area.left+area.width()*.5f,area.top+area.height()*.45f);
+    MosaicTimeline t=(MosaicTimeline)field(a,"timeline");assertEquals(1,t.manualTracks().size());assertEquals(1,t.manualTracks().get(0).size());
+    assertTrue("manual mode saves without AI",((Button)field(a,"save")).isEnabled());assertFalse(((Button)field(a,"track")).isEnabled());
+    android.view.View band=(android.view.View)field(a,"band");tap(band,band.getWidth()*.5f,band.getHeight()*.6f);
+   });waitReady(scenario);InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+   scenario.onActivity(a->{
+    long ms=(long)field(a,"currentMs");assertTrue("timeline seeks",ms>900&&ms<1100);
+    MosaicTimeline t=(MosaicTimeline)field(a,"timeline");ManualTrack track=t.manualTracks().get(0);FacePath.Box first=track.points().firstEntry().getValue();
+    android.view.View frame=(android.view.View)field(a,"frame");android.graphics.RectF area=(android.graphics.RectF)field(frame,"area");
+    drag(frame,area.left+(first.x+first.w)*area.width(),area.top+(first.y+first.h)*area.height(),area.left+(first.x+first.w+.12f)*area.width(),area.top+(first.y+first.h+.15f)*area.height());
+    assertEquals("resize creates second point",2,track.size());assertEquals("first point not resized",.35f,track.points().firstEntry().getValue().w,.01f);
+    assertEquals("new point wider",.47f,track.at(ms,t.cuts()).w,.015f);assertEquals("new point taller",.40f,track.at(ms,t.cuts()).h,.015f);
+    FacePath.Box middle=track.at(ms/2,t.cuts());assertTrue("intermediate width interpolates",middle.w>.35f&&middle.w<.47f);
+    android.view.View band=(android.view.View)field(a,"band");float density=a.getResources().getDisplayMetrics().density;
+    drag(band,band.getWidth()-14*density,46*density,14*density+(band.getWidth()-28*density)*.8f,46*density);
+    assertTrue("timeline end handle trims interval",track.end()>1500&&track.end()<1700);
+    ((Button)field(a,"undoManual")).performClick();assertEquals("undo restores interval",2000,t.manualTracks().get(0).end());
+   });
+   InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+   Bitmap screenshot=InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();try(FileOutputStream out=new FileOutputStream(new File(context.getExternalFilesDir(null),"manual-editor.png"))){screenshot.compress(Bitmap.CompressFormat.PNG,100,out);}screenshot.recycle();
+  }
+ }
+ void tap(android.view.View view,float x,float y){drag(view,x,y,x,y);}
+ void drag(android.view.View view,float x,float y,float right,float bottom){
+  long now=SystemClock.uptimeMillis();for(int action:new int[]{android.view.MotionEvent.ACTION_DOWN,android.view.MotionEvent.ACTION_MOVE,android.view.MotionEvent.ACTION_UP}){
+   android.view.MotionEvent e=android.view.MotionEvent.obtain(now,now+20*action,action,action==android.view.MotionEvent.ACTION_DOWN?x:right,action==android.view.MotionEvent.ACTION_DOWN?y:bottom,0);view.dispatchTouchEvent(e);e.recycle();
+  }
+ }
+ @Test public void manualMovingMaskBurnsIntoExportWithAudio()throws Exception{
+  File input=fixture("sample.mp4"),output=new File(context.getFilesDir(),"manual-output.mp4");MosaicTimeline t=new MosaicTimeline();t.manualOnly=true;t.strength=100;t.margin=0;t.endMs=2000;
+  ManualTrack track=new ManualTrack(1,false,250,1500);track.put(250,new FacePath.Box(.1f,.15f,.2f,.3f,-1));track.put(1250,new FacePath.Box(.5f,.25f,.35f,.5f,-1));t.addManual(track);
+  MosaicExport.Result result=MosaicExport.run(context,Uri.fromFile(input),output,t,new AtomicBoolean(),p->{});assertTrue(result.audio);assertTrue(result.frames>40);
+  MediaMetadataRetriever original=new MediaMetadataRetriever(),rendered=new MediaMetadataRetriever();original.setDataSource(input.getPath());rendered.setDataSource(output.getPath());
+  for(long ms:new long[]{100,750,1700}){
+   Bitmap a=original.getFrameAtTime(ms*1000,MediaMetadataRetriever.OPTION_CLOSEST),b=rendered.getFrameAtTime(ms*1000,MediaMetadataRetriever.OPTION_CLOSEST);
+   if(ms==750){FacePath.Box box=t.boxesAt(ms).get(0);assertTrue("moving and resizing manual mask burned into output",error(a,b,box.x+.02f,box.y+.02f,box.x+box.w-.02f,box.y+box.h-.02f)>12);assertTrue("outside moving mask preserved",error(a,b,.02f,.6f,.15f,.9f)<12);}
+   else assertTrue("outside manual interval remains original",error(a,b,.1f,.1f,.9f,.9f)<12);a.recycle();b.recycle();
+  }
+  original.release();rendered.release();
+ }
+
  void waitReady(ActivityScenario<MainActivity> s){long end=SystemClock.elapsedRealtime()+30000;AtomicBoolean ready=new AtomicBoolean();while(SystemClock.elapsedRealtime()<end){s.onActivity(a->ready.set(!(boolean)field(a,"busy")&&(boolean)field(a,"previewReady")));if(ready.get())return;SystemClock.sleep(100);}fail("preview ready timeout");}
 }

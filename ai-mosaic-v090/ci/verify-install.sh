@@ -26,7 +26,7 @@ adb install -r "$APK"
 test "$(adb shell run-as "$LEGACY" cat files/install-sentinel.txt | tr -d '\r')" = 'legacy-data-survives'
 test "$(adb shell run-as "$PKG" cat files/install-sentinel.txt | tr -d '\r')" = 'mosaic-update-survives'
 adb shell am start -W -n "$PKG/kr.ledoa.cut.aitest.MainActivity"
-adb shell dumpsys package "$PKG" | grep 'versionCode=901'
+adb shell dumpsys package "$PKG" | grep 'versionCode=902'
 echo 'PASS: independent install beside old package with different signer; old data retained; signed reinstall retains new app data.'
 adb shell getprop ro.build.version.release
 adb shell getprop ro.build.version.sdk
