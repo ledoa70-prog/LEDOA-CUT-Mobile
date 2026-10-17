@@ -151,5 +151,54 @@ public class MosaicDeviceTest {
   original.release();rendered.release();
  }
 
+ @Test public void filmstripScrubsForwardBackwardBeforeReleaseAndKeepsPoints()throws Exception{
+  File input=fixture("sample.mp4");final long[] touchStart={0},shown={-1};final Bitmap[] snapshot={null};
+  try(ActivityScenario<MainActivity> scenario=ActivityScenario.launch(MainActivity.class)){
+   scenario.onActivity(a->{((RadioButton)field(a,"manualMode")).performClick();a.onActivityResult(1001,Activity.RESULT_OK,new Intent().setData(Uri.fromFile(input)));});waitReady(scenario);waitFilmstrip(scenario);
+   InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+   scenario.onActivity(a->{
+    ((Button)field(a,"addManual")).performClick();android.view.View frame=(android.view.View)field(a,"frame");android.graphics.RectF area=(android.graphics.RectF)field(frame,"area");
+    drag(frame,area.left+area.width()*.1f,area.top+area.height()*.1f,area.left+area.width()*.4f,area.top+area.height()*.4f);
+    android.view.View film=(android.view.View)field(a,"filmstrip");assertTrue("filmstrip is visible",film.getHeight()>0&&film.isShown());
+    android.util.LruCache<?,?> cache=(android.util.LruCache<?,?>)field(film,"cache");assertTrue("actual video thumbnails loaded",cache.size()>=3);
+    touchStart[0]=SystemClock.uptimeMillis();filmTouch(a,touchStart[0],android.view.MotionEvent.ACTION_DOWN,.1f);filmTouch(a,touchStart[0],android.view.MotionEvent.ACTION_MOVE,.8f);
+   });
+   waitScrub(scenario,1400,1750);
+   scenario.onActivity(a->{
+    assertTrue("finger still down",(boolean)field(a,"scrubbing"));assertFalse("no play/pause needed",(boolean)field(a,"playing"));assertFalse("point edits wait for release",(boolean)field(a,"previewReady"));
+    assertEquals("scrubbing does not insert keyframes",1,((MosaicTimeline)field(a,"timeline")).manualTracks().get(0).size());
+    shown[0]=(long)field(a,"displayedFrameMs");snapshot[0]=((Bitmap)field(field(a,"frame"),"bitmap")).copy(Bitmap.Config.ARGB_8888,false);
+   });
+   MediaMetadataRetriever verifier=new MediaMetadataRetriever();verifier.setDataSource(input.getPath());Bitmap expected=verifier.getScaledFrameAtTime(shown[0]*1000,MediaMetadataRetriever.OPTION_CLOSEST,480,480);
+   assertEquals(expected.getWidth(),snapshot[0].getWidth());assertEquals(expected.getHeight(),snapshot[0].getHeight());assertTrue("displayed pixels match requested video time before ACTION_UP",error(expected,snapshot[0],.02f,.02f,.98f,.98f)<3);expected.recycle();snapshot[0].recycle();verifier.release();
+   scenario.onActivity(a->filmTouch(a,touchStart[0],android.view.MotionEvent.ACTION_MOVE,.25f));waitScrub(scenario,350,650);
+   scenario.onActivity(a->{
+    for(float f:new float[]{.9f,.1f,.7f,.2f,.85f,.63f})filmTouch(a,touchStart[0],android.view.MotionEvent.ACTION_MOVE,f);
+    filmTouch(a,touchStart[0],android.view.MotionEvent.ACTION_UP,.63f);
+   });waitReady(scenario);SystemClock.sleep(200);
+   scenario.onActivity(a->{
+    long ms=(long)field(a,"currentMs");assertTrue("release settles at latest requested time",ms>1200&&ms<1320);assertEquals(ms,(long)field(a,"displayedFrameMs"));assertFalse((boolean)field(a,"scrubbing"));
+    ManualTrack t=((MosaicTimeline)field(a,"timeline")).manualTracks().get(0);assertEquals(1,t.size());
+    android.view.View frame=(android.view.View)field(a,"frame");android.graphics.RectF area=(android.graphics.RectF)field(frame,"area");
+    drag(frame,area.left+area.width()*.25f,area.top+area.height()*.25f,area.left+area.width()*.33f,area.top+area.height()*.29f);
+    assertEquals("can add next manual point immediately after scrubbing",2,t.size());assertEquals(ms,(long)t.points().lastKey());
+   });
+   SystemClock.sleep(150);Bitmap capture=InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();try(FileOutputStream out=new FileOutputStream(new File(context.getExternalFilesDir(null),"filmstrip-editor.png"))){capture.compress(Bitmap.CompressFormat.PNG,100,out);}capture.recycle();
+   File next=fixture("faces.mp4");scenario.onActivity(a->a.onActivityResult(1001,Activity.RESULT_OK,new Intent().setData(Uri.fromFile(next))));waitReady(scenario);waitFilmstrip(scenario);SystemClock.sleep(150);
+   scenario.onActivity(a->{assertEquals("new source duration",3000,(long)field(a,"durationMs"));assertEquals("old scrub callback cannot replace new source",0,(long)field(a,"displayedFrameMs"));assertTrue(((MosaicTimeline)field(a,"timeline")).manualTracks().isEmpty());});
+   capture=InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();try(FileOutputStream out=new FileOutputStream(new File(context.getExternalFilesDir(null),"filmstrip-face-editor.png"))){capture.compress(Bitmap.CompressFormat.PNG,100,out);}capture.recycle();
+  }
+ }
+ void filmTouch(MainActivity a,long down,int action,float fraction){
+  android.view.View film=(android.view.View)field(a,"filmstrip");float density=a.getResources().getDisplayMetrics().density;
+  android.view.MotionEvent e=android.view.MotionEvent.obtain(down,SystemClock.uptimeMillis(),action,14*density+(film.getWidth()-28*density)*fraction,film.getHeight()*.5f,0);film.dispatchTouchEvent(e);e.recycle();
+ }
+ void waitScrub(ActivityScenario<MainActivity> scenario,long min,long max){
+  long end=SystemClock.elapsedRealtime()+15000;AtomicBoolean ready=new AtomicBoolean();while(SystemClock.elapsedRealtime()<end){scenario.onActivity(a->{long ms=(long)field(a,"displayedFrameMs");ready.set((boolean)field(a,"scrubbing")&&ms>=min&&ms<=max);});if(ready.get())return;SystemClock.sleep(70);}fail("live scrub frame did not update while finger held down");
+ }
+ void waitFilmstrip(ActivityScenario<MainActivity> scenario){
+  long end=SystemClock.elapsedRealtime()+20000;AtomicBoolean ready=new AtomicBoolean();while(SystemClock.elapsedRealtime()<end){scenario.onActivity(a->ready.set(((android.util.LruCache<?,?>)field(field(a,"filmstrip"),"cache")).size()>=3));if(ready.get())return;SystemClock.sleep(100);}fail("video thumbnails did not load");
+ }
+
  void waitReady(ActivityScenario<MainActivity> s){long end=SystemClock.elapsedRealtime()+30000;AtomicBoolean ready=new AtomicBoolean();while(SystemClock.elapsedRealtime()<end){s.onActivity(a->ready.set(!(boolean)field(a,"busy")&&(boolean)field(a,"previewReady")));if(ready.get())return;SystemClock.sleep(100);}fail("preview ready timeout");}
 }
