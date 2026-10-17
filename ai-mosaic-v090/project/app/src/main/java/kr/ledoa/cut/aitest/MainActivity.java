@@ -49,14 +49,14 @@ public final class MainActivity extends Activity {
     private int scrubSession;
     private long scrubTargetMs,displayedFrameMs=-1;
     private Button stepBack,stepNext;
-    private TextView status,clock,strengthLabel,marginLabel,rangeLabel,modeHint;
-    private Button open,track,play,save,stop,manual,review,log,rangeStart,rangeEnd;
+    private TextView status,clock;
+    private Button open,track,play,save,stop,more;
     private RadioButton selectedMode,allMode,manualMode;
     private RadioGroup modes;
-    private Button addManual,correctManual,previousPoint,nextPoint,pinPoint,deletePoint,undoManual,deleteManual,splitManual;
+    private Button addManual,undoManual;
     private Spinner manualPicker;
-    private TextView pointLabel,zoomLabel;
-    private LinearLayout manualTools;
+    private TextView zoomLabel;
+    private PopupMenu options;
     private final ArrayList<Integer> manualIds=new ArrayList<>();
     private int activeManualId=-1,nextManualId=1;
     private boolean creatingManual,creatingCorrection,redrawingManual,refreshingPicker;
@@ -64,13 +64,12 @@ public final class MainActivity extends Activity {
     private final TimelineViewport viewport=new TimelineViewport();
     private final ArrayDeque<ManualUndo> manualUndo=new ArrayDeque<>();
     private static final class ManualUndo {
-        final List<ManualTrack> tracks; final int active;
-        ManualUndo(List<ManualTrack> tracks,int active){this.tracks=tracks;this.active=active;}
+        final List<ManualTrack> tracks; final int active; final long start,end;
+        ManualUndo(List<ManualTrack> tracks,int active,long start,long end){this.tracks=tracks;this.active=active;this.start=start;this.end=end;}
     }
-    private SeekBar seek,strengthSeek,marginSeek;
+    private SeekBar seek;
     private ProgressBar progress;
     private BandView band;
-    private LinearLayout detail;
     private long analysisElapsedMs,decodeMs,inferenceMs;
     private int detections,sampled;
     private String decoderMode="NONE",lastError="";
@@ -91,72 +90,104 @@ public final class MainActivity extends Activity {
     private LinearLayout row(){LinearLayout r=new LinearLayout(this);r.setOrientation(LinearLayout.HORIZONTAL);r.setGravity(Gravity.CENTER_VERTICAL);return r;}
     private void equal(LinearLayout row,View...views){for(View v:views){LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,dp(46),1);p.setMargins(dp(3),dp(3),dp(3),dp(3));row.addView(v,p);}}
     private void renderUi(){
-        LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setBackgroundColor(BG);root.setPadding(dp(12),dp(6),dp(12),dp(8));
-        LinearLayout heading=row();heading.addView(label("LEDOA 모자이크",20,TEXT),new LinearLayout.LayoutParams(0,-2,1));heading.addView(label("v0.9.3",12,MUTED));root.addView(heading);
-        stage=new FrameLayout(this);stage.setBackgroundColor(Color.BLACK);frame=new FrameView();stage.addView(frame,new FrameLayout.LayoutParams(-1,-1));root.addView(stage,new LinearLayout.LayoutParams(-1,0,1.2f));
-        LinearLayout transport=row();play=button("▶ 재생",false);transport.addView(play,new LinearLayout.LayoutParams(dp(72),dp(42)));
-        stepBack=button("◀",false);stepBack.setContentDescription("33밀리초 뒤로 이동");transport.addView(stepBack,new LinearLayout.LayoutParams(dp(36),dp(42)));
+        LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setBackgroundColor(BG);root.setPadding(dp(12),dp(4),dp(12),dp(6));
+        LinearLayout heading=row();heading.addView(label("LEDOA 모자이크",19,TEXT),new LinearLayout.LayoutParams(0,-2,1));heading.addView(label("v0.9.4",10,MUTED));
+        undoManual=button("↶",false);undoManual.setTextSize(24);undoManual.setContentDescription("편집 실행 취소");heading.addView(undoManual,new LinearLayout.LayoutParams(dp(42),dp(40)));
+        more=button("⋮",false);more.setTextSize(24);more.setContentDescription("모자이크 편집 메뉴");heading.addView(more,new LinearLayout.LayoutParams(dp(42),dp(40)));root.addView(heading);
+        undoManual.setOnClickListener(v->undoManualEdit());more.setOnClickListener(this::showOptions);
+        stage=new FrameLayout(this);stage.setBackgroundColor(Color.BLACK);frame=new FrameView();stage.addView(frame,new FrameLayout.LayoutParams(-1,-1));root.addView(stage,new LinearLayout.LayoutParams(-1,0,1));
+        LinearLayout transport=row();play=button("▶ 재생",false);transport.addView(play,new LinearLayout.LayoutParams(dp(72),dp(40)));
+        stepBack=button("◀",false);stepBack.setContentDescription("33밀리초 뒤로 이동");transport.addView(stepBack,new LinearLayout.LayoutParams(dp(36),dp(40)));
         clock=label("00:00.000 / 00:00.000",12,TEXT);transport.addView(clock,new LinearLayout.LayoutParams(0,-2,1));
-        stepNext=button("▶",false);stepNext.setContentDescription("33밀리초 앞으로 이동");transport.addView(stepNext,new LinearLayout.LayoutParams(dp(36),dp(42)));root.addView(transport);
+        stepNext=button("▶",false);stepNext.setContentDescription("33밀리초 앞으로 이동");transport.addView(stepNext,new LinearLayout.LayoutParams(dp(36),dp(40)));root.addView(transport);
         stepBack.setOnClickListener(v->preview(currentMs-frameStepMs,null));stepNext.setOnClickListener(v->preview(currentMs+frameStepMs,null));
-        seek=new SeekBar(this);seek.setMax(10000);seek.setVisibility(View.GONE);root.addView(seek,new LinearLayout.LayoutParams(-1,dp(32)));
+        seek=new SeekBar(this);seek.setMax(10000);seek.setVisibility(View.GONE);root.addView(seek,new LinearLayout.LayoutParams(-1,0));
         LinearLayout zoomRow=row();Button zoomOut=button("−",false),zoomFit=button("전체",false),zoomIn=button("＋",false);
-        zoomLabel=label("타임라인 1×",11,MUTED);zoomRow.addView(zoomLabel,new LinearLayout.LayoutParams(0,dp(32),1));
-        for(Button b:new Button[]{zoomOut,zoomFit,zoomIn})zoomRow.addView(b,new LinearLayout.LayoutParams(dp(54),dp(32)));root.addView(zoomRow);
+        zoomLabel=label("타임라인 1×",11,MUTED);zoomRow.addView(zoomLabel,new LinearLayout.LayoutParams(0,dp(30),1));
+        for(Button button:new Button[]{zoomOut,zoomFit,zoomIn})zoomRow.addView(button,new LinearLayout.LayoutParams(dp(50),dp(30)));root.addView(zoomRow);
         zoomOut.setOnClickListener(v->zoomTimeline(.5));zoomIn.setOnClickListener(v->zoomTimeline(2));zoomFit.setOnClickListener(v->{viewport.reset(durationMs);updateZoom();invalidateTimeline();});
         filmstrip=new FilmstripView();root.addView(filmstrip,new LinearLayout.LayoutParams(-1,dp(50)));
-        band=new BandView();root.addView(band,new LinearLayout.LayoutParams(-1,dp(78)));root.addView(label("영상 띠를 드래그해 탐색 · ● 수동 지점 · 양 끝 구간 · 두 손가락 확대",10,MUTED));
-        seek.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onStartTrackingTouch(SeekBar s){stopPlayer(false);}public void onProgressChanged(SeekBar s,int p,boolean user){if(user)clock.setText(fmt(durationMs*p/10000)+" / "+fmt(durationMs));}public void onStopTrackingTouch(SeekBar s){if(!busy)preview(durationMs*s.getProgress()/10000,null);}});
-        ScrollView scroll=new ScrollView(this);scroll.setFillViewport(false);LinearLayout panel=new LinearLayout(this);panel.setOrientation(LinearLayout.VERTICAL);scroll.addView(panel);root.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
-        modes=new RadioGroup(this);modes.setOrientation(RadioGroup.HORIZONTAL);selectedMode=new RadioButton(this);selectedMode.setId(View.generateViewId());selectedMode.setText("선택 얼굴");selectedMode.setTextColor(TEXT);allMode=new RadioButton(this);allMode.setId(View.generateViewId());allMode.setText("전체 얼굴");allMode.setTextColor(TEXT);manualMode=new RadioButton(this);manualMode.setId(View.generateViewId());manualMode.setText("수동 추적");manualMode.setTextColor(TEXT);
-        selectedMode.setText("한 얼굴");allMode.setText("전체 얼굴");for(RadioButton b:new RadioButton[]{selectedMode,allMode,manualMode}){b.setTextSize(13);modes.addView(b,new RadioGroup.LayoutParams(0,dp(42),1));}selectedMode.setChecked(true);panel.addView(modes);
-        modeHint=label("영상에서 가릴 얼굴을 터치하세요.",12,MUTED);panel.addView(modeHint);
+        band=new BandView();root.addView(band,new LinearLayout.LayoutParams(-1,dp(78)));
+        root.addView(label("양 끝을 끌어 구간 조절 · 길게 눌러 편집",10,MUTED));
+        modes=new RadioGroup(this);modes.setOrientation(RadioGroup.HORIZONTAL);
+        selectedMode=new RadioButton(this);selectedMode.setText("한 얼굴");allMode=new RadioButton(this);allMode.setText("전체 얼굴");manualMode=new RadioButton(this);manualMode.setText("수동 추적");
+        for(RadioButton mode:new RadioButton[]{selectedMode,allMode,manualMode}){mode.setId(View.generateViewId());mode.setTextColor(TEXT);mode.setTextSize(13);modes.addView(mode,new RadioGroup.LayoutParams(0,dp(40),1));}selectedMode.setChecked(true);root.addView(modes);
         modes.setOnCheckedChangeListener((g,id)->{
             stopPlayer(false);generation.incrementAndGet();boolean only=id==manualMode.getId(),all=id==allMode.getId();
-            if(!only&&all!=timeline.allFaces){timeline.allFaces=all;timeline.resetAuto();selected=null;anchorMs=-1;}
+            if(!only&&all!=timeline.allFaces){timeline.allFaces=all;timeline.resetAuto();selected=null;anchorMs=-1;manualUndo.clear();}
             timeline.manualOnly=only;activeManualId=-1;creatingManual=creatingCorrection=redrawingManual=selectingManually=false;refreshManualUi();updateControls();invalidateTimeline();
-            if(sourceUri!=null)preview(currentMs,only?"＋ 수동 박스로 얼굴·번호판을 감싸세요. 자동 분석 없이 저장할 수 있습니다.":"자동 경로와 수동 박스를 함께 사용합니다. 가릴 얼굴을 선택하세요.");
+            if(sourceUri!=null)preview(currentMs,only?"＋ 모자이크로 얼굴·번호판을 감싸세요. 박스를 조절하면 지점이 저장됩니다.":all?"양 끝을 끌어 적용 구간을 정한 뒤 자동 추적을 누르세요.":"가릴 얼굴을 터치하거나 ＋ 모자이크로 영역을 지정하세요.");
         });
-        strengthLabel=label("모자이크 강도  85",13,TEXT);panel.addView(strengthLabel);strengthSeek=new SeekBar(this);strengthSeek.setMax(100);strengthSeek.setProgress(85);panel.addView(strengthSeek,new LinearLayout.LayoutParams(-1,dp(32)));strengthSeek.setOnSeekBarChangeListener(slider(p->{timeline.strength=Math.max(1,p);strengthLabel.setText("모자이크 강도  "+timeline.strength);frame.invalidate();}));
-        marginLabel=label("박스 여백  18%",13,TEXT);panel.addView(marginLabel);marginSeek=new SeekBar(this);marginSeek.setMax(60);marginSeek.setProgress(18);panel.addView(marginSeek,new LinearLayout.LayoutParams(-1,dp(32)));marginSeek.setOnSeekBarChangeListener(slider(p->{timeline.margin=p;marginLabel.setText("박스 여백  "+p+"%");frame.invalidate();}));
-        LinearLayout fix=row();manual=button("직접 영역 지정",false);review=button("다음 확인 구간",false);equal(fix,manual,review);panel.addView(fix);
-        LinearLayout manualActions=row();addManual=button("＋ 수동 박스",true);correctManual=button("자동 경로 보정",false);equal(manualActions,addManual,correctManual);panel.addView(manualActions);
-        manualPicker=new Spinner(this);manualPicker.setContentDescription("편집할 수동 박스 선택");panel.addView(manualPicker,new LinearLayout.LayoutParams(-1,dp(42)));
-        manualPicker.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){public void onNothingSelected(AdapterView<?> p){}public void onItemSelected(AdapterView<?> p,View v,int position,long id){if(refreshingPicker||position>=manualIds.size())return;int next=manualIds.get(position);if(next==activeManualId)return;activeManualId=next;creatingManual=creatingCorrection=redrawingManual=selectingManually=false;stopPlayer(false);updateControls();invalidateTimeline();frame.invalidate();if(sourceUri!=null)preview(currentMs,activeManualId<0?"자동 얼굴 선택으로 돌아왔습니다.":"박스 안을 끌어 이동 · 네 모서리로 크기 조절 · 놓으면 현재 지점 저장");}});
-        manualTools=new LinearLayout(this);manualTools.setOrientation(LinearLayout.VERTICAL);panel.addView(manualTools);
-        pointLabel=label("",12,MUTED);manualTools.addView(pointLabel);
-        LinearLayout pointRow=row();previousPoint=button("◀ 지점",false);pinPoint=button("＋ 지점",false);deletePoint=button("지점 삭제",false);nextPoint=button("지점 ▶",false);equal(pointRow,previousPoint,pinPoint,deletePoint,nextPoint);manualTools.addView(pointRow);
-        LinearLayout editRow=row();Button backFrame=button("◀ 미세",false),nextFrame=button("미세 ▶",false);undoManual=button("실행 취소",false);equal(editRow,backFrame,nextFrame,undoManual);manualTools.addView(editRow);
-        LinearLayout trackRow=row();splitManual=button("여기서 나누기",false);deleteManual=button("박스 삭제",false);equal(trackRow,splitManual,deleteManual);manualTools.addView(trackRow);
-        addManual.setOnClickListener(v->beginManual(false));correctManual.setOnClickListener(v->beginManual(true));
-        previousPoint.setOnClickListener(v->jumpPoint(false));nextPoint.setOnClickListener(v->jumpPoint(true));pinPoint.setOnClickListener(v->pinManualPoint());deletePoint.setOnClickListener(v->removeManualPoint());
-        backFrame.setOnClickListener(v->preview(currentMs-frameStepMs,null));nextFrame.setOnClickListener(v->preview(currentMs+frameStepMs,null));undoManual.setOnClickListener(v->undoManualEdit());
-        splitManual.setOnClickListener(v->splitManualTrack());deleteManual.setOnClickListener(v->removeManualTrack());
-        // Put the primary manual workflow before appearance settings on small screens.
-        panel.removeView(manualActions);panel.removeView(manualPicker);panel.removeView(manualTools);
-        panel.addView(manualActions,2);panel.addView(manualPicker,3);panel.addView(manualTools,4);
-        Button more=button("구간 · 진단  ▾",false);panel.addView(more,new LinearLayout.LayoutParams(-1,dp(40)));detail=new LinearLayout(this);detail.setOrientation(LinearLayout.VERTICAL);detail.setVisibility(View.GONE);panel.addView(detail);more.setOnClickListener(v->detail.setVisibility(detail.getVisibility()==View.GONE?View.VISIBLE:View.GONE));
-        rangeLabel=label("적용 구간  전체 영상",12,MUTED);detail.addView(rangeLabel);LinearLayout ranges=row();rangeStart=button("현재부터",false);rangeEnd=button("현재까지",false);Button whole=button("전체 구간",false);equal(ranges,rangeStart,rangeEnd,whole);detail.addView(ranges);log=button("진단 기록 저장",false);detail.addView(log,new LinearLayout.LayoutParams(-1,dp(44)));
-        status=label("1 영상 열기   2 얼굴 선택   3 자동 추적",13,0xffffd387);status.setMinLines(2);root.addView(status);
-        progress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);progress.setMax(100);root.addView(progress,new LinearLayout.LayoutParams(-1,dp(5)));
-        LinearLayout actions=row();open=button("영상 열기",false);track=button("자동 추적",true);save=button("MP4 저장",false);equal(actions,open,track,save);root.addView(actions);stop=button("작업 취소",false);stop.setVisibility(View.GONE);root.addView(stop,new LinearLayout.LayoutParams(-1,dp(40)));
-        setContentView(root);open.setOnClickListener(v->openVideo());track.setOnClickListener(v->analyse());play.setOnClickListener(v->togglePlayer());save.setOnClickListener(v->requestExport());stop.setOnClickListener(v->{cancel.set(true);status.setText("진행 중인 처리를 마친 뒤 취소합니다…");});
-        manual.setOnClickListener(v->{stopPlayer(false);activeManualId=-1;creatingManual=creatingCorrection=redrawingManual=false;refreshManualUi();selectingManually=!selectingManually;manual.setText(selectingManually?"영역 지정 취소":"직접 영역 지정");status.setText(selectingManually?"얼굴의 왼쪽 위에서 오른쪽 아래로 드래그해 주세요.":"얼굴을 터치해 선택해 주세요.");frame.invalidate();});
-        review.setOnClickListener(v->{stopPlayer(false);long next=timeline.nextReview(currentMs+50);if(next<0)next=timeline.nextReview(-1);if(next<0){status.setText("표시된 확인 구간이 없습니다. 전체 영상을 재생해 확인해 주세요.");return;}preview(next,"이 장면을 확인하세요. 선택 얼굴은 터치로 다시 연결할 수 있습니다.");});
-        rangeStart.setOnClickListener(v->setRange(currentMs,activeManual()==null?timeline.endMs:activeManual().end()));rangeEnd.setOnClickListener(v->setRange(activeManual()==null?timeline.startMs:activeManual().start(),currentMs));whole.setOnClickListener(v->{if(!busy)setRange(0,durationMs);});
-        log.setOnClickListener(v->{Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT).setType("application/json").addCategory(Intent.CATEGORY_OPENABLE).putExtra(Intent.EXTRA_TITLE,"LEDOA_MOSAIC_v0.9.3.json");startActivityForResult(i,SAVE_LOG);});
+        addManual=button("＋ 모자이크",true);root.addView(addManual,new LinearLayout.LayoutParams(-1,dp(42)));addManual.setOnClickListener(v->addMosaic());
+        manualPicker=new Spinner(this);manualPicker.setContentDescription("자동 추적 또는 편집할 모자이크 선택");root.addView(manualPicker,new LinearLayout.LayoutParams(-1,dp(38)));
+        manualPicker.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){public void onNothingSelected(AdapterView<?> parent){}public void onItemSelected(AdapterView<?> parent,View view,int position,long id){
+            if(refreshingPicker||position>=manualIds.size())return;int next=manualIds.get(position);if(next==activeManualId)return;
+            activeManualId=next;creatingManual=creatingCorrection=redrawingManual=selectingManually=false;stopPlayer(false);updateControls();invalidateTimeline();frame.invalidate();
+            if(sourceUri!=null)preview(currentMs,activeManualId<0?"자동 추적 구간 · 양 끝을 끌어 조절하세요.":"박스를 옮기거나 모서리를 조절하면 지점이 저장됩니다.");
+        }});
+        status=label("영상을 열어 시작하세요.",12,0xffffd387);status.setMinLines(2);status.setMaxLines(2);root.addView(status);
+        progress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);progress.setMax(100);root.addView(progress,new LinearLayout.LayoutParams(-1,dp(4)));
+        LinearLayout actions=row();open=button("영상 열기",false);track=button("자동 추적",true);save=button("MP4 저장",false);equal(actions,open,track,save);root.addView(actions);
+        stop=button("작업 취소",false);stop.setVisibility(View.GONE);root.addView(stop,new LinearLayout.LayoutParams(-1,dp(40)));
+        setContentView(root);open.setOnClickListener(v->openVideo());track.setOnClickListener(v->analyse());play.setOnClickListener(v->togglePlayer());save.setOnClickListener(v->requestExport());stop.setOnClickListener(v->{cancel.set(true);setStatus("진행 중인 처리를 마친 뒤 취소합니다…");});
         refreshManualUi();updateControls();
     }
+    private void addMosaic(){
+        if(busy||playing||!previewReady)return;
+        if(!timeline.manualOnly&&!timeline.allFaces&&activeManual()==null&&timeline.analysedEndMs==0){beginFaceSelection();return;}
+        beginManual(false);
+    }
+    private void beginFaceSelection(){
+        if(busy||playing||!previewReady||timeline.manualOnly||timeline.allFaces)return;
+        activeManualId=-1;creatingManual=creatingCorrection=redrawingManual=false;selectingManually=true;refreshManualUi();updateControls();invalidateTimeline();frame.invalidate();
+        setStatus("자동 추적할 얼굴을 감싸도록 드래그한 뒤 자동 추적을 누르세요.");
+    }
+    private void nextReview(){
+        long next=timeline.nextReview(currentMs+50);if(next<0)next=timeline.nextReview(-1);
+        if(next<0){setStatus("표시된 확인 구간이 없습니다. 전체 영상을 재생해 확인해 주세요.");return;}preview(next,"이 장면을 확인하세요. 얼굴을 다시 선택하거나 수동 박스로 보정할 수 있습니다.");
+    }
+    private void showOptions(View anchor){
+        if(busy||playing||scrubbing||sourceUri==null||!previewReady)return;
+        if(options!=null)options.dismiss();options=new PopupMenu(this,anchor);android.view.Menu menu=options.getMenu();ManualTrack active=activeManual();
+        menu.add(0,1,0,"모자이크 강도 · 여백");
+        if(active!=null){
+            menu.add(0,10,1,"현재 위치에 지점 추가").setEnabled(active.contains(currentMs));
+            menu.add(0,11,2,"이 지점 삭제").setEnabled(active.near(currentMs,Math.max(1,frameStepMs/2))!=null);
+            menu.add(0,12,3,"여기서 나누기").setEnabled(currentMs>active.start()&&currentMs<active.end());
+            menu.add(0,13,4,"이 모자이크 삭제");
+        }else if(!timeline.manualOnly){
+            if(!timeline.allFaces){menu.add(0,2,1,"얼굴 다시 지정");menu.add(0,3,2,"자동 경로 수동 보정").setEnabled(timeline.analysedEndMs>0);}
+            menu.add(0,4,3,"다음 확인 구간").setEnabled(timeline.analysedEndMs>0);
+        }
+        if(active!=null||!timeline.manualOnly)menu.add(0,5,5,"전체 영상으로 구간 펼치기");
+        menu.add(0,20,6,"진단 기록 저장");
+        options.setOnMenuItemClickListener(item->{
+            if(busy||playing||scrubbing||!previewReady)return true;
+            switch(item.getItemId()){
+                case 1:showAppearance();break;case 2:beginFaceSelection();break;case 3:beginManual(true);break;case 4:nextReview();break;
+                case 5:setRange(0,durationMs);break;case 10:pinManualPoint();break;case 11:removeManualPoint();break;case 12:splitManualTrack();break;case 13:removeManualTrack();break;
+                case 20:Intent intent=new Intent(Intent.ACTION_CREATE_DOCUMENT).setType("application/json").addCategory(Intent.CATEGORY_OPENABLE).putExtra(Intent.EXTRA_TITLE,"LEDOA_MOSAIC_v0.9.4.json");startActivityForResult(intent,SAVE_LOG);break;
+            }return true;
+        });options.show();
+    }
+    private void showAppearance(){
+        LinearLayout panel=new LinearLayout(this);panel.setOrientation(LinearLayout.VERTICAL);panel.setPadding(dp(16),dp(8),dp(16),dp(8));
+        TextView strengthText=label("강도  "+timeline.strength,15,Color.BLACK);SeekBar strength=new SeekBar(this);strength.setMax(100);strength.setProgress(timeline.strength);panel.addView(strengthText);panel.addView(strength);
+        strength.setOnSeekBarChangeListener(slider(value->{timeline.strength=Math.max(1,value);strengthText.setText("강도  "+timeline.strength);frame.invalidate();}));
+        TextView marginText=label("박스 여백  "+timeline.margin+"%",15,Color.BLACK);SeekBar margin=new SeekBar(this);margin.setMax(60);margin.setProgress(timeline.margin);panel.addView(marginText);panel.addView(margin);
+        margin.setOnSeekBarChangeListener(slider(value->{timeline.margin=value;marginText.setText("박스 여백  "+value+"%");frame.invalidate();}));
+        new AlertDialog.Builder(this).setTitle("모자이크 모양").setView(panel).setPositiveButton("완료",null).show();
+    }
     private ManualTrack activeManual(){return timeline.manual(activeManualId);}
-    private void rememberManual(){manualUndo.addLast(new ManualUndo(timeline.manualSnapshot(),activeManualId));while(manualUndo.size()>50)manualUndo.removeFirst();}
+    private void rememberManual(){manualUndo.addLast(new ManualUndo(timeline.manualSnapshot(),activeManualId,timeline.startMs,timeline.endMs));while(manualUndo.size()>50)manualUndo.removeFirst();}
     private void refreshManualUi(){
-        refreshingPicker=true;manualIds.clear();manualIds.add(-1);ArrayList<String> names=new ArrayList<>();names.add(timeline.manualOnly?"편집할 박스를 선택하세요":"자동 얼굴 선택 / 수동 박스 선택");
+        refreshingPicker=true;manualIds.clear();manualIds.add(-1);ArrayList<String> names=new ArrayList<>();names.add(timeline.manualOnly?"모자이크 선택":"자동 추적 · "+(timeline.allFaces?"전체 얼굴":"한 얼굴"));
         int selectedIndex=0;for(ManualTrack t:timeline.manualTracks()){manualIds.add(t.id);names.add((t.replacesSelected?"자동 보정 ":"수동 박스 ")+t.id+" · "+t.size()+"개 지점");if(t.id==activeManualId)selectedIndex=names.size()-1;}
         ArrayAdapter<String> adapter=new ArrayAdapter<String>(this,android.R.layout.simple_spinner_item,names){
             public View getView(int pos,View old,ViewGroup parent){TextView v=(TextView)super.getView(pos,old,parent);v.setTextColor(TEXT);v.setTextSize(13);return v;}
             public View getDropDownView(int pos,View old,ViewGroup parent){TextView v=(TextView)super.getDropDownView(pos,old,parent);v.setTextColor(TEXT);v.setBackgroundColor(PANEL);v.setPadding(dp(10),dp(12),dp(10),dp(12));return v;}
         };
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);manualPicker.setAdapter(adapter);manualPicker.setSelection(selectedIndex,false);refreshingPicker=false;
+        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item);manualPicker.setAdapter(adapter);manualPicker.setSelection(selectedIndex,false);manualPicker.setVisibility(manualIds.size()>1?View.VISIBLE:View.GONE);refreshingPicker=false;
     }
     private void beginManual(boolean correction){
         if(busy||sourceUri==null||!previewReady)return;stopPlayer(false);
@@ -180,11 +211,10 @@ public final class MainActivity extends Activity {
         refreshManualUi();updateControls();invalidateTimeline();frame.invalidate();setStatus("지점 저장 · "+fmt(currentMs)+" · 위치와 가로·세로 크기를 함께 연결합니다.");
     }
     private void pinManualPoint(){ManualTrack t=activeManual();if(t==null)return;FacePath.Box b=t.at(currentMs,timeline.cuts());if(b==null){if(t.contains(currentMs)){redrawingManual=true;setStatus("이 장면에서 가릴 영역을 드래그해 새 지점을 지정하세요.");}else setStatus("선택 박스의 적용 구간 안에서 지점을 추가하세요.");return;}commitManualBox(b);}
-    private void jumpPoint(boolean forward){ManualTrack t=activeManual();if(t==null)return;Long at=forward?t.next(currentMs):t.previous(currentMs);if(at==null||!t.contains(at)){setStatus(forward?"다음 지점이 없습니다.":"이전 지점이 없습니다.");return;}preview(at,null);}
     private void removeManualPoint(){ManualTrack t=activeManual();if(t==null)return;Long ms=t.near(currentMs,Math.max(1,frameStepMs/2));if(ms==null){setStatus("지점 표시를 터치한 뒤 삭제해 주세요.");return;}rememberManual();t.remove(ms);if(t.size()==0){timeline.removeManual(t.id);activeManualId=-1;}manualChanged("지점을 삭제했습니다. 실행 취소로 복원할 수 있습니다.");}
     private void removeManualTrack(){ManualTrack t=activeManual();if(t==null)return;rememberManual();timeline.removeManual(t.id);activeManualId=-1;manualChanged("선택 박스를 삭제했습니다. 실행 취소로 복원할 수 있습니다.");}
     private void splitManualTrack(){ManualTrack t=activeManual();if(t==null)return;if(currentMs<=t.start()||currentMs>=t.end()){setStatus("박스 적용 구간의 중간에서 나눠 주세요.");return;}if(timeline.manualTracks().size()>=16){setStatus("수동 박스는 최대 16개입니다.");return;}rememberManual();ManualTrack right=t.split(currentMs,nextManualId++,timeline.cuts());timeline.addManual(right);activeManualId=right.id;manualChanged("현재 시점에서 구간을 나눴습니다. 앞뒤 박스는 독립적으로 편집됩니다.");}
-    private void undoManualEdit(){if(manualUndo.isEmpty()||busy||playing)return;ManualUndo state=manualUndo.removeLast();timeline.restoreManual(state.tracks);activeManualId=state.active;manualChanged("수동 편집을 되돌렸습니다.");}
+    private void undoManualEdit(){if(manualUndo.isEmpty()||busy||playing)return;ManualUndo state=manualUndo.removeLast();timeline.restoreManual(state.tracks);timeline.rangeAuto(state.start,state.end,durationMs);activeManualId=state.active;manualChanged("편집을 되돌렸습니다.");}
     private void manualChanged(String message){refreshManualUi();updateControls();invalidateTimeline();frame.invalidate();setStatus(message);}
     private void zoomTimeline(double factor){if(durationMs<=0)return;viewport.reveal(currentMs);viewport.zoom(factor,Math.max(0,Math.min(1,viewport.fraction(currentMs))));updateZoom();invalidateTimeline();}
     private void updateZoom(){if(zoomLabel!=null)zoomLabel.setText(String.format(Locale.KOREA,"타임라인 %.1f×",Math.max(1,durationMs/viewport.span())));}
@@ -214,20 +244,21 @@ public final class MainActivity extends Activity {
     private SeekBar.OnSeekBarChangeListener slider(IntValue action){return new SeekBar.OnSeekBarChangeListener(){public void onStartTrackingTouch(SeekBar s){}public void onStopTrackingTouch(SeekBar s){}public void onProgressChanged(SeekBar s,int p,boolean user){action.set(p);}};}
     private String fmt(long ms){return String.format(Locale.KOREA,"%02d:%02d.%03d",ms/60000,(ms/1000)%60,ms%1000);}
     private void setStatus(String s){if(!destroyed)status.setText(s);}
+    private boolean usableAnchor(){return selected!=null&&anchorMs>=timeline.startMs&&anchorMs<timeline.endMs&&(timeline.analysisStartMs()<=timeline.startMs||anchorMs==timeline.startMs);}
     private void updateControls(){
-        boolean ready=sourceUri!=null&&!busy&&!scrubbing;open.setEnabled(!busy);play.setEnabled(ready);play.setText(playing?"Ⅱ 정지":"▶ 재생");
-        track.setEnabled(ready&&!playing&&!timeline.manualOnly&&(timeline.allFaces||selected!=null));save.setEnabled(ready&&!playing&&timeline.canExport());
-        selectedMode.setEnabled(!busy&&!scrubbing);allMode.setEnabled(!busy&&!scrubbing);manualMode.setEnabled(!busy&&!scrubbing);manual.setEnabled(ready&&!playing&&!timeline.manualOnly&&!timeline.allFaces&&previewReady);review.setEnabled(ready&&!playing&&timeline.analysedEndMs>0);seek.setEnabled(sourceUri!=null&&!busy);rangeStart.setEnabled(ready&&!playing);rangeEnd.setEnabled(ready&&!playing);log.setEnabled(ready&&!playing);strengthSeek.setEnabled(!busy);marginSeek.setEnabled(!busy);
-        stepBack.setEnabled(ready&&!playing&&previewReady);stepNext.setEnabled(ready&&!playing&&previewReady);stop.setVisibility(busy?View.VISIBLE:View.GONE);modeHint.setText(timeline.manualOnly?"얼굴·번호판 등 원하는 곳을 직접 지정합니다.":timeline.allFaces?"장면이 바뀌면 보이는 얼굴을 새로 검출합니다.":"가릴 얼굴을 터치 · 장면에서 놓치면 다시 터치해 연결");
-        ManualTrack active=activeManual();
-        addManual.setEnabled(ready&&!playing&&previewReady);correctManual.setEnabled(ready&&!playing&&previewReady&&!timeline.manualOnly&&!timeline.allFaces&&timeline.analysedEndMs>0);
-        manualPicker.setEnabled(ready&&!playing);manualTools.setVisibility(active!=null||!manualUndo.isEmpty()?View.VISIBLE:View.GONE);
-        boolean edit=ready&&!playing&&previewReady&&active!=null;for(Button b:new Button[]{previousPoint,nextPoint,pinPoint,deletePoint,splitManual,deleteManual})b.setEnabled(edit);
-        undoManual.setEnabled(ready&&!playing&&!manualUndo.isEmpty());
-        if(active!=null)pointLabel.setText((active.replacesSelected?"자동 보정 ":"수동 박스 ")+active.id+" · "+active.size()+"개 지점 · "+fmt(active.start())+" ~ "+fmt(active.end()));else pointLabel.setText("수동 편집을 되돌릴 수 있습니다.");
-        rangeLabel.setText((active==null?"자동 적용 구간  ":"선택 박스 구간  ")+fmt(active==null?timeline.startMs:active.start())+" ~ "+fmt(active==null?timeline.endMs:active.end()));
+        boolean ready=sourceUri!=null&&!busy&&!scrubbing;open.setEnabled(!busy&&!scrubbing);play.setEnabled(ready);play.setText(playing?"Ⅱ 정지":"▶ 재생");
+        track.setEnabled(ready&&!playing&&!timeline.manualOnly&&(timeline.allFaces||usableAnchor()));save.setEnabled(ready&&!playing&&timeline.canExport());
+        for(RadioButton mode:new RadioButton[]{selectedMode,allMode,manualMode})mode.setEnabled(!busy&&!scrubbing);
+        stepBack.setEnabled(ready&&!playing&&previewReady);stepNext.setEnabled(ready&&!playing&&previewReady);stop.setVisibility(busy?View.VISIBLE:View.GONE);
+        addManual.setEnabled(ready&&!playing&&previewReady);manualPicker.setEnabled(ready&&!playing);more.setEnabled(ready&&!playing&&previewReady);undoManual.setEnabled(ready&&!playing&&!manualUndo.isEmpty());
     }
-    private void setRange(long start,long end){if(busy||end<=start||end>durationMs){setStatus("시작보다 뒤쪽에 종료 시점을 지정해 주세요.");return;}stopPlayer(false);ManualTrack t=activeManual();if(t!=null){rememberManual();t.range(start,end,durationMs);updateControls();invalidateTimeline();frame.invalidate();setStatus("수동 적용 구간을 변경했습니다. 지점은 유지됩니다.");return;}timeline.resetAuto();timeline.startMs=start;timeline.endMs=end;selected=null;anchorMs=-1;invalidateTimeline();preview(start,"자동 구간을 변경했습니다. 수동 지점은 유지됩니다. 얼굴을 선택한 뒤 자동 추적해 주세요.");}
+    private void setRange(long start,long end){
+        if(busy||scrubbing||start<0||end<=start||end>durationMs)return;
+        stopPlayer(false);ManualTrack active=activeManual();if(start==(active==null?timeline.startMs:active.start())&&end==(active==null?timeline.endMs:active.end()))return;rememberManual();
+        if(active!=null)active.range(start,end,durationMs);else timeline.rangeAuto(start,end,durationMs);
+        updateControls();invalidateTimeline();frame.invalidate();
+        setStatus(active!=null?"모자이크 구간 변경 · 지점은 유지됩니다.":timeline.canExport()?"자동 적용 구간 변경 · 추적 결과는 유지됩니다.":timeline.allFaces?"구간을 정했습니다. 자동 추적을 눌러주세요.":"구간 안에서 얼굴을 선택한 뒤 자동 추적을 눌러주세요.");
+    }
     private void openVideo(){stopPlayer(false);Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT).setType("video/*").addCategory(Intent.CATEGORY_OPENABLE).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION|Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);startActivityForResult(i,OPEN);}
     @Override protected void onActivityResult(int req,int result,Intent data){super.onActivityResult(req,result,data);if(result!=RESULT_OK||data==null||data.getData()==null)return;Uri uri=data.getData();if(req==SAVE_VIDEO){export(uri);return;}if(req==SAVE_LOG){writeLog(uri);return;}if(req!=OPEN)return;
         cancelLiveScrub();if(scrubber!=null){scrubber.close();scrubber=null;}filmstrip.reset();generation.incrementAndGet();busy=true;updateControls();setStatus("영상을 불러오는 중…");
@@ -252,9 +283,10 @@ public final class MainActivity extends Activity {
         }
         if(out.size()>MosaicGl.MAX_FACES)throw new IOException("한 화면에 32명을 초과해 처리할 수 없습니다.");return out;
     }
-    private void preview(long requested,String message){if(sourceUri==null||busy)return;cancelLiveScrub();stopPlayer(false);long ms=Math.max(0,Math.min(durationMs-1,requested));currentMs=ms;previewReady=false;int token=generation.incrementAndGet();updateControls();worker.execute(()->{if(token!=generation.get()||destroyed)return;Bitmap b=null;try{b=bitmapAt(ms);if(b==null)throw new IOException("프레임 없음");List<FacePath.Box> faces=(timeline.manualOnly||activeManualId>=0)?Collections.emptyList():detect(b,!timeline.allFaces);Bitmap image=b;runOnUiThread(()->{if(destroyed||token!=generation.get()){image.recycle();return;}visibleFaces=faces;displayedFrameMs=ms;frame.setFrame(image);previewReady=true;seek.setProgress((int)(10000*ms/Math.max(1,durationMs)));clock.setText(fmt(ms)+" / "+fmt(durationMs));viewport.reveal(ms);invalidateTimeline();updateControls();setStatus(message!=null?message:((timeline.manualOnly||activeManual()!=null)?"박스 안을 끌어 이동 · 모서리로 크기 조절 · 놓으면 지점 저장":((timeline.endMs>0&&timeline.analysedEndMs>=timeline.endMs)?"추적 완료 · 재생으로 확인 후 MP4 저장":faces.isEmpty()?"얼굴이 검출되지 않았습니다. 다른 시점 또는 직접 영역 지정을 사용해 주세요.":timeline.allFaces?faces.size()+"명 검출 · 자동 추적을 눌러주세요.":"가릴 얼굴을 터치해 선택하세요.")));});}catch(Exception e){if(b!=null)b.recycle();runOnUiThread(()->setStatus("미리보기 오류: "+e.getMessage()));}});}
-    private void select(FacePath.Box box,boolean manualAnchor){if(busy||playing||!previewReady||timeline.manualOnly||timeline.allFaces)return;if(currentMs<timeline.startMs||currentMs>=timeline.endMs){setStatus("적용 구간 안에서 얼굴을 선택해 주세요.");return;}if(timeline.analysedEndMs==0&&currentMs>timeline.startMs)timeline.startMs=currentMs;timeline.truncate(currentMs);selected=box;anchorMs=currentMs;if(manualAnchor)path.anchorManual(currentMs,box);else path.anchor(currentMs,box);selectingManually=false;manual.setText("직접 영역 지정");frame.invalidate();invalidateTimeline();updateControls();setStatus("얼굴 선택 완료 · 자동 추적을 누르면 이 시점부터 연결합니다.");}
-    private void analyse(){if(busy||timeline.manualOnly||sourceUri==null||(!timeline.allFaces&&selected==null))return;releaseScrubber();stopPlayer(false);generation.incrementAndGet();cancel.set(false);busy=true;updateControls();progress.setProgress(0);getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);setStatus("자동 추적 중…");final boolean all=timeline.allFaces;final long start=all?timeline.startMs:anchorMs,end=timeline.endMs;final FacePath.Box anchor=selected;
+    private void preview(long requested,String message){preview(requested,message,null);}
+    private void preview(long requested,String message,Runnable after){if(sourceUri==null||busy)return;cancelLiveScrub();stopPlayer(false);long ms=Math.max(0,Math.min(durationMs-1,requested));currentMs=ms;previewReady=false;int token=generation.incrementAndGet();updateControls();worker.execute(()->{if(token!=generation.get()||destroyed)return;Bitmap b=null;try{b=bitmapAt(ms);if(b==null)throw new IOException("프레임 없음");List<FacePath.Box> faces=(timeline.manualOnly||activeManualId>=0)?Collections.emptyList():detect(b,!timeline.allFaces);Bitmap image=b;runOnUiThread(()->{if(destroyed||token!=generation.get()){image.recycle();return;}visibleFaces=faces;displayedFrameMs=ms;frame.setFrame(image);previewReady=true;seek.setProgress((int)(10000*ms/Math.max(1,durationMs)));clock.setText(fmt(ms)+" / "+fmt(durationMs));viewport.reveal(ms);invalidateTimeline();updateControls();setStatus(message!=null?message:((timeline.manualOnly||activeManual()!=null)?"박스 안을 끌어 이동 · 모서리로 크기 조절 · 놓으면 지점 저장":(timeline.canExport()?"추적 완료 · 재생으로 확인 후 MP4 저장":faces.isEmpty()?"얼굴이 검출되지 않았습니다. 다른 시점 또는 ＋ 모자이크를 사용해 주세요.":timeline.allFaces?faces.size()+"명 검출 · 자동 추적을 눌러주세요.":"가릴 얼굴을 터치해 선택하세요.")));if(after!=null)after.run();});}catch(Exception e){if(b!=null)b.recycle();runOnUiThread(()->setStatus("미리보기 오류: "+e.getMessage()));}});}
+    private void select(FacePath.Box box,boolean manualAnchor){if(busy||playing||!previewReady||timeline.manualOnly||timeline.allFaces)return;if(currentMs<timeline.startMs||currentMs>=timeline.endMs){setStatus("적용 구간 안에서 얼굴을 선택해 주세요.");return;}if(timeline.analysisStartMs()>timeline.startMs&&currentMs>timeline.startMs)timeline.startMs=currentMs;timeline.truncate(currentMs);selected=box;anchorMs=currentMs;if(manualAnchor)path.anchorManual(currentMs,box);else path.anchor(currentMs,box);selectingManually=false;frame.invalidate();invalidateTimeline();updateControls();setStatus("얼굴 선택 완료 · 자동 추적을 누르면 이 시점부터 연결합니다.");}
+    private void analyse(){if(busy||timeline.manualOnly||sourceUri==null||(!timeline.allFaces&&!usableAnchor()))return;releaseScrubber();stopPlayer(false);generation.incrementAndGet();cancel.set(false);busy=true;updateControls();progress.setProgress(0);getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);setStatus("자동 추적 중…");final boolean all=timeline.allFaces;final long start=all?timeline.startMs:anchorMs,end=timeline.endMs;final FacePath.Box anchor=selected;
         worker.execute(()->{long begun=SystemClock.elapsedRealtime(),lastUi=0,lastKey=start,processed=start;SequentialFrames reader=null;analysisElapsedMs=decodeMs=inferenceMs=0;sampled=detections=0;SceneCuts cuts=new SceneCuts();ContinuityBridge continuity=new ContinuityBridge(path,new LazyFlowBridge(new OpticalBridge()));diagnostics.begin(start);boolean complete=false;
             try{
                 if(all)timeline.resetAuto();else timeline.truncate(start);
@@ -292,10 +324,10 @@ public final class MainActivity extends Activity {
     private void stopPlayer(boolean reload){if(!playing)return;playing=false;ui.removeCallbacksAndMessages(null);if(player!=null){currentMs=player.position();player.release();stage.removeView(player);player=null;}frame.setVisibility(View.VISIBLE);updateControls();if(reload)preview(currentMs,null);}
     private void requestExport(){if(busy||!timeline.canExport())return;stopPlayer(false);String message=timeline.manualOnly?"수동으로 지정한 위치·크기·적용 구간을 그대로 저장합니다. 재생으로 지점 사이의 움직임을 확인해 주세요.":timeline.allFaces?"전체 얼굴 모드도 옆얼굴·가려진 얼굴을 놓칠 수 있습니다. 재생으로 확인한 결과를 MP4로 저장합니다.":"가림 없는 샘플 "+path.uncoveredCount()+"개가 있습니다. 선택 얼굴이 장면에서 끊기면 다시 선택해 연결할 수 있습니다. 현재 보이는 결과대로 저장합니다.";new AlertDialog.Builder(this).setTitle("모자이크 결과 저장").setMessage(message).setNegativeButton("더 확인",null).setPositiveButton("MP4 저장",(d,w)->{Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT).setType("video/mp4").addCategory(Intent.CATEGORY_OPENABLE).putExtra(Intent.EXTRA_TITLE,"LEDOA_MOSAIC_"+System.currentTimeMillis()+".mp4");startActivityForResult(i,SAVE_VIDEO);}).show();}
     private void export(Uri destination){if(busy)return;releaseScrubber();generation.incrementAndGet();busy=true;cancel.set(false);progress.setProgress(0);updateControls();getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);setStatus("MP4 저장 중…");worker.execute(()->{File temporary=new File(getCacheDir(),"mosaic-export.mp4");try{MosaicExport.Result r=MosaicExport.run(this,sourceUri,temporary,timeline,cancel,p->runOnUiThread(()->{progress.setProgress(p);setStatus("MP4 저장 "+p+"%");}));if(cancel.get())throw new InterruptedException("저장을 취소했습니다.");try(InputStream in=new FileInputStream(temporary);OutputStream out=getContentResolver().openOutputStream(destination,"wt")){if(out==null)throw new IOException("저장 위치를 열지 못했습니다.");byte[] buffer=new byte[65536];int n;while((n=in.read(buffer))!=-1){if(cancel.get())throw new InterruptedException("저장을 취소했습니다.");out.write(buffer,0,n);}}runOnUiThread(()->{finishWork(currentMs,"MP4 저장 완료 · "+r.width+"×"+r.height+(r.audio?" · 원본 소리 포함":" · 원본에 소리 없음"));new AlertDialog.Builder(this).setTitle("저장 완료").setMessage("선택한 위치에 MP4 파일을 저장했습니다.").setNegativeButton("닫기",null).setPositiveButton("영상 열기",(d,w)->{try{startActivity(new Intent(Intent.ACTION_VIEW).setDataAndType(destination,"video/mp4").addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION));}catch(Exception e){setStatus("파일 앱에서 저장한 영상을 열어주세요.");}}).show();});}catch(Throwable e){lastError=e.toString();try{DocumentsContract.deleteDocument(getContentResolver(),destination);}catch(Exception ignored){}runOnUiThread(()->finishWork(currentMs,"저장 실패: "+e.getMessage()));}finally{temporary.delete();}});}
-    private void writeLog(Uri uri){try{JSONObject root=new JSONObject();root.put("version","0.9.3");root.put("identityModel","OpenCV_SFace_INT8_local");root.put("mode",timeline.allFaces?"ALL_FACES":"SELECTED_FACE");root.put("durationMs",durationMs);root.put("rangeStartMs",timeline.startMs);root.put("rangeEndMs",timeline.endMs);root.put("analysedEndMs",timeline.analysedEndMs);root.put("analysisElapsedMs",analysisElapsedMs);root.put("decodeMs",decodeMs);root.put("faceInferenceMs",inferenceMs);root.put("faceInferenceAttempts",detections);root.put("sampledFrames",sampled);root.put("decoderMode",decoderMode);root.put("lastError",lastError);root.put("sceneCuts",new JSONArray(timeline.cuts()));root.put("strength",timeline.strength);root.put("margin",timeline.margin);JSONArray points=new JSONArray();if(!timeline.allFaces)for(FacePath.Point p:path.points()){JSONObject j=new JSONObject();j.put("ms",p.ms);j.put("status",p.status.name());j.put("reason",p.reason);if(p.box!=null)boxJson(j,p.box);points.put(j);}else for(Map.Entry<Long,List<FacePath.Box>> e:timeline.samples().entrySet()){JSONObject j=new JSONObject();j.put("ms",e.getKey());JSONArray faces=new JSONArray();for(FacePath.Box b:e.getValue()){JSONObject f=new JSONObject();boxJson(f,b);faces.put(f);}j.put("faces",faces);points.put(j);}root.put("points",points);root.put("manualOnly",timeline.manualOnly);JSONArray manualData=new JSONArray();for(ManualTrack t:timeline.manualTracks()){JSONObject j=new JSONObject();j.put("id",t.id);j.put("replacesSelected",t.replacesSelected);j.put("startMs",t.start());j.put("endMs",t.end());JSONArray keys=new JSONArray();for(Map.Entry<Long,FacePath.Box> e:t.points().entrySet()){JSONObject k=new JSONObject();k.put("ms",e.getKey());boxJson(k,e.getValue());keys.put(k);}j.put("keyframes",keys);manualData.put(j);}root.put("manualTracks",manualData);try(OutputStream o=getContentResolver().openOutputStream(uri,"wt")){o.write(root.toString(2).getBytes(StandardCharsets.UTF_8));}setStatus("진단 기록을 저장했습니다.");}catch(Exception e){setStatus("진단 저장 오류: "+e.getMessage());}}
+    private void writeLog(Uri uri){try{JSONObject root=new JSONObject();root.put("version","0.9.4");root.put("identityModel","OpenCV_SFace_INT8_local");root.put("mode",timeline.allFaces?"ALL_FACES":"SELECTED_FACE");root.put("durationMs",durationMs);root.put("rangeStartMs",timeline.startMs);root.put("rangeEndMs",timeline.endMs);root.put("analysedEndMs",timeline.analysedEndMs);root.put("analysisElapsedMs",analysisElapsedMs);root.put("decodeMs",decodeMs);root.put("faceInferenceMs",inferenceMs);root.put("faceInferenceAttempts",detections);root.put("sampledFrames",sampled);root.put("decoderMode",decoderMode);root.put("lastError",lastError);root.put("sceneCuts",new JSONArray(timeline.cuts()));root.put("strength",timeline.strength);root.put("margin",timeline.margin);JSONArray points=new JSONArray();if(!timeline.allFaces)for(FacePath.Point p:path.points()){JSONObject j=new JSONObject();j.put("ms",p.ms);j.put("status",p.status.name());j.put("reason",p.reason);if(p.box!=null)boxJson(j,p.box);points.put(j);}else for(Map.Entry<Long,List<FacePath.Box>> e:timeline.samples().entrySet()){JSONObject j=new JSONObject();j.put("ms",e.getKey());JSONArray faces=new JSONArray();for(FacePath.Box b:e.getValue()){JSONObject f=new JSONObject();boxJson(f,b);faces.put(f);}j.put("faces",faces);points.put(j);}root.put("points",points);root.put("manualOnly",timeline.manualOnly);JSONArray manualData=new JSONArray();for(ManualTrack t:timeline.manualTracks()){JSONObject j=new JSONObject();j.put("id",t.id);j.put("replacesSelected",t.replacesSelected);j.put("startMs",t.start());j.put("endMs",t.end());JSONArray keys=new JSONArray();for(Map.Entry<Long,FacePath.Box> e:t.points().entrySet()){JSONObject k=new JSONObject();k.put("ms",e.getKey());boxJson(k,e.getValue());keys.put(k);}j.put("keyframes",keys);manualData.put(j);}root.put("manualTracks",manualData);try(OutputStream o=getContentResolver().openOutputStream(uri,"wt")){o.write(root.toString(2).getBytes(StandardCharsets.UTF_8));}setStatus("진단 기록을 저장했습니다.");}catch(Exception e){setStatus("진단 저장 오류: "+e.getMessage());}}
     private void boxJson(JSONObject j,FacePath.Box b)throws JSONException{j.put("x",b.x);j.put("y",b.y);j.put("w",b.w);j.put("h",b.h);}
     @Override protected void onPause(){if(scrubbing)finishLiveScrub(scrubTargetMs);stopPlayer(false);super.onPause();}
-    @Override protected void onDestroy(){destroyed=true;cancelLiveScrub();if(scrubber!=null)scrubber.close();filmstrip.reset();generation.incrementAndGet();cancel.set(true);stopPlayer(false);worker.execute(()->{detector.close();if(identity!=null)identity.close();if(retriever!=null)try{retriever.release();}catch(Exception ignored){}});worker.shutdown();if(frame.bitmap!=null)frame.bitmap.recycle();super.onDestroy();}
+    @Override protected void onDestroy(){destroyed=true;if(options!=null)options.dismiss();cancelLiveScrub();if(scrubber!=null)scrubber.close();filmstrip.reset();generation.incrementAndGet();cancel.set(true);stopPlayer(false);worker.execute(()->{detector.close();if(identity!=null)identity.close();if(retriever!=null)try{retriever.release();}catch(Exception ignored){}});worker.shutdown();if(frame.bitmap!=null)frame.bitmap.recycle();super.onDestroy();}
     private final class FilmstripView extends View {
         private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG|Paint.FILTER_BITMAP_FLAG);
         private final ArrayList<Long> desired=new ArrayList<>();
@@ -365,78 +397,99 @@ public final class MainActivity extends Activity {
     private final class BandView extends View {
         private final Paint paint=new Paint(Paint.ANTI_ALIAS_FLAG);
         private final ScaleGestureDetector scale;
+        private final GestureDetector longPress;
         private float lastX,downX;
-        private int gesture;
-        private boolean multi,moved;
+        private int gesture,dragManualId;
+        private boolean multi,moved,longPressed;
         private long dragStart,dragEnd,tappedPoint=-1;
         BandView(){
-            super(MainActivity.this);setContentDescription("수동 모자이크 타임라인: 지점 선택, 양 끝 구간 조절, 확대 축소");
+            super(MainActivity.this);setContentDescription("모자이크 타임라인: 양 끝으로 자동·수동 구간 조절, 길게 눌러 편집");
             scale=new ScaleGestureDetector(MainActivity.this,new ScaleGestureDetector.SimpleOnScaleGestureListener(){
-                public boolean onScale(ScaleGestureDetector d){viewport.zoom(d.getScaleFactor(),fraction(d.getFocusX()));updateZoom();invalidateTimeline();return true;}
+                public boolean onScale(ScaleGestureDetector detector){viewport.zoom(detector.getScaleFactor(),fraction(detector.getFocusX()));updateZoom();invalidateTimeline();return true;}
+            });
+            longPress=new GestureDetector(MainActivity.this,new GestureDetector.SimpleOnGestureListener(){
+                public boolean onDown(MotionEvent event){return true;}
+                public void onLongPress(MotionEvent event){
+                    if(busy||playing||scrubbing||multi||moved||event.getY()<dp(24))return;
+                    longPressed=true;gesture=0;
+                    long at=tappedPoint>=0?tappedPoint:viewport.time(Math.max(0,Math.min(1,fraction(event.getX()))));
+                    preview(at,null,()->showOptions(BandView.this));
+                }
             });
         }
-        private float fraction(float x){return (x-dp(14))/Math.max(1,getWidth()-dp(28));}
+        private float fraction(float px){return (px-dp(14))/Math.max(1,getWidth()-dp(28));}
         private float x(long ms){return dp(14)+viewport.fraction(ms)*Math.max(1,getWidth()-dp(28));}
-        protected void onDraw(Canvas c){
-            super.onDraw(c);paint.setColor(PANEL);c.drawRoundRect(0,0,getWidth(),getHeight(),dp(6),dp(6),paint);if(durationMs<=0)return;
+        protected void onDraw(Canvas canvas){
+            super.onDraw(canvas);paint.setColor(PANEL);canvas.drawRoundRect(0,0,getWidth(),getHeight(),dp(6),dp(6),paint);if(durationMs<=0)return;
             paint.setTextSize(dp(10));paint.setColor(MUTED);
-            for(int i=0;i<5;i++){long ms=viewport.boundary(i/4f);float at=dp(14)+i*(getWidth()-dp(28))/4f;String text=String.format(Locale.KOREA,"%.2fs",ms/1000.);float width=paint.measureText(text);c.drawText(text,Math.max(dp(2),Math.min(getWidth()-width-dp(2),at-width/2)),dp(14),paint);}
-            c.save();c.clipRect(dp(7),dp(16),getWidth()-dp(7),getHeight());
+            for(int i=0;i<5;i++){long ms=viewport.boundary(i/4f);float at=dp(14)+i*(getWidth()-dp(28))/4f;String text=String.format(Locale.KOREA,"%.2fs",ms/1000.);float width=paint.measureText(text);canvas.drawText(text,Math.max(dp(2),Math.min(getWidth()-width-dp(2),at-width/2)),dp(14),paint);}
+            canvas.save();canvas.clipRect(dp(7),dp(16),getWidth()-dp(7),getHeight());
+            ManualTrack active=activeManual();boolean hasRange=active!=null||!timeline.manualOnly;
+            long start=gesture==1?dragStart:active!=null?active.start():timeline.startMs,end=gesture==2?dragEnd:active!=null?active.end():timeline.endMs;
             if(!timeline.manualOnly){
-                if(timeline.allFaces){for(Map.Entry<Long,List<FacePath.Box>> e:timeline.samples().entrySet()){float l=x(e.getKey()),r=x(e.getKey()+100);if(r<0||l>getWidth())continue;paint.setColor(e.getValue().isEmpty()?0xffe4aa54:0xff50c4b1);c.drawRect(l,dp(67),r,dp(74),paint);}}
-                else for(FacePath.Point p:path.points()){float l=x(p.ms),r=x(p.ms+100);if(r<0||l>getWidth())continue;paint.setColor(p.box==null?0xffec7869:p.reason.contains("REVIEW")||p.status==FacePath.Status.FLOW_ESTIMATED?0xffe4aa54:0xff50c4b1);c.drawRect(l,dp(67),r,dp(74),paint);}
-            }
-            ManualTrack active=activeManual();
-            if(active!=null){
-                long start=gesture==1?dragStart:active.start(),end=gesture==2?dragEnd:active.end();float l=x(start),r=x(end);
-                paint.setColor(BLUE);c.drawRoundRect(l,dp(30),r,dp(61),dp(5),dp(5),paint);
-                paint.setColor(Color.WHITE);for(float handle:new float[]{l,r})if(handle>=dp(10)&&handle<=getWidth()-dp(10))c.drawRoundRect(handle-dp(5),dp(26),handle+dp(5),dp(65),dp(3),dp(3),paint);
-                paint.setColor(Color.WHITE);c.drawRect(x(playheadMs())-dp(1),dp(22),x(playheadMs())+dp(1),getHeight(),paint);
-                int number=0;float lastLabel=-1000;paint.setTextSize(dp(10));
-                for(Map.Entry<Long,FacePath.Box> e:active.points().entrySet()){
-                    if(e.getKey()<start||e.getKey()>=end)continue;number++;float at=x(e.getKey());if(at<0||at>getWidth())continue;
-                    paint.setColor(PANEL);c.drawCircle(at,dp(46),dp(7),paint);
-                    paint.setColor(Math.abs(e.getKey()-playheadMs())<=frameStepMs/2?0xffffd387:Color.WHITE);c.drawCircle(at,dp(46),dp(4.5f),paint);
-                    if(at-lastLabel>dp(22)){paint.setColor(PANEL);c.drawRoundRect(at-dp(8),dp(16),at+dp(8),dp(29),dp(3),dp(3),paint);paint.setColor(Color.WHITE);String numberText=String.valueOf(number);c.drawText(numberText,at-paint.measureText(numberText)/2,dp(26),paint);lastLabel=at;}
+                if(timeline.allFaces){for(Map.Entry<Long,List<FacePath.Box>> entry:timeline.samples().entrySet()){
+                    long ms=entry.getKey();if(ms+100<=timeline.startMs||ms>=timeline.endMs)continue;
+                    float left=x(Math.max(ms,timeline.startMs)),right=x(Math.min(ms+100,timeline.endMs));if(right<0||left>getWidth())continue;
+                    paint.setColor(entry.getValue().isEmpty()?0xffe4aa54:0xff50c4b1);canvas.drawRect(left,dp(67),right,dp(74),paint);
+                }}else for(FacePath.Point point:path.points()){
+                    if(point.ms+100<=timeline.startMs||point.ms>=timeline.endMs)continue;float left=x(Math.max(point.ms,timeline.startMs)),right=x(Math.min(point.ms+100,timeline.endMs));if(right<0||left>getWidth())continue;
+                    paint.setColor(point.box==null?0xffec7869:point.reason.contains("REVIEW")||point.status==FacePath.Status.FLOW_ESTIMATED?0xffe4aa54:0xff50c4b1);canvas.drawRect(left,dp(67),right,dp(74),paint);
                 }
-            }else{
-                paint.setColor(MUTED);paint.setTextSize(dp(12));c.drawText(timeline.manualTracks().isEmpty()?"수동 박스를 추가하면 지점이 표시됩니다":"목록에서 수동 박스를 선택하세요",dp(16),dp(48),paint);
             }
-            paint.setColor(0xffbbbbbb);for(long ms:timeline.cuts())c.drawRect(x(ms),dp(67),x(ms)+dp(1),dp(76),paint);
-            if(active==null){paint.setColor(Color.WHITE);c.drawRect(x(playheadMs())-dp(1),dp(22),x(playheadMs())+dp(1),getHeight(),paint);}c.restore();
+            if(hasRange){
+                float left=x(start),right=x(end);paint.setColor(active!=null?BLUE:0xff50c4b1);canvas.drawRoundRect(left,dp(30),right,dp(61),dp(5),dp(5),paint);
+                paint.setColor(Color.WHITE);for(float handle:new float[]{left,right})if(handle>=dp(9)&&handle<=getWidth()-dp(9))canvas.drawRoundRect(handle-dp(5),dp(26),handle+dp(5),dp(65),dp(3),dp(3),paint);
+                if(active==null){
+                    paint.setColor(BG);paint.setTextSize(dp(12));String title="자동 추적 · "+(timeline.allFaces?"전체 얼굴":"한 얼굴");float width=paint.measureText(title);
+                    if(right-left>width+dp(24))canvas.drawText(title,Math.max(dp(18),left+dp(12)),dp(50),paint);
+                }
+            }else{paint.setColor(MUTED);paint.setTextSize(dp(12));canvas.drawText("＋ 모자이크로 가릴 영역을 추가하세요",dp(16),dp(48),paint);}
+            paint.setColor(Color.WHITE);canvas.drawRect(x(playheadMs())-dp(1),dp(22),x(playheadMs())+dp(1),getHeight(),paint);
+            if(active!=null){
+                int number=0;float lastLabel=-1000;paint.setTextSize(dp(10));
+                for(Map.Entry<Long,FacePath.Box> entry:active.points().entrySet()){
+                    if(entry.getKey()<start||entry.getKey()>=end)continue;number++;float at=x(entry.getKey());if(at<0||at>getWidth())continue;
+                    paint.setColor(PANEL);canvas.drawCircle(at,dp(46),dp(7),paint);
+                    paint.setColor(Math.abs(entry.getKey()-playheadMs())<=frameStepMs/2?0xffffd387:Color.WHITE);canvas.drawCircle(at,dp(46),dp(4.5f),paint);
+                    if(at-lastLabel>dp(22)){paint.setColor(PANEL);canvas.drawRoundRect(at-dp(8),dp(16),at+dp(8),dp(29),dp(3),dp(3),paint);paint.setColor(Color.WHITE);String text=String.valueOf(number);canvas.drawText(text,at-paint.measureText(text)/2,dp(26),paint);lastLabel=at;}
+                }
+            }
+            paint.setColor(0xffbbbbbb);for(long ms:timeline.cuts())canvas.drawRect(x(ms),dp(67),x(ms)+dp(1),dp(76),paint);canvas.restore();
         }
         public boolean performClick(){super.performClick();return true;}
-        public boolean onTouchEvent(MotionEvent e){
-            if(busy||durationMs<=0)return true;scale.onTouchEvent(e);int action=e.getActionMasked();
+        public boolean onTouchEvent(MotionEvent event){
+            if(busy||durationMs<=0)return true;scale.onTouchEvent(event);longPress.onTouchEvent(event);int action=event.getActionMasked();
             if(action==MotionEvent.ACTION_DOWN){
-                stopPlayer(false);getParent().requestDisallowInterceptTouchEvent(true);lastX=downX=e.getX();multi=moved=false;gesture=0;tappedPoint=-1;
-                ManualTrack t=activeManual();
-                if(t!=null&&e.getY()>dp(23)){
-                    dragStart=t.start();dragEnd=t.end();float a=x(dragStart),b=x(dragEnd);
-                    if(a>=0&&a<=getWidth()&&Math.abs(e.getX()-a)<dp(18))gesture=1;
-                    else if(b>=0&&b<=getWidth()&&Math.abs(e.getX()-b)<dp(18))gesture=2;
-                    else for(long ms:t.points().keySet())if(t.contains(ms)&&Math.abs(e.getX()-x(ms))<dp(12)){tappedPoint=ms;break;}
+                stopPlayer(false);getParent().requestDisallowInterceptTouchEvent(true);lastX=downX=event.getX();multi=moved=longPressed=false;gesture=0;tappedPoint=-1;dragManualId=activeManualId;
+                ManualTrack active=activeManual();
+                if((active!=null||!timeline.manualOnly)&&event.getY()>dp(23)){
+                    dragStart=active!=null?active.start():timeline.startMs;dragEnd=active!=null?active.end():timeline.endMs;float left=x(dragStart),right=x(dragEnd);
+                    if(active!=null)for(long ms:active.points().keySet())if(active.contains(ms)&&Math.abs(event.getX()-x(ms))<dp(12)){tappedPoint=ms;break;}
+                    float a=Math.abs(event.getX()-left),b=Math.abs(event.getX()-right);
+                    if(a<dp(18)&&left>=0&&left<=getWidth()&&a<=b)gesture=1;
+                    else if(b<dp(18)&&right>=0&&right<=getWidth())gesture=2;
                 }
-                if(gesture==0&&e.getY()<dp(24))gesture=3;invalidate();return true;
+                if(gesture==0&&event.getY()<dp(24))gesture=3;invalidate();return true;
             }
             if(action==MotionEvent.ACTION_POINTER_DOWN){multi=true;gesture=0;if(scrubbing)finishLiveScrub(scrubTargetMs);return true;}
             if(action==MotionEvent.ACTION_MOVE){
-                if(e.getPointerCount()>1||multi||scale.isInProgress())return true;
-                if(Math.abs(e.getX()-downX)>dp(5))moved=true;
-                if(gesture==3){viewport.pan((lastX-e.getX())/Math.max(1,getWidth()-dp(28)));updateZoom();filmstrip.invalidate();}
-                else if(gesture==1)dragStart=Math.max(0,Math.min(dragEnd-1,viewport.boundary(Math.max(0,Math.min(1,fraction(e.getX()))))));
-                else if(gesture==2)dragEnd=Math.min(durationMs,Math.max(dragStart+1,viewport.boundary(Math.max(0,Math.min(1,fraction(e.getX()))))));
-                if(gesture==0&&moved)requestLiveScrub(viewport.time(Math.max(0,Math.min(1,fraction(e.getX())))));
-                lastX=e.getX();invalidate();return true;
+                if(event.getPointerCount()>1||multi||longPressed||scale.isInProgress())return true;
+                if(Math.abs(event.getX()-downX)>dp(5))moved=true;
+                if(gesture==3){viewport.pan((lastX-event.getX())/Math.max(1,getWidth()-dp(28)));updateZoom();filmstrip.invalidate();}
+                else if(gesture==1||gesture==2){
+                    float f=fraction(event.getX());if(f<0||f>1){viewport.pan(f<0?-.04f:.04f);updateZoom();filmstrip.invalidate();}
+                    long at=viewport.boundary(Math.max(0,Math.min(1,f)));
+                    if(gesture==1)dragStart=Math.max(0,Math.min(dragEnd-1,at));else dragEnd=Math.min(durationMs,Math.max(dragStart+1,at));
+                }else if(moved)requestLiveScrub(viewport.time(Math.max(0,Math.min(1,fraction(event.getX())))));
+                lastX=event.getX();invalidate();return true;
             }
-            if(action==MotionEvent.ACTION_CANCEL){gesture=0;multi=false;if(scrubbing)finishLiveScrub(scrubTargetMs);invalidate();return true;}
-            if(action!=MotionEvent.ACTION_UP)return true;
-            performClick();ManualTrack t=activeManual();
-            if(!multi){
-                if((gesture==1||gesture==2)&&moved&&t!=null){rememberManual();t.range(dragStart,dragEnd,durationMs);manualChanged("적용 구간 변경 · 지점은 유지됩니다.");}
-                else if(gesture!=3||!moved){long at=tappedPoint>=0&&!moved?tappedPoint:viewport.time(Math.max(0,Math.min(1,fraction(e.getX()))));if(scrubbing)finishLiveScrub(at);else preview(at,null);}
+            if(action==MotionEvent.ACTION_CANCEL){gesture=0;multi=false;if(scrubbing)finishLiveScrub(scrubTargetMs);invalidateTimeline();return true;}
+            if(action!=MotionEvent.ACTION_UP)return true;performClick();
+            if(!multi&&!longPressed){
+                if((gesture==1||gesture==2)&&moved&&dragManualId==activeManualId)setRange(dragStart,dragEnd);
+                else if(gesture!=3||!moved){long at=tappedPoint>=0&&!moved?tappedPoint:viewport.time(Math.max(0,Math.min(1,fraction(event.getX()))));if(scrubbing)finishLiveScrub(at);else preview(at,null);}
             }
-            gesture=0;multi=false;invalidate();return true;
+            gesture=0;multi=false;invalidateTimeline();return true;
         }
     }
     private final class FrameView extends View {
@@ -502,7 +555,17 @@ public final class MainActivity extends Activity {
                 if(w<.008f||h<.008f){setStatus("가릴 영역을 조금 더 크게 드래그해 주세요.");invalidate();return true;}
                 FacePath.Box box=new FacePath.Box(x,y,w,h,-1);
                 if(redrawingManual){redrawingManual=false;commitManualBox(box);}else if(creatingManual)commitNewManual(box);
-                else try{Rect r=new Rect((int)(x*bitmap.getWidth()),(int)(y*bitmap.getHeight()),(int)((x+w)*bitmap.getWidth()),(int)((y+h)*bitmap.getHeight()));select(new FacePath.Box(x,y,w,h,-1,appearance(bitmap,r),true,false),true);}catch(Exception ex){setStatus(ex.getMessage());}
+                else try{
+                    Rect r=new Rect((int)(x*bitmap.getWidth()),(int)(y*bitmap.getHeight()),(int)((x+w)*bitmap.getWidth()),(int)((y+h)*bitmap.getHeight()));
+                    // Reuse aligned face evidence when the drawn region clearly selects a detected face.
+                    FacePath.Box evidence=null;float best=0;
+                    for(FacePath.Box candidate:visibleFaces){
+                        float intersection=Math.max(0,Math.min(x+w,candidate.x+candidate.w)-Math.max(x,candidate.x))*Math.max(0,Math.min(y+h,candidate.y+candidate.h)-Math.max(y,candidate.y));
+                        float score=intersection/Math.max(.000001f,w*h+candidate.area()-intersection);
+                        if(candidate.appearance!=null&&score>.5f&&score>best){best=score;evidence=candidate;}
+                    }
+                    select(new FacePath.Box(x,y,w,h,-1,evidence!=null?evidence.appearance:appearance(bitmap,r),true,false),true);
+                }catch(Exception ex){setStatus(ex.getMessage());}
                 ghost=null;invalidate();return true;
             }
             if(mode>=2){FacePath.Box result=ghost;ghost=null;if(result!=null&&Math.hypot(e.getX()-downX,e.getY()-downY)>dp(1))commitManualBox(result);invalidate();return true;}

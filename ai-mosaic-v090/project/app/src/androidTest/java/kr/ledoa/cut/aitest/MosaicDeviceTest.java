@@ -70,11 +70,16 @@ public class MosaicDeviceTest {
    scenario.onActivity(a->a.onActivityResult(1001,Activity.RESULT_OK,new Intent().setData(Uri.fromFile(input))));waitReady(scenario);
    scenario.onActivity(a->{try{
     java.util.List<FacePath.Box> faces=(java.util.List<FacePath.Box>)field(a,"visibleFaces");assertFalse(faces.isEmpty());assertEquals(128,faces.get(0).appearance.length);
-    java.lang.reflect.Method select=MainActivity.class.getDeclaredMethod("select",FacePath.Box.class,boolean.class);select.setAccessible(true);select.invoke(a,faces.get(0),false);((Button)field(a,"track")).performClick();
-   }catch(ReflectiveOperationException e){throw new RuntimeException(e);}});
+    ((Button)field(a,"addManual")).performClick();assertTrue("unified add button selects an automatic anchor",(boolean)field(a,"selectingManually"));
+    android.view.View frame=(android.view.View)field(a,"frame");android.graphics.RectF area=(android.graphics.RectF)field(frame,"area");FacePath.Box face=faces.get(0);
+    drag(frame,area.left+face.x*area.width(),area.top+face.y*area.height(),area.left+(face.x+face.w)*area.width(),area.top+(face.y+face.h)*area.height());
+    assertTrue("drawn region can start automatic tracking",((Button)field(a,"track")).isEnabled());assertTrue(((MosaicTimeline)field(a,"timeline")).manualTracks().isEmpty());((Button)field(a,"track")).performClick();
+   }catch(Exception e){throw new RuntimeException(e);}});
    long deadline=SystemClock.elapsedRealtime()+60000;AtomicBoolean done=new AtomicBoolean();
    while(SystemClock.elapsedRealtime()<deadline){scenario.onActivity(a->done.set(!(boolean)field(a,"busy")));if(done.get())break;SystemClock.sleep(100);}assertTrue("selected analysis finished",done.get());waitReady(scenario);
-   scenario.onActivity(a->{MosaicTimeline t=(MosaicTimeline)field(a,"timeline");assertFalse(t.allFaces);assertEquals(t.endMs,t.analysedEndMs);assertFalse("selected face remains masked",t.boxesAt(1500).isEmpty());assertTrue(((Button)field(a,"save")).isEnabled());});
+   scenario.onActivity(a->{MosaicTimeline t=(MosaicTimeline)field(a,"timeline");assertFalse(t.allFaces);assertEquals(t.endMs,t.analysedEndMs);assertFalse("selected face remains masked",t.boxesAt(1500).isEmpty());assertTrue(((Button)field(a,"save")).isEnabled());
+    int count=t.samples().size();rangeDrag(a,true,0,.2f);rangeDrag(a,false,1,.8f);assertTrue("selected-face automatic range trims",t.startMs>500&&t.endMs<2500);assertTrue(t.canExport());assertEquals(count,t.samples().size());assertTrue(t.boxesAt(200).isEmpty());
+   });
   }
  }
  @Test public void openAnalyseReplayUi()throws Exception{
@@ -122,7 +127,7 @@ public class MosaicDeviceTest {
    waitReady(scenario);InstrumentationRegistry.getInstrumentation().waitForIdleSync();
    scenario.onActivity(a->{
     MosaicTimeline t=(MosaicTimeline)field(a,"timeline");assertTrue("old shot box not carried across cut",t.boxesAt((long)field(a,"currentMs")).isEmpty());
-    ((Button)field(a,"pinPoint")).performClick();android.view.View frame=(android.view.View)field(a,"frame");android.graphics.RectF area=(android.graphics.RectF)field(frame,"area");
+    option(a,10);android.view.View frame=(android.view.View)field(a,"frame");android.graphics.RectF area=(android.graphics.RectF)field(frame,"area");
     drag(frame,area.left+area.width()*.25f,area.top+area.height()*.4f,area.left+area.width()*.7f,area.top+area.height()*.6f);
     assertEquals("new shot can be drawn into existing track",3,t.manualTracks().get(0).size());assertFalse(t.boxesAt((long)field(a,"currentMs")).isEmpty());
     android.view.View band=(android.view.View)field(a,"band");Bitmap strip=Bitmap.createBitmap(band.getWidth(),band.getHeight(),Bitmap.Config.ARGB_8888);band.draw(new android.graphics.Canvas(strip));float density=a.getResources().getDisplayMetrics().density;TimelineViewport viewport=(TimelineViewport)field(a,"viewport");int px=Math.round(14*density+viewport.fraction((long)field(a,"currentMs"))*(band.getWidth()-28*density));assertEquals("current point remains visible over playhead",0xffffd387,strip.getPixel(px,Math.round(46*density)));strip.recycle();
@@ -189,6 +194,56 @@ public class MosaicDeviceTest {
    capture=InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();try(FileOutputStream out=new FileOutputStream(new File(context.getExternalFilesDir(null),"filmstrip-face-editor.png"))){capture.compress(Bitmap.CompressFormat.PNG,100,out);}capture.recycle();
   }
  }
+ @Test public void automaticRangeHandlesRetainDataAndGateUnanalysedExpansion()throws Exception{
+  File input=fixture("faces.mp4");
+  try(ActivityScenario<MainActivity> scenario=ActivityScenario.launch(MainActivity.class)){
+   scenario.onActivity(a->{((RadioButton)field(a,"allMode")).performClick();a.onActivityResult(1001,Activity.RESULT_OK,new Intent().setData(Uri.fromFile(input)));});waitReady(scenario);
+   scenario.onActivity(a->{
+    rangeDrag(a,true,0,.2f);rangeDrag(a,false,1,.8f);MosaicTimeline t=(MosaicTimeline)field(a,"timeline");
+    assertEquals(600,t.startMs,5);assertEquals(2400,t.endMs,5);assertTrue(t.manualTracks().isEmpty());assertFalse(t.canExport());((Button)field(a,"track")).performClick();
+   });waitFinished(scenario);
+   scenario.onActivity(a->{
+    MosaicTimeline t=(MosaicTimeline)field(a,"timeline");assertTrue(t.canExport());assertFalse(t.autoBoxesAt(1500).isEmpty());assertTrue(t.autoBoxesAt(300).isEmpty());assertTrue(t.autoBoxesAt(2500).isEmpty());
+    int samples=t.samples().size();long analysed=t.analysedEndMs;rangeDrag(a,false,.8f,.7f);assertEquals(2100,t.endMs,5);assertEquals(samples,t.samples().size());assertEquals(analysed,t.analysedEndMs);assertTrue(t.canExport());
+    ((Button)field(a,"undoManual")).performClick();assertEquals(2400,t.endMs,5);assertEquals(samples,t.samples().size());
+    rangeDrag(a,true,.2f,.1f);assertFalse("expansion before first analysed frame blocks saving",t.canExport());assertFalse(((Button)field(a,"save")).isEnabled());
+    ((Button)field(a,"undoManual")).performClick();assertTrue(t.canExport());
+    rangeDrag(a,false,.8f,.95f);assertFalse("unanalysed tail blocks saving",t.canExport());assertFalse(((Button)field(a,"save")).isEnabled());((Button)field(a,"track")).performClick();
+   });waitFinished(scenario);waitFilmstripComplete(scenario);
+   scenario.onActivity(a->{MosaicTimeline t=(MosaicTimeline)field(a,"timeline");assertTrue(t.canExport());assertEquals(2850,t.endMs,5);assertFalse(t.autoBoxesAt(2700).isEmpty());assertTrue(t.autoBoxesAt(2950).isEmpty());});
+   capture("automatic-range-editor.png");
+  }
+ }
+ @Test public void longPressMenuDeletesSplitsAndUndoRestores()throws Exception{
+  File input=fixture("sample.mp4");final long[] down={0};
+  try(ActivityScenario<MainActivity> scenario=ActivityScenario.launch(MainActivity.class)){
+   scenario.onActivity(a->{((RadioButton)field(a,"manualMode")).performClick();a.onActivityResult(1001,Activity.RESULT_OK,new Intent().setData(Uri.fromFile(input)));});waitReady(scenario);
+   scenario.onActivity(a->{((Button)field(a,"addManual")).performClick();android.view.View frame=(android.view.View)field(a,"frame");android.graphics.RectF area=(android.graphics.RectF)field(frame,"area");drag(frame,area.left+area.width()*.1f,area.top+area.height()*.1f,area.left+area.width()*.4f,area.top+area.height()*.4f);filmTouch(a,SystemClock.uptimeMillis(),android.view.MotionEvent.ACTION_DOWN,.5f);filmTouch(a,SystemClock.uptimeMillis(),android.view.MotionEvent.ACTION_UP,.5f);});waitReady(scenario);
+   scenario.onActivity(a->{option(a,10);assertEquals(2,((MosaicTimeline)field(a,"timeline")).manualTracks().get(0).size());down[0]=SystemClock.uptimeMillis();bandTouch(a,down[0],android.view.MotionEvent.ACTION_DOWN,.5f);});
+   SystemClock.sleep(android.view.ViewConfiguration.getLongPressTimeout()+300);waitReady(scenario);
+   scenario.onActivity(a->{
+    PopupMenu menu=(PopupMenu)field(a,"options");assertNotNull("long press opened menu",menu);assertTrue(menu.getMenu().findItem(11).isEnabled());
+    bandTouch(a,down[0],android.view.MotionEvent.ACTION_UP,.5f);menu.getMenu().performIdentifierAction(11,0);menu.dismiss();MosaicTimeline t=(MosaicTimeline)field(a,"timeline");assertEquals(1,t.manualTracks().get(0).size());
+    ((Button)field(a,"undoManual")).performClick();assertEquals(2,t.manualTracks().get(0).size());
+    option(a,12);assertEquals(2,t.manualTracks().size());((Button)field(a,"undoManual")).performClick();assertEquals(1,t.manualTracks().size());
+    option(a,13);assertTrue(t.manualTracks().isEmpty());((Button)field(a,"undoManual")).performClick();assertEquals(1,t.manualTracks().size());assertEquals(2,t.manualTracks().get(0).size());
+   });waitFilmstripComplete(scenario);capture("simple-manual-editor.png");
+  }
+ }
+ void option(MainActivity a,int id){
+  ((Button)field(a,"more")).performClick();PopupMenu menu=(PopupMenu)field(a,"options");assertNotNull(menu);assertTrue("selected menu action enabled "+id,menu.getMenu().findItem(id).isEnabled());assertTrue(menu.getMenu().performIdentifierAction(id,0));menu.dismiss();
+ }
+ void rangeDrag(MainActivity a,boolean start,float from,float to){
+  android.view.View band=(android.view.View)field(a,"band");float d=a.getResources().getDisplayMetrics().density;drag(band,14*d+(band.getWidth()-28*d)*from,46*d,14*d+(band.getWidth()-28*d)*to,46*d);
+ }
+ void bandTouch(MainActivity a,long down,int action,float fraction){
+  android.view.View band=(android.view.View)field(a,"band");float d=a.getResources().getDisplayMetrics().density;android.view.MotionEvent event=android.view.MotionEvent.obtain(down,SystemClock.uptimeMillis(),action,14*d+(band.getWidth()-28*d)*fraction,46*d,0);band.dispatchTouchEvent(event);event.recycle();
+ }
+ void waitFinished(ActivityScenario<MainActivity> scenario){long end=SystemClock.elapsedRealtime()+60000;AtomicBoolean done=new AtomicBoolean();while(SystemClock.elapsedRealtime()<end){scenario.onActivity(a->done.set(!(boolean)field(a,"busy")));if(done.get())break;SystemClock.sleep(100);}assertTrue("analysis completed",done.get());waitReady(scenario);}
+ void waitFilmstripComplete(ActivityScenario<MainActivity> scenario){
+  long end=SystemClock.elapsedRealtime()+30000;AtomicBoolean done=new AtomicBoolean();while(SystemClock.elapsedRealtime()<end){scenario.onActivity(a->{Object film=field(a,"filmstrip");android.util.LruCache<Long,Bitmap> cache=(android.util.LruCache<Long,Bitmap>)field(film,"cache");List<Long> desired=(List<Long>)field(film,"desired");boolean full=!desired.isEmpty();for(long key:desired)full&=cache.get(key)!=null;done.set(full);});if(done.get())return;SystemClock.sleep(100);}fail("visible thumbnails did not finish loading");
+ }
+ void capture(String name)throws Exception{SystemClock.sleep(150);Bitmap image=InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();try(FileOutputStream output=new FileOutputStream(new File(context.getExternalFilesDir(null),name))){image.compress(Bitmap.CompressFormat.PNG,100,output);}image.recycle();}
  void filmTouch(MainActivity a,long down,int action,float fraction){
   android.view.View film=(android.view.View)field(a,"filmstrip");float density=a.getResources().getDisplayMetrics().density;
   android.view.MotionEvent e=android.view.MotionEvent.obtain(down,SystemClock.uptimeMillis(),action,14*density+(film.getWidth()-28*density)*fraction,film.getHeight()*.5f,0);film.dispatchTouchEvent(e);e.recycle();

@@ -1,7 +1,7 @@
-name: Build and verify LEDOA Mosaic v0.9.3
+name: Build and verify LEDOA Mosaic v0.9.4
 on:
   push:
-    branches: [feature/mosaic-timeline-v093]
+    branches: [feature/mosaic-simple-v094]
     paths: ['ai-mosaic-v090/**', '.github/workflows/build-mosaic-v090.yml']
   workflow_dispatch:
 permissions:
@@ -68,18 +68,18 @@ jobs:
           "$AAPT" dump badging "$APK" > APK_METADATA.txt
           "$AAPT" dump permissions "$APK" >> APK_METADATA.txt
           grep -q "package: name='kr.ledoa.cut.mosaic'" APK_METADATA.txt
-          grep -q "versionCode='903'" APK_METADATA.txt
+          grep -q "versionCode='904'" APK_METADATA.txt
           if grep -q 'android.permission.INTERNET' APK_METADATA.txt; then echo 'Unexpected network permission'; exit 1; fi
-          cp "$APK" LEDOA_MOSAIC_EDITOR_v0.9.3.apk
-          sha256sum LEDOA_MOSAIC_EDITOR_v0.9.3.apk
-          zip -rq LEDOA_MOSAIC_EDITOR_v0.9.3_SOURCE.zip ai-mosaic-v090 .github/workflows/build-mosaic-v090.yml -x '*/build/*' '*/.gradle/*' '*/test-out/*' '*/src/androidTest/assets/*'
+          cp "$APK" LEDOA_MOSAIC_EDITOR_v0.9.4.apk
+          sha256sum LEDOA_MOSAIC_EDITOR_v0.9.4.apk
+          zip -rq LEDOA_MOSAIC_EDITOR_v0.9.4_SOURCE.zip ai-mosaic-v090 .github/workflows/build-mosaic-v090.yml -x '*/build/*' '*/.gradle/*' '*/test-out/*' '*/src/androidTest/assets/*'
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: LEDOA_MOSAIC_v0.9.3_RESULTS
+          name: LEDOA_MOSAIC_v0.9.4_RESULTS
           path: |
-            LEDOA_MOSAIC_EDITOR_v0.9.3.apk
-            LEDOA_MOSAIC_EDITOR_v0.9.3_SOURCE.zip
+            LEDOA_MOSAIC_EDITOR_v0.9.4.apk
+            LEDOA_MOSAIC_EDITOR_v0.9.4_SOURCE.zip
             ai-mosaic-v090/project/app/build/outputs/apk/debug/app-debug.apk
             APK_METADATA.txt
             APK_SIGNING.txt

@@ -18,9 +18,9 @@ keytool -genkeypair -keystore "$FIXTURE/fixture.keystore" -storepass android -ke
 adb install "$FIXTURE/legacy.apk"
 adb shell run-as "$LEGACY" mkdir -p files
 printf 'legacy-data-survives' | adb shell run-as "$LEGACY" tee files/install-sentinel.txt >/dev/null
-# Exercise a signed 0.9.2 -> 0.9.3 update with app data already present.
+# Exercise a signed 0.9.3 -> 0.9.4 update with app data already present.
 cat > "$FIXTURE/AndroidManifest.xml" <<'XML'
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="kr.ledoa.cut.mosaic" android:versionCode="902" android:versionName="0.9.2-update-fixture"><uses-sdk android:minSdkVersion="26" android:targetSdkVersion="28"/><application android:label="Mosaic update fixture" android:debuggable="true" android:hasCode="false"/></manifest>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="kr.ledoa.cut.mosaic" android:versionCode="903" android:versionName="0.9.3-update-fixture"><uses-sdk android:minSdkVersion="26" android:targetSdkVersion="28"/><application android:label="Mosaic update fixture" android:debuggable="true" android:hasCode="false"/></manifest>
 XML
 "$TOOLS/aapt" package -f -M "$FIXTURE/AndroidManifest.xml" -I "$ANDROID_HOME/platforms/android-35/android.jar" -F "$FIXTURE/prior-unsigned.apk"
 "$TOOLS/zipalign" -f 4 "$FIXTURE/prior-unsigned.apk" "$FIXTURE/prior.apk"
@@ -37,8 +37,8 @@ adb install -r "$APK"
 test "$(adb shell run-as "$LEGACY" cat files/install-sentinel.txt | tr -d '\r')" = 'legacy-data-survives'
 test "$(adb shell run-as "$PKG" cat files/install-sentinel.txt | tr -d '\r')" = 'mosaic-update-survives'
 adb shell am start -W -n "$PKG/kr.ledoa.cut.aitest.MainActivity"
-adb shell dumpsys package "$PKG" | grep 'versionCode=903'
-echo 'PASS: signed 0.9.2 to 0.9.3 update retains data; independent legacy package retained; signed reinstall retains data.'
+adb shell dumpsys package "$PKG" | grep 'versionCode=904'
+echo 'PASS: signed 0.9.3 to 0.9.4 update retains data; independent legacy package retained; signed reinstall retains data.'
 adb shell getprop ro.build.version.release
 adb shell getprop ro.build.version.sdk
 adb shell getconf PAGE_SIZE

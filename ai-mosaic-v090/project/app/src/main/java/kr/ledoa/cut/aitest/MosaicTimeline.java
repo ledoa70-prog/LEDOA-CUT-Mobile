@@ -22,8 +22,18 @@ public final class MosaicTimeline {
     public synchronized List<ManualTrack> manualTracks(){return new ArrayList<>(manualTracks.values());}
     public synchronized List<ManualTrack> manualSnapshot(){List<ManualTrack> out=new ArrayList<>();for(ManualTrack t:manualTracks.values())out.add(t.copy());return out;}
     public synchronized void restoreManual(List<ManualTrack> tracks){manualTracks.clear();for(ManualTrack t:tracks)manualTracks.put(t.id,t.copy());}
+    /** Crop the output range without deleting already computed tracking data. */
+    public synchronized void rangeAuto(long start,long end,long duration){
+        if(start<0||end<=start||end>duration)throw new IllegalArgumentException("Invalid automatic range");
+        startMs=start;endMs=end;
+    }
+    public synchronized long analysisStartMs(){
+        if(!frames.isEmpty())return frames.firstKey();
+        if(!allFaces){List<FacePath.Point> points=selectedPath.points();if(!points.isEmpty())return points.get(0).ms;}
+        return Long.MAX_VALUE;
+    }
     public synchronized boolean canExport(){
-        if(!manualOnly)return endMs>startMs&&analysedEndMs>=endMs;
+        if(!manualOnly)return endMs>startMs&&analysisStartMs()<=startMs&&analysedEndMs>=endMs;
         for(ManualTrack t:manualTracks.values())if(t.size()>0)return true;
         return false;
     }
@@ -73,11 +83,12 @@ public final class MosaicTimeline {
     public synchronized long nextReview(long after){
         boolean previousReview=false;long previousMs=-1;
         if(!allFaces){for(FacePath.Point p:selectedPath.points()){
+            if(endMs>startMs&&(p.ms<startMs||p.ms>=endMs))continue;
             boolean review=p.box==null||p.reason.contains("REVIEW");
             if(review&&(!previousReview||p.ms-previousMs>220||cuts.contains(p.ms))&&p.ms>after)return p.ms;
             previousReview=review;previousMs=p.ms;
         }}else for(Map.Entry<Long,List<FacePath.Box>> e:frames.entrySet()){
-            long ms=e.getKey();boolean review=e.getValue().isEmpty()||cuts.contains(ms);
+            long ms=e.getKey();if(endMs>startMs&&(ms<startMs||ms>=endMs))continue;boolean review=e.getValue().isEmpty()||cuts.contains(ms);
             if(review&&(!previousReview||ms-previousMs>220||cuts.contains(ms))&&ms>after)return ms;
             previousReview=review;previousMs=ms;
         }

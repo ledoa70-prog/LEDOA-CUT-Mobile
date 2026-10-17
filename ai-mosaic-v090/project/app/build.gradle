@@ -10,8 +10,8 @@ android {
         minSdk 26
         targetSdk 28 // Test-only: avoid migration side effects; update after modern API regression tests.
         ndk { abiFilters 'arm64-v8a', 'x86_64' }
-        versionCode 903
-        versionName '0.9.3-mosaic-editor'
+        versionCode 904
+        versionName '0.9.4-mosaic-editor'
     }
     signingConfigs {
         debug {
