@@ -18,7 +18,18 @@ keytool -genkeypair -keystore "$FIXTURE/fixture.keystore" -storepass android -ke
 adb install "$FIXTURE/legacy.apk"
 adb shell run-as "$LEGACY" mkdir -p files
 printf 'legacy-data-survives' | adb shell run-as "$LEGACY" tee files/install-sentinel.txt >/dev/null
-adb install "$APK"
+# Exercise a signed 0.9.1 -> 0.9.2 update with app data already present.
+cat > "$FIXTURE/AndroidManifest.xml" <<'XML'
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="kr.ledoa.cut.mosaic" android:versionCode="901" android:versionName="0.9.1-update-fixture"><uses-sdk android:minSdkVersion="26" android:targetSdkVersion="28"/><application android:label="Mosaic update fixture" android:debuggable="true" android:hasCode="false"/></manifest>
+XML
+"$TOOLS/aapt" package -f -M "$FIXTURE/AndroidManifest.xml" -I "$ANDROID_HOME/platforms/android-35/android.jar" -F "$FIXTURE/prior-unsigned.apk"
+"$TOOLS/zipalign" -f 4 "$FIXTURE/prior-unsigned.apk" "$FIXTURE/prior.apk"
+"$TOOLS/apksigner" sign --ks "$RUNNER_TEMP/ledoa-mosaic.keystore" --ks-pass pass:android --key-pass pass:android "$FIXTURE/prior.apk"
+adb install "$FIXTURE/prior.apk"
+adb shell run-as "$PKG" mkdir -p files
+printf 'prior-version-data-survives' | adb shell run-as "$PKG" tee files/prior-sentinel.txt >/dev/null
+adb install -r "$APK"
+test "$(adb shell run-as "$PKG" cat files/prior-sentinel.txt | tr -d '\r')" = 'prior-version-data-survives'
 adb shell run-as "$PKG" mkdir -p files
 printf 'mosaic-update-survives' | adb shell run-as "$PKG" tee files/install-sentinel.txt >/dev/null
 # Reinstall exactly the distributable APK; the signature and package must support updates.
@@ -27,7 +38,7 @@ test "$(adb shell run-as "$LEGACY" cat files/install-sentinel.txt | tr -d '\r')"
 test "$(adb shell run-as "$PKG" cat files/install-sentinel.txt | tr -d '\r')" = 'mosaic-update-survives'
 adb shell am start -W -n "$PKG/kr.ledoa.cut.aitest.MainActivity"
 adb shell dumpsys package "$PKG" | grep 'versionCode=902'
-echo 'PASS: independent install beside old package with different signer; old data retained; signed reinstall retains new app data.'
+echo 'PASS: signed 0.9.1 to 0.9.2 update retains data; independent legacy package retained; signed reinstall retains data.'
 adb shell getprop ro.build.version.release
 adb shell getprop ro.build.version.sdk
 adb shell getconf PAGE_SIZE

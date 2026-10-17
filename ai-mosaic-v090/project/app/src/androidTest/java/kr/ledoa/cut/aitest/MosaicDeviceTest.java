@@ -116,6 +116,14 @@ public class MosaicDeviceTest {
     drag(band,band.getWidth()-14*density,46*density,14*density+(band.getWidth()-28*density)*.8f,46*density);
     assertTrue("timeline end handle trims interval",track.end()>1500&&track.end()<1700);
     ((Button)field(a,"undoManual")).performClick();assertEquals("undo restores interval",2000,t.manualTracks().get(0).end());
+    t.cut(1100);tap(band,14*density+(band.getWidth()-28*density)*.65f,46*density);
+   });
+   waitReady(scenario);InstrumentationRegistry.getInstrumentation().waitForIdleSync();
+   scenario.onActivity(a->{
+    MosaicTimeline t=(MosaicTimeline)field(a,"timeline");assertTrue("old shot box not carried across cut",t.boxesAt((long)field(a,"currentMs")).isEmpty());
+    ((Button)field(a,"pinPoint")).performClick();android.view.View frame=(android.view.View)field(a,"frame");android.graphics.RectF area=(android.graphics.RectF)field(frame,"area");
+    drag(frame,area.left+area.width()*.25f,area.top+area.height()*.4f,area.left+area.width()*.7f,area.top+area.height()*.6f);
+    assertEquals("new shot can be drawn into existing track",3,t.manualTracks().get(0).size());assertFalse(t.boxesAt((long)field(a,"currentMs")).isEmpty());
    });
    InstrumentationRegistry.getInstrumentation().waitForIdleSync();
    Bitmap screenshot=InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot();try(FileOutputStream out=new FileOutputStream(new File(context.getExternalFilesDir(null),"manual-editor.png"))){screenshot.compress(Bitmap.CompressFormat.PNG,100,out);}screenshot.recycle();
@@ -123,8 +131,8 @@ public class MosaicDeviceTest {
  }
  void tap(android.view.View view,float x,float y){drag(view,x,y,x,y);}
  void drag(android.view.View view,float x,float y,float right,float bottom){
-  long now=SystemClock.uptimeMillis();for(int action:new int[]{android.view.MotionEvent.ACTION_DOWN,android.view.MotionEvent.ACTION_MOVE,android.view.MotionEvent.ACTION_UP}){
-   android.view.MotionEvent e=android.view.MotionEvent.obtain(now,now+20*action,action,action==android.view.MotionEvent.ACTION_DOWN?x:right,action==android.view.MotionEvent.ACTION_DOWN?y:bottom,0);view.dispatchTouchEvent(e);e.recycle();
+  long now=SystemClock.uptimeMillis();int step=0;for(int action:new int[]{android.view.MotionEvent.ACTION_DOWN,android.view.MotionEvent.ACTION_MOVE,android.view.MotionEvent.ACTION_UP}){
+   android.view.MotionEvent e=android.view.MotionEvent.obtain(now,now+20*step++,action,action==android.view.MotionEvent.ACTION_DOWN?x:right,action==android.view.MotionEvent.ACTION_DOWN?y:bottom,0);view.dispatchTouchEvent(e);e.recycle();
   }
  }
  @Test public void manualMovingMaskBurnsIntoExportWithAudio()throws Exception{
