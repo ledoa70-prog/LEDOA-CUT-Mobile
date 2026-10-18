@@ -1,0 +1,49 @@
+name: Verify compiled CUT mobile APK launcher
+on:
+  push:
+    branches: [verify/cut-mobile-v087]
+    paths: ['.github/workflows/verify-cut-mobile-apk.yml']
+permissions:
+  contents: read
+  actions: read
+jobs:
+  launcher:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: LEDOA_CUT_MOBILE_v0.8.7_RESULTS
+          run-id: 39096849468
+          github-token: ${{ github.token }}
+      - name: Enable KVM
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+      - uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 36
+          arch: x86_64
+          target: google_apis
+          profile: pixel_2
+          disable-animations: true
+          script: |
+            adb install -r cut-mobile-v087/app/build/outputs/apk/release/app-release.apk
+            adb shell cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.LAUNCHER kr.ledoa.cut.captionbeta | tee LAUNCHER.txt
+            grep -q 'kr.ledoa.cut.TimeAlignmentActivity' LAUNCHER.txt
+            adb shell am start -W -n kr.ledoa.cut.captionbeta/kr.ledoa.cut.TimeAlignmentActivity | tee START.txt
+            grep -q 'Status: ok' START.txt
+            adb shell am force-stop kr.ledoa.cut.captionbeta
+            adb shell monkey -p kr.ledoa.cut.captionbeta -c android.intent.category.LAUNCHER 1
+            adb shell pidof kr.ledoa.cut.captionbeta
+            adb shell screencap -p /sdcard/launcher.png
+            adb pull /sdcard/launcher.png launcher.png
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: CUT_v087_LAUNCHER_VERIFIED
+          path: |
+            LAUNCHER.txt
+            START.txt
+            launcher.png
