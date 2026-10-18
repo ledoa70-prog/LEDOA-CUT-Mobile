@@ -40,7 +40,7 @@ public class MosaicDeviceTest {
     double inside=error(a,b,.13f,.13f,.37f,.77f),outside=error(a,b,.55f,.1f,.95f,.9f);
     assertTrue("outside mask unchanged "+name+" "+ms+" error="+outside,outside<12);
     if(ms==700)assertTrue("mosaic burned in "+name+" error="+inside,inside>12);else assertTrue("range excludes frame "+name+" "+ms+" error="+inside,inside<12);
-    if(ms==700)try(FileOutputStream out=new FileOutputStream(new File(context.getExternalFilesDir(null),"export-"+name+".png"))){b.compress(Bitmap.CompressFormat.PNG,100,out);}a.recycle();b.recycle();
+    if(ms==700)MosaicTestImages.save(context,b,"export-"+name+".png");a.recycle();b.recycle();
    }
    original.release();rendered.release();
    MediaExtractor e=new MediaExtractor();e.setDataSource(output.getPath());boolean audio=false;
@@ -93,7 +93,7 @@ public class MosaicDeviceTest {
    while(SystemClock.elapsedRealtime()<deadline){scenario.onActivity(a->done.set(!(boolean)field(a,"busy")));if(done.get())break;SystemClock.sleep(100);}assertTrue("analysis finished",done.get());waitReady(scenario);
    scenario.onActivity(a->{MosaicTimeline t=(MosaicTimeline)field(a,"timeline");assertEquals(t.endMs,t.analysedEndMs);assertFalse("real bundled face model finds faces",t.boxesAt(500).isEmpty());assertTrue(((Button)field(a,"save")).isEnabled());((Button)field(a,"play")).performClick();});
    SystemClock.sleep(1000);scenario.onActivity(a->{assertTrue((boolean)field(a,"playing"));((Button)field(a,"play")).performClick();});waitReady(scenario);
-   InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot().compress(Bitmap.CompressFormat.PNG,100,new FileOutputStream(new File(context.getExternalFilesDir(null),"editor-phone.png")));
+   MosaicTestImages.save(context,InstrumentationRegistry.getInstrumentation().getUiAutomation().takeScreenshot(),"editor-phone.png");
   }
  }
  @Test public void manualCornersAndTimelineControls()throws Exception{

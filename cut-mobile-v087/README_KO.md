@@ -10,6 +10,6 @@ v0.8.6 모바일 편집기에 v0.9.4 모자이크 편집기를 통합했습니�
 
 기존 `kr.ledoa.cut.captionbeta` 앱을 업데이트하는 버전입니다. v0.9.3/v0.9.4 독립 모자이크 앱과 원본 브랜치는 유지합니다. 편집기 파일 URL과 IndexedDB 저장소를 유지합니다. 네이티브 코드는 원본 Java 소스를 Gradle로 새로 빌드합니다. 기존 APK의 DEX를 재사용하지 않습니다.
 
-빌드: JDK 17, Gradle 8.9, Android SDK 35. `python -m pip install onnx==1.17.0` 후 `python prepare_models.py`, `gradle :app:assembleDebug :app:assembleDebugAndroidTest`. 모델은 고정 커밋/해시로 받고, 기존 v0.8.6 정렬 모델과 같은 SHA-256인지 확인합니다. 개인 서명키는 저장소에 포함하지 않습니다. 최종 배포 APK는 기존 모바일 인증서로 서명합니다.
+빌드: JDK 17, Gradle 8.9, Android SDK 35. `python -m pip install onnx==1.17.0` 후 `python prepare_models.py`, `gradle :app:assembleRelease :app:assembleReleaseAndroidTest`. 모델과 글꼴은 해시로 확인하고, 기존 v0.8.6 정렬 모델과 같은 SHA-256인지 확인합니다. 검사는 release 빌드에서 수행합니다. CI 서명은 테스트용이며 개인 서명키는 저장소에 포함하지 않습니다. 최종 배포 APK는 기존 모바일 인증서로 다시 서명합니다.
 
 기존 자막 분할·음성정렬 소스와 v0.9.4 추적 엔진을 보존했습니다. 자막 Enter는 줄바꿈, 문단 분할은 기존 ‘커서에서 나누기’ 동작을 유지합니다. 각 모델과 런타임 라이선스는 assets에 포함합니다.

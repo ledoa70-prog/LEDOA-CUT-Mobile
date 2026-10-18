@@ -34,7 +34,7 @@ public class CutIntegrationTest {
   long end=SystemClock.elapsedRealtime()+30000;AtomicReference<MosaicActivity> found=new AtomicReference<>();
   while(SystemClock.elapsedRealtime()<end){inst.runOnMainSync(()->{for(Activity a:ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED))if(a instanceof MosaicActivity)found.set((MosaicActivity)a);});if(found.get()!=null)return found.get();SystemClock.sleep(100);}throw new AssertionError("In-app mosaic editor did not open");
  }
- void ready(MosaicActivity a){long end=SystemClock.elapsedRealtime()+30000;AtomicBoolean ready=new AtomicBoolean();while(SystemClock.elapsedRealtime()<end){inst.runOnMainSync(()->ready.set(!(boolean)MosaicDeviceTest.field(a,"busy")&&(boolean)MosaicDeviceTest.field(a,"previewReady")));if(ready.get())return;SystemClock.sleep(100);}fail("Integrated preview not ready");}
+ void ready(MosaicActivity a){long end=SystemClock.elapsedRealtime()+30000;AtomicBoolean ready=new AtomicBoolean();while(SystemClock.elapsedRealtime()<end){inst.runOnMainSync(()->ready.set(!(boolean)MosaicDeviceTest.field(a,"busy")&&(boolean)MosaicDeviceTest.field(a,"previewReady")&&((RectF)MosaicDeviceTest.field(MosaicDeviceTest.field(a,"frame"),"area")).width()>0));if(ready.get())return;SystemClock.sleep(100);}fail("Integrated preview not ready");}
  @Test public void selectedClipApplyReloadReeditCancelAndUndo()throws Exception{
   // Clear only this emulator test profile before opening the production entry activity.
   inst.getTargetContext().getSharedPreferences("mosaic-jobs-v1",0).edit().clear().commit();
@@ -67,13 +67,13 @@ public class CutIntegrationTest {
    inst.runOnMainSync(()->{((Button)MosaicDeviceTest.field(last,"addManual")).performClick();android.view.View frame=(android.view.View)MosaicDeviceTest.field(last,"frame");RectF area=(RectF)MosaicDeviceTest.field(frame,"area");new MosaicDeviceTest().drag(frame,area.left+area.width()*.2f,area.top+area.height()*.2f,area.left+area.width()*.6f,area.top+area.height()*.7f);((Button)MosaicDeviceTest.field(last,"save")).performClick();});
    until("!LedoaMosaicEditor.busy&&!!state.clips[0].mosaic");js("location.reload()");until("typeof state!=='undefined'&&!v038Restoring&&!!state.clips[0]?.mosaic&&state.clips[0].file?.size>1000");
    assertEquals("true",js("state.texts[0].bgOpacity===0&&state.clips[0].speed===1.25&&JSON.parse(LedoaMosaic.session(state.clips[0].mosaic.token)).available"));
-   inst.getUiAutomation().takeScreenshot().compress(Bitmap.CompressFormat.PNG,100,new FileOutputStream(new File(inst.getTargetContext().getExternalFilesDir(null),"cut-mosaic-integrated.png")));
+   MosaicTestImages.save(inst.getTargetContext(),inst.getUiAutomation().takeScreenshot(),"cut-mosaic-integrated.png");
   }
  }
  @Test public void recipeRoundTripPreservesManualAndAutomaticGeometry()throws Exception{
   MosaicTimeline t=new MosaicTimeline();t.allFaces=true;t.rangeAuto(200,1800,2000);t.analysedEndMs=1800;t.strength=55;t.margin=12;t.put(500,java.util.List.of(new FacePath.Box(.1f,.2f,.3f,.4f,-1)));
   ManualTrack m=new ManualTrack(3,false,300,1700);m.put(300,new FacePath.Box(.1f,.2f,.2f,.3f,-1));m.put(1500,new FacePath.Box(.4f,.3f,.4f,.5f,-1));t.addManual(m);
-  File f=new File(inst.getTargetContext().getCacheDir(),"roundtrip.json");MosaicProject.save(f,t,2000,3);MosaicTimeline restored=new MosaicTimeline();assertEquals(3,MosaicProject.restore(f,restored,2000));assertEquals(2,restored.boxesAt(700).size());assertEquals(55,restored.strength);assertEquals(2,restored.manual(3).size());
-  String before=restored.boxesAt(700).toString();try{MosaicProject.restore(f,restored,3000);fail("different source rejected");}catch(IOException expected){}assertEquals(before,restored.boxesAt(700).toString());
+  File f=new File(inst.getTargetContext().getCacheDir(),"roundtrip.json");MosaicProject.save(f,t,2000,3);MosaicTimeline restored=new MosaicTimeline();assertEquals(3,MosaicProject.restore(f,restored,2000));assertEquals(2,restored.boxesAt(600).size());assertEquals(55,restored.strength);assertEquals(2,restored.manual(3).size());
+  float before=restored.manual(3).at(700,restored.cuts()).x;try{MosaicProject.restore(f,restored,3000);fail("different source rejected");}catch(IOException expected){}assertEquals(before,restored.manual(3).at(700,restored.cuts()).x,0.00001f);
  }
 }

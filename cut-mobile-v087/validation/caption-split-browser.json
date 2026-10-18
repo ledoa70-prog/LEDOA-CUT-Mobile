@@ -13,5 +13,5 @@
     "Autosave/reload retains split timings, text metadata and existing styling"
   ],
   "physical_keyboard_and_android_ui_test": false,
-  "native_recognition": "Mocked in browser; APK native DEX compared byte for byte with user-confirmed v0.8.3"
+  "native_recognition": "Mocked in browser; native caption Java sources preserved from v0.8.6 and verified by SHA-256"
 }

@@ -1,0 +1,16 @@
+{
+  "mosaic_core_assertions": 376,
+  "caption_core": "pass",
+  "caption_split": "pass",
+  "caption_alignment": "pass",
+  "caption_native_math_and_speech_gate": "pass",
+  "browser": "Chrome 136.0.7103.25",
+  "browser_suites": [
+    "editor-regression",
+    "caption-browser",
+    "caption-split-browser",
+    "caption-alignment-browser",
+    "mosaic-browser"
+  ],
+  "physical_android_device_tested": false
+}

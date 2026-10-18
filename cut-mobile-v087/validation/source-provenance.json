@@ -15,5 +15,6 @@
     "src/kr/ledoa/cut/CtcAlignment.java": "c0942beaeb728167bc0a783c92c9030e39a903e2ed0d8c34a134e614319ccfbd",
     "src/kr/ledoa/cut/SpeechStartGate.java": "c49f78c86246b8fb26940411770a479b557678882a2f2140013cf35c177c7a58"
   },
-  "alignment_model_sha256": "0f1aa81911a6dc8fe61ae0c13f4bbebd37145c5ad69c83da24d9256bb4e21623"
+  "alignment_model_sha256": "0f1aa81911a6dc8fe61ae0c13f4bbebd37145c5ad69c83da24d9256bb4e21623",
+  "build_model_hash_reproduced_from_pinned_original": true
 }

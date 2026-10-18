@@ -12,6 +12,8 @@ android {
         ndk { abiFilters 'arm64-v8a', 'armeabi-v7a', 'x86_64' }
     }
     sourceSets { main { java.srcDirs=['../src']; assets.srcDirs=['../assets']; res.srcDirs=['../res']; manifest.srcFile '../AndroidManifest.xml' } }
+    buildTypes { release { minifyEnabled false; signingConfig signingConfigs.debug } }
+    testBuildType 'release'
     packaging { jniLibs { useLegacyPackaging = true } }
     androidResources { noCompress 'onnx' }
     compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }

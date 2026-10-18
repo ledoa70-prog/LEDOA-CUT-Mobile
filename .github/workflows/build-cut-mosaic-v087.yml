@@ -19,6 +19,7 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
+          cache-read-only: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -42,7 +43,7 @@ jobs:
           ffmpeg -hide_banner -loglevel error -loop 1 -i /tmp/astronaut.png -f lavfi -i sine=frequency=440:sample_rate=48000 -t 3 -vf scale=480:480 -r 30 -c:v libx264 -pix_fmt yuv420p -c:a aac -y "$ASSETS/faces.mp4"
       - name: Compile all editor, captions and mosaic Java sources
         working-directory: cut-mobile-v087
-        run: gradle --no-daemon :app:assembleDebug :app:assembleDebugAndroidTest
+        run: gradle --no-daemon :app:assembleRelease :app:assembleReleaseAndroidTest
       - name: Enable KVM
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -56,13 +57,13 @@ jobs:
           target: google_apis
           profile: pixel_2
           disable-animations: true
-          script: bash -c 'gradle --no-daemon -p cut-mobile-v087 :app:connectedDebugAndroidTest; STATUS=$?; adb pull /sdcard/Android/data/kr.ledoa.cut.captionbeta/files device-evidence; exit "$STATUS"'
+          script: bash -c 'gradle --no-daemon -p cut-mobile-v087 :app:connectedReleaseAndroidTest; STATUS=$?; adb pull /sdcard/Pictures/LEDOA device-evidence; exit "$STATUS"'
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: LEDOA_CUT_MOBILE_v0.8.7_RESULTS
           path: |
-            cut-mobile-v087/app/build/outputs/apk/debug/app-debug.apk
+            cut-mobile-v087/app/build/outputs/apk/release/app-release.apk
             cut-mobile-v087/app/build/reports/androidTests/
             cut-mobile-v087/app/build/outputs/androidTest-results/
             device-evidence/
