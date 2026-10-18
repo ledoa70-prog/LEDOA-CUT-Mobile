@@ -95,6 +95,10 @@ public final class MosaicActivity extends Activity {
     private void equal(LinearLayout row,View...views){for(View v:views){LinearLayout.LayoutParams p=new LinearLayout.LayoutParams(0,dp(46),1);p.setMargins(dp(3),dp(3),dp(3),dp(3));row.addView(v,p);}}
     private void renderUi(){
         LinearLayout root=new LinearLayout(this);root.setOrientation(LinearLayout.VERTICAL);root.setBackgroundColor(BG);root.setPadding(dp(12),dp(4),dp(12),dp(6));
+        if(Build.VERSION.SDK_INT>=35)root.setOnApplyWindowInsetsListener((view,insets)->{
+            android.graphics.Insets bars=insets.getInsets(WindowInsets.Type.systemBars()|WindowInsets.Type.displayCutout());
+            view.setPadding(dp(12)+bars.left,dp(4)+bars.top,dp(12)+bars.right,dp(6)+bars.bottom);return insets;
+        });
         LinearLayout heading=row();heading.addView(label(integrated?"모자이크":"LEDOA 모자이크",19,TEXT),new LinearLayout.LayoutParams(0,-2,1));heading.addView(label(integrated?"LEDOA CUT":"v0.9.4",10,MUTED));
         undoManual=button("↶",false);undoManual.setTextSize(24);undoManual.setContentDescription("편집 실행 취소");heading.addView(undoManual,new LinearLayout.LayoutParams(dp(42),dp(40)));
         more=button("⋮",false);more.setTextSize(24);more.setContentDescription("모자이크 편집 메뉴");heading.addView(more,new LinearLayout.LayoutParams(dp(42),dp(40)));root.addView(heading);

@@ -102,6 +102,7 @@ public class MosaicDeviceTest {
    scenario.onActivity(a->{((RadioButton)field(a,"manualMode")).performClick();a.onActivityResult(1001,Activity.RESULT_OK,new Intent().setData(Uri.fromFile(input)));});waitReady(scenario);
    InstrumentationRegistry.getInstrumentation().waitForIdleSync();
    scenario.onActivity(a->{
+    if(android.os.Build.VERSION.SDK_INT>=35){android.view.View menu=(android.view.View)field(a,"more");int[] pos=new int[2];menu.getLocationOnScreen(pos);assertTrue("header avoids Android status bar",pos[1]>=menu.getRootWindowInsets().getInsets(android.view.WindowInsets.Type.statusBars()).top);}
     Button add=(Button)field(a,"addManual");android.graphics.Rect visible=new android.graphics.Rect();assertTrue("manual add button visible before scrolling",add.getGlobalVisibleRect(visible));assertTrue("manual add button fully visible",visible.height()>=add.getHeight()-2);
     add.performClick();android.view.View frame=(android.view.View)field(a,"frame");android.graphics.RectF area=(android.graphics.RectF)field(frame,"area");
     assertTrue("video preview laid out",area.width()>0&&area.height()>0);

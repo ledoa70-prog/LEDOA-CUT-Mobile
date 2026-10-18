@@ -29,7 +29,7 @@ public class CutIntegrationTest {
   inst.runOnMainSync(()->web.evaluateJavascript(script,value->{result.set(value);done.countDown();}));
   assertTrue("JavaScript response",done.await(15,TimeUnit.SECONDS));return result.get();
  }
- void until(String expression)throws Exception{long end=SystemClock.elapsedRealtime()+60000;while(SystemClock.elapsedRealtime()<end){if("true".equals(js("!!("+expression+")")))return;SystemClock.sleep(100);}fail("Timed out: "+expression);}
+ void until(String expression)throws Exception{long end=SystemClock.elapsedRealtime()+60000;while(SystemClock.elapsedRealtime()<end){if("true".equals(js("!!("+expression+")")))return;SystemClock.sleep(100);}fail("Timed out: "+expression+" state="+js("JSON.stringify({import:state.lastImportResult,importing:state.importing,restoring:v038Restoring,saving:v038Saving,clips:state.clips.length,status:document.getElementById('importStatusV066')?.textContent})"));}
  MosaicActivity child()throws Exception{
   long end=SystemClock.elapsedRealtime()+30000;AtomicReference<MosaicActivity> found=new AtomicReference<>();
   while(SystemClock.elapsedRealtime()<end){inst.runOnMainSync(()->{for(Activity a:ActivityLifecycleMonitorRegistry.getInstance().getActivitiesInStage(Stage.RESUMED))if(a instanceof MosaicActivity)found.set((MosaicActivity)a);});if(found.get()!=null)return found.get();SystemClock.sleep(100);}throw new AssertionError("In-app mosaic editor did not open");
@@ -40,8 +40,9 @@ public class CutIntegrationTest {
   inst.getTargetContext().getSharedPreferences("mosaic-jobs-v1",0).edit().clear().commit();
   try(ActivityScenario<MosaicCutActivity> scenario=ActivityScenario.launch(MosaicCutActivity.class)){
    scenario.onActivity(a->web=(WebView)MosaicDeviceTest.field(a,"web"));
-   until("typeof state!=='undefined' && window.LedoaMosaic && window.LedoaMosaicEditor && !v038Restoring");
-   js("(async()=>{const db=await v038Db();const t=db.transaction(['project','media'],'readwrite');t.objectStore('project').clear();t.objectStore('media').clear();db.close();state.clips=[];state.texts=[];localStorage.removeItem('ledoa-mosaic-pending-v1');recalc();renderAll();})()");
+   until("typeof state!=='undefined' && window.LedoaMosaic && window.LedoaMosaicEditor && performance.now()>1000 && !v038Restoring && !v038Saving");
+   js("window.testReset=false;(async()=>{clearTimeout(v038SaveTimer);const db=await v038Db();const t=db.transaction(['project','media'],'readwrite');t.objectStore('project').clear();t.objectStore('media').clear();await new Promise((resolve,reject)=>{t.oncomplete=resolve;t.onerror=reject;});db.close();state.clips=[];state.texts=[];localStorage.removeItem('ledoa-mosaic-pending-v1');recalc();renderAll();window.testReset=await v038SaveProject(true);})()");
+   until("window.testReset&&!v038Saving&&!v038Restoring");
    byte[] bytes;try(InputStream in=inst.getContext().getAssets().open("sample.mp4");ByteArrayOutputStream out=new ByteArrayOutputStream()){byte[] b=new byte[32768];int n;while((n=in.read(b))>0)out.write(b,0,n);bytes=out.toByteArray();}
    String encoded=Base64.encodeToString(bytes,Base64.NO_WRAP);
    js("(()=>{const s=atob('"+encoded+"'),b=new Uint8Array(s.length);for(let i=0;i<s.length;i++)b[i]=s.charCodeAt(i);const dt=new DataTransfer();dt.items.add(new File([b],'mobile-original.mp4',{type:'video/mp4'}));const input=document.getElementById('mediaInput');input.files=dt.files;input.dispatchEvent(new Event('change',{bubbles:true}));})()");

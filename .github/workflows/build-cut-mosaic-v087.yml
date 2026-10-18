@@ -57,7 +57,7 @@ jobs:
           target: google_apis
           profile: pixel_2
           disable-animations: true
-          script: bash -c 'gradle --no-daemon -p cut-mobile-v087 :app:connectedReleaseAndroidTest; STATUS=$?; adb pull /sdcard/Pictures/LEDOA device-evidence; exit "$STATUS"'
+          script: bash -c 'gradle --no-daemon -p cut-mobile-v087 :app:connectedReleaseAndroidTest; STATUS=$?; adb logcat -d -v brief > ANDROID_LOGCAT.txt; adb pull /sdcard/Pictures/LEDOA device-evidence; exit "$STATUS"'
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -67,4 +67,5 @@ jobs:
             cut-mobile-v087/app/build/reports/androidTests/
             cut-mobile-v087/app/build/outputs/androidTest-results/
             device-evidence/
+            ANDROID_LOGCAT.txt
           if-no-files-found: error
