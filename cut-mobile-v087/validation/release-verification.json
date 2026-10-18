@@ -1,0 +1,27 @@
+{
+  "file": "LEDOA_Mobile_v0.8.7_MOSAIC.apk",
+  "bytes": 413711675,
+  "sha256": "d8b837db0a11c7d777336cccb99278111ceff4f22871a1bd159de9be9f0c7ec3",
+  "package": "kr.ledoa.cut.captionbeta",
+  "version_code": 807,
+  "version_name": "0.8.7-mosaic",
+  "same_certificate_as_v086": "bd7dad9ddae23ee1086bdbf5d0b578f45348036456deab7363b75dddd86bf9e8",
+  "debuggable": false,
+  "native_source_rebuilt": true,
+  "baseline_assets_unchanged": 24,
+  "android_tests_passed": 12,
+  "android_device": "Android 16 x86_64 emulator",
+  "physical_phone_tested": false,
+  "ci_run": 39096849468,
+  "source_commit": "69c207949af5f8362b825013c5f26ba1dec6e725",
+  "structure": {
+    "resources_arsc_uncompressed": true,
+    "resources_arsc_4byte_aligned": true,
+    "resources_arsc_data_offset": 413324260,
+    "dex_integrity_verified": true,
+    "dex_class_count": 7896,
+    "dex_count": 1
+  },
+  "launcher_ci_run": 39097455059,
+  "launcher_alias_and_cold_start_verified": true
+}
