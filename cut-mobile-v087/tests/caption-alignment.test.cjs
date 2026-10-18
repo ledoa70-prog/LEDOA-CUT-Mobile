@@ -1,0 +1,13 @@
+const assert=require('assert/strict'),A=require('../assets/caption-alignment-core.js');
+const rows=[{text:'고친 첫 문장',start:0,end:5,font:'custom',bgOpacity:0},{text:'다음 문장',start:5,end:9}];
+const anchor={sourceStart:10,sourceEnd:22,clipStart:3,trimStart:8,speed:2};
+const words=[{cue:0,text:'고친',start:11,end:11.3,confidence:.9},{cue:0,text:'첫',start:11.5,end:11.8,confidence:.5},{cue:0,text:'문장',start:12,end:12.5,confidence:.8},{cue:1,text:'다음',start:17,end:17.5,confidence:.05,review:true},{cue:1,text:'문장',start:18,end:18.6,confidence:.8}];
+const before=JSON.stringify(rows),out=A.alignRows(rows,{words},anchor);
+assert.equal(JSON.stringify(rows),before);assert.equal(out[0].text,rows[0].text);assert.equal(out[0].font,'custom');assert.equal(out[0].bgOpacity,0);assert.equal(out.length,2);
+assert.ok(Math.abs(out[0].start-4.48)<1e-8);assert.ok(Math.abs(out[1].start-7.48)<1e-8);assert.equal(out[0].wordTimings[0].start,4.5);assert.equal(out[1].alignmentReview,true);
+assert.throws(()=>A.alignRows(rows,{words:[...words.slice(0,3)]},anchor),/2번 문단/);
+assert.throws(()=>A.alignRows(rows,{words:[...words].reverse()},anchor),/시간 순서/);
+assert.throws(()=>A.alignRows(rows,{words:[{cue:0,start:NaN,end:12}]},anchor));
+assert.throws(()=>A.alignRows(rows,{words:[{cue:0,start:9,end:12}]},anchor));
+const near=A.alignRows([{text:'가'},{text:'나'}],{words:[{cue:0,text:'가',start:1,end:1.5},{cue:1,text:'나',start:1.52,end:2}]},{sourceStart:0,sourceEnd:3,trimStart:0,clipStart:0,speed:1});assert.equal(near[0].end,near[1].start);
+console.log('PASS real word-time mapping, trim/speed, paragraph preservation, style, uncertainty, validation and no mutation');

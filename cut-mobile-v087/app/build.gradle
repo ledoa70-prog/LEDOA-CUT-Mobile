@@ -1,0 +1,25 @@
+plugins { id 'com.android.application' }
+android {
+    namespace 'kr.ledoa.cut'
+    compileSdk 35
+    defaultConfig {
+        applicationId 'kr.ledoa.cut.captionbeta'
+        minSdk 29
+        targetSdk 35
+        versionCode 807
+        versionName '0.8.7-mosaic'
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
+        ndk { abiFilters 'arm64-v8a', 'armeabi-v7a', 'x86_64' }
+    }
+    sourceSets { main { java.srcDirs=['../src']; assets.srcDirs=['../assets']; res.srcDirs=['../res']; manifest.srcFile '../AndroidManifest.xml' } }
+    packaging { jniLibs { useLegacyPackaging = true } }
+    androidResources { noCompress 'onnx' }
+    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+}
+dependencies {
+    implementation 'com.google.mlkit:face-detection:16.1.7'
+    implementation 'org.opencv:opencv:4.10.0'
+    implementation 'com.microsoft.onnxruntime:onnxruntime-android:1.22.0'
+    androidTestImplementation 'androidx.test:runner:1.6.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+}

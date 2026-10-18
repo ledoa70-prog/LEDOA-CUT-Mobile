@@ -1,0 +1,13 @@
+{
+  "passed": true,
+  "browser": "136.0.7103.25",
+  "native": "Mock bridge; native encoder verified separately on Android",
+  "checks": [
+    "Selected clip result committed once; trim, speed, volume, transition, captions, overlay and other clip preserved",
+    "One undo restores original media bytes and metadata",
+    "Cancel returns without replacing the clip",
+    "Stale output rejected after clip edits",
+    "Storage failure rolls back replacement and undo history",
+    "Autosave reload retains result and reopens original source recipe"
+  ]
+}

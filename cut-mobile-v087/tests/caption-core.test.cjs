@@ -1,0 +1,18 @@
+const assert=require('assert/strict');const C=require('../assets/caption-core.js');
+const a={clipStart:10,trimStart:5,speed:2};
+assert.equal(C.at(9,a),12);
+let cues=C.sourceCues({sourceStart:7,sourceEnd:12,segments:[{text:'제네시스 새 소식입니다.',words:[{text:'제네시스',start:.2},{text:'새',start:1},{text:'소식입니다.',start:2}]}]},a);
+assert.equal(cues[0].start,11.1);assert.ok(cues.every(c=>c.end>c.start&&c.start>=11&&c.end<=13.5));
+cues=C.sourceCues({sourceStart:0,sourceEnd:3,segments:[{words:[{text:'안녕.',start:.1},{text:'다음.',start:.3},{text:'끝.',start:1}]}]},{clipStart:0,trimStart:0,speed:1});
+assert.ok(cues.every((c,i)=>!cues[i+1]||c.end<=cues[i+1].start));
+const noTimes=C.sourceCues({sourceStart:5,sourceEnd:15,segments:[{text:'시간 없음',words:[{text:'시간',start:0},{text:'없음',start:0}]}]},a);
+assert.equal(noTimes[0].timing,'range');assert.equal(noTimes[0].start,10);assert.equal(noTimes[0].end,15);
+const nonMonotone=C.sourceCues({sourceStart:0,sourceEnd:10,segments:[{text:'잘못된 시간',words:[{text:'잘못된',start:5},{text:'시간',start:1}]}]},a);
+assert.equal(nonMonotone[0].timing,'range');
+assert.equal(C.parseSrt('\uFEFF1\r\n00:00:01,125 --> 00:00:02,500\r\n반갑습니다\r\n\r\n2\r\n00:00:03.000 --> 00:00:04.000\r\n두 번째\r\n줄입니다')[1].text,'두 번째\n줄입니다');
+for(const value of ['00:61:00,000','00:00:61,000','-1:00:00,000','bad'])assert.throws(()=>C.parseSrt(`1\n${value} --> 00:00:10,000\n잘못된 파일`));
+assert.throws(()=>C.parseSrt('1\n00:00:02,000 --> 00:00:01,000\n반대 시간'));
+const exported=C.toSrt([{text:'제목',kind:'title',start:0,end:5},{text:'자막',kind:'caption',start:1.125,end:2.5}]);
+assert.ok(!exported.includes('제목'));assert.equal(C.parseSrt(exported)[0].start,1.125);
+assert.equal(C.clock(3599.9996),'01:00:00,000');
+console.log('PASS caption timing, trim/speed mapping, missing timing, SRT validation and round trip');

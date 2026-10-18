@@ -1,0 +1,26 @@
+[
+  {
+    "name": "GowunDodum-Regular.ttf",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/gowundodum/GowunDodum-Regular.ttf",
+    "bytes": 7229088,
+    "sha256": "a6e457933227483a11758fd0947bc74422a106d46f0bf057fdaa5af94a30067d"
+  },
+  {
+    "name": "NanumPenScript-Regular.ttf",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/nanumpenscript/NanumPenScript-Regular.ttf",
+    "bytes": 3201664,
+    "sha256": "6f0d1ab29c7894010dc88831fb7a0a51edb79136e450344183de5b1a8b52bd43"
+  },
+  {
+    "name": "GowunDodum-OFL.txt",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/gowundodum/OFL.txt",
+    "bytes": 4395,
+    "sha256": "a7c73f9521cd646bbdfb6684c99a62311bbd7bce11898dc11ef0b3c69eda1aca"
+  },
+  {
+    "name": "NanumPenScript-OFL.txt",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/nanumpenscript/OFL.txt",
+    "bytes": 4534,
+    "sha256": "eeacf16032901d0ed0456876ec77b8f0fda6b3fecec7d972f8543eb602e6c30f"
+  }
+]

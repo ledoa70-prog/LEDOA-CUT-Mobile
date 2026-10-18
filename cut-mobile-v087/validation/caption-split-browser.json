@@ -1,0 +1,17 @@
+{
+  "passed": true,
+  "browser": "136.0.7103.25",
+  "checks": [
+    "Enter-based split controls removed; cursor controls remain",
+    "Applied Google paragraph splits into 3 timed cues; text, endpoints, font, size, zero opacity and title preserved; two undo actions restore the original paragraph",
+    "Touch button preserves caret across keyboard blur and uses manually chosen split time",
+    "Current playhead can be used for the split boundary",
+    "Invalid timing and Korean composition do not destructively split captions",
+    "Enter works beyond the former 120-character limit; unsaved paragraph can split and undo restores its draft",
+    "One mocked Google recognition call; paragraph splitting in review happens locally and Apply adds the reviewed cues",
+    "Review cursor split preserves touch caret and adjacent cue timing without another recognition request",
+    "Autosave/reload retains split timings, text metadata and existing styling"
+  ],
+  "physical_keyboard_and_android_ui_test": false,
+  "native_recognition": "Mocked in browser; APK native DEX compared byte for byte with user-confirmed v0.8.3"
+}

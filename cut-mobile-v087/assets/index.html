@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <meta name="theme-color" content="#0d1117" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>LEDOA CUT Shorts</title>
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icon.png" />
+  <link rel="stylesheet" href="styles.css" />
+  <link rel="stylesheet" href="auto-captions.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><img src="icon.png" alt=""><div><strong>LEDOA CUT</strong><span>모자이크 통합 · v0.8.7</span></div></div>
+    <div class="top-actions">
+      <button id="undoBtn" class="ghost" disabled>↶</button>
+      <button id="ratioBtn" class="ghost">9:16</button>
+      <button id="exportBtn" class="primary">저장</button>
+    </div>
+  </header>
+
+  <main class="app-shell">
+    <section class="preview-section">
+      <div id="viewer" class="viewer ratio-9-16">
+        <canvas id="previewCanvas" width="720" height="1280"></canvas>
+        <div id="emptyViewer" class="empty-viewer">
+          <b>영상이나 사진을 넣어주세요</b>
+          <span>쇼츠는 9:16으로 바로 시작합니다</span>
+        </div>
+      </div>
+      <div class="transport">
+        <button id="restartBtn" aria-label="처음부터" title="처음부터">|◀</button>
+        <button id="backBtn" aria-label="5초 뒤로">−5</button>
+        <button id="playBtn" class="play">▶</button>
+        <button id="forwardBtn" aria-label="5초 앞으로">+5</button>
+        <span id="timeLabel">00:00.0 / 00:00.0</span>
+        <button id="coverBtn" class="cover-mini">표지</button>
+      </div>
+    </section>
+
+    <section class="timeline-section">
+      <div class="timeline-head">
+        <div><strong>타임라인</strong><span id="clipCount">0개</span></div>
+        <div class="timeline-tools"><div class="timeline-slide" aria-label="타임라인 좌우 이동"><button id="timelineLeftBtn" type="button" aria-label="타임라인 왼쪽 이동">◀</button><button id="timelineRightBtn" type="button" aria-label="타임라인 오른쪽 이동">▶</button></div><div class="timeline-zoom"><button id="zoomOutBtn">−</button><span id="zoomLabel">1×</span><button id="zoomInBtn">＋</button></div></div>
+      </div>
+      <div id="timelineScroll" class="timeline-scroll">
+        <div id="ruler" class="ruler"></div>
+        <div id="clipTrack" class="clip-track"></div>
+        <div id="playhead" class="playhead"><i></i></div>
+      </div>
+      <div id="selectedInfo" class="selected-info">클립을 누르면 편집 도구가 열립니다.</div>
+    </section>
+  </main>
+
+  <nav class="bottom-nav">
+    <label class="nav-btn file-nav">＋<span>미디어</span><input id="mediaInput" type="file" accept="video/*,image/*" multiple hidden></label>
+    <button id="overlayBtn" class="nav-btn">◇<span>오버레이</span></button>
+    <button id="clipEditBtn" class="nav-btn">✂<span>클립</span></button>
+    <button id="textBtn" class="nav-btn">T<span>문구</span></button>
+    <button id="musicBtn" class="nav-btn">♫<span>BGM</span></button>
+  </nav>
+
+  <div id="sheetBackdrop" class="sheet-backdrop hidden"></div>
+
+  <section id="clipSheet" class="bottom-sheet hidden" aria-label="클립 편집">
+    <div class="sheet-handle"></div>
+    <div class="sheet-head"><strong>클립 편집</strong><button class="close-sheet">×</button></div>
+    <div id="clipSheetName" class="sheet-sub">선택된 클립 없음</div>
+    <div class="tool-grid">
+      <button id="splitBtn">분할</button><button id="duplicateBtn">복사</button><button id="deleteBtn" class="danger">삭제</button><button id="moveLeftBtn">← 순서</button><button id="moveRightBtn">순서 →</button>
+    </div>
+    <div id="videoTrimBox" class="control-card">
+      <div class="control-title"><b>사용 구간</b><span id="trimLabel">0.0 ~ 0.0초</span></div>
+      <label>시작 <input id="trimStart" type="range" min="0" max="1" step="0.05" value="0"></label>
+      <label>끝 <input id="trimEnd" type="range" min="0" max="1" step="0.05" value="1"></label>
+    </div>
+    <div id="clipVolumeBox" class="control-card">
+      <div class="control-title"><b>원본 오디오</b><span id="clipVolumeLabel">100%</span></div>
+      <input id="clipVolume" type="range" min="0" max="100" step="1" value="100">
+    </div>
+    <div id="imageDurationBox" class="control-card hidden">
+      <div class="control-title"><b>사진 표시 시간</b><span id="imageDurationLabel">3.0초</span></div>
+      <input id="imageDuration" type="range" min="0.5" max="30" step="0.1" value="3">
+      <div class="quick-row"><button data-sec="1">1초</button><button data-sec="2">2초</button><button data-sec="3">3초</button><button data-sec="5">5초</button><button data-sec="8">8초</button></div>
+    </div>
+    <div class="control-card">
+      <div class="control-title"><b>다음 장면 전환</b><span id="transitionDurationLabel">0.35초</span></div>
+      <div id="transitionButtons" class="transition-grid">
+        <button data-tr="cut" class="active">컷</button><button data-tr="dissolve">디졸브</button><button data-tr="fade">페이드</button><button data-tr="push-left">← 밀기</button><button data-tr="push-up">↑ 밀기</button><button data-tr="split">갈라지기</button>
+      </div>
+      <label>전환 시간 <input id="transitionDuration" type="range" min="0.15" max="1.2" step="0.05" value="0.35"></label>
+    </div>
+    <div class="control-card">
+      <div class="control-title"><b>재생 속도</b><span id="speedLabel">1.0×</span></div>
+      <input id="speedRange" type="range" min="0.5" max="2" step="0.1" value="1">
+    </div>
+  </section>
+
+  <section id="overlaySheet" class="bottom-sheet hidden">
+    <div class="sheet-handle"></div><div class="sheet-head"><strong>오버레이</strong><button class="close-sheet">×</button></div>
+    <label class="wide file-picker">이미지 · 영상 오버레이 추가<input id="overlayInput" type="file" accept="image/*,video/*" hidden></label>
+    <div class="sheet-sub">현재 재생 위치부터 화면 위에 이미지나 영상을 겹쳐 올립니다. 미리보기에서 오버레이를 손가락으로 끌어 위치를 바꾸고, 오른쪽 아래를 끌어 크기를 조절할 수 있습니다.</div>
+    <div id="overlayEditor" class="control-card hidden">
+      <div class="control-title"><b id="overlayName">오버레이</b><span id="overlayRangeLabel">0.0~3.0초</span></div>
+      <div class="two-col"><label>시작<input id="overlayStart" type="number" min="0" step="0.1"></label><label>끝<input id="overlayEnd" type="number" min="0.1" step="0.1"></label></div>
+      <label>크기 <span id="overlayScaleLabel">70%</span><input id="overlayScale" type="range" min="20" max="140" step="1" value="70"></label>
+      <label>투명도 <span id="overlayOpacityLabel">100%</span><input id="overlayOpacity" type="range" min="0" max="100" step="1" value="100"></label>
+      <label>위치 <select id="overlayPosition"><option value="top">위</option><option value="center" selected>가운데</option><option value="bottom">아래</option><option value="custom">직접 위치</option></select></label>
+      <button id="deleteOverlayBtn" class="wide danger">선택 오버레이 삭제</button>
+    </div>
+    <div id="overlayList" class="text-list"></div>
+  </section>
+
+  <section id="textSheet" class="bottom-sheet hidden">
+    <div class="sheet-handle"></div><div class="sheet-head"><strong>문구 · 쇼츠 스타일</strong><button class="close-sheet">×</button></div>
+    <div class="control-card shorts-style-card">
+      <div class="control-title"><b>쇼츠 스타일</b><label class="switch-label"><input id="shortsStyleEnabled" type="checkbox"> 사용</label></div>
+      <div id="shortsStylePresets" class="preset-row">
+        <button data-style="news">뉴스</button><button data-style="soft">감성</button><button data-style="minimal">미니멀</button>
+      </div>
+      <div class="sheet-sub">제목은 상단, 자막은 하단 디자인 영역에 표시됩니다.</div>
+    </div>
+    <button id="newTextBtn" class="wide ghost">새 문구</button>
+    <textarea id="textInput" maxlength="120" placeholder="문구를 입력하면 위 미리보기에 바로 표시됩니다"></textarea>
+    <div class="live-preview-note">입력 중 문구·글꼴·크기·색상·위치가 미리보기에 즉시 반영됩니다.</div>
+    <div class="two-col"><label>종류<select id="textKind"><option value="caption" selected>자막</option><option value="title">제목</option></select></label><label>글꼴<select id="textFont"><option value="Gowun Dodum" selected>고운돋음</option><option value="Nanum Pen Script">편지지손글씨체</option></select></label></div>
+    <div class="two-col"><label>시작<input id="textStart" type="number" min="0" step="0.1" value="0"></label><label>끝<input id="textEnd" type="number" min="0.1" step="0.1" value="3"></label></div>
+    <div class="two-col"><div class="text-size-control">
+      <div class="text-size-head"><label for="textSize">크기</label><input id="textSizeNumber" type="number" min="24" max="160" step="1" value="52" inputmode="numeric" enterkeyhint="done" aria-label="글자 크기 숫자 입력" title="크기 24~160"></div>
+      <input id="textSize" type="range" min="24" max="160" step="1" value="52">
+    </div><label>위치<select id="textPosition"><option value="top">위</option><option value="center">가운데</option><option value="bottom" selected>아래</option></select></label></div>
+    <div class="two-col"><label>글자색<input id="textColor" type="color" value="#ffffff"></label><label>배경<input id="textBg" type="color" value="#000000"></label></div>
+    <button id="addTextBtn" class="wide primary">문구 추가</button>
+    <div id="textList" class="text-list"></div>
+  </section>
+
+  <section id="musicSheet" class="bottom-sheet hidden">
+    <div class="sheet-handle"></div><div class="sheet-head"><strong>BGM</strong><button class="close-sheet">×</button></div>
+    <label class="wide file-picker">＋ BGM 추가<input id="musicInput" type="file" accept="audio/*,video/mp4,.mp4,.m4v" multiple hidden></label>
+    <div class="sheet-sub">현재 재생 위치에서 BGM이 시작됩니다. MP4는 영상 없이 소리만 사용합니다.</div>
+    <div id="musicStatus" class="sheet-sub">선택된 BGM 없음</div>
+    <div class="two-col v0512-time-row"><label>시작시간<input id="musicStart" type="number" min="0" step="0.1" value="0"></label><label>끝시간<input id="musicEnd" type="number" min="0.1" step="0.1" value="3"></label></div>
+    <div class="sheet-sub v0512-help">예: 시작 12.5 / 끝 28.0 → 12.5초부터 음악이 시작되어 28초에 멈춥니다.</div>
+    <div class="control-card"><div class="control-title"><b>선택 BGM 볼륨</b><span id="musicVolumeLabel">20%</span></div><input id="musicVolume" type="range" min="0" max="100" value="20"></div>
+    <button id="saveMusicTimeBtn" class="wide primary">시작 · 끝시간 저장</button>
+    <div id="musicList" class="v0512-music-list"></div>
+    <button id="removeMusicBtn" class="wide danger">선택 BGM 제거</button>
+  </section>
+
+  <section id="coverSheet" class="bottom-sheet hidden">
+    <div class="sheet-handle"></div><div class="sheet-head"><strong>썸네일 · 표지</strong><button class="close-sheet">×</button></div>
+    <div class="cover-preview"><img id="coverPreview" alt=""><div id="coverEmpty">표지 미지정</div></div>
+    <div class="tool-grid two"><button id="captureCoverBtn">현재 화면 사용</button><label class="file-picker">이미지 선택<input id="coverInput" type="file" accept="image/*" hidden></label></div>
+    <div class="control-card"><div class="control-title"><b>영상 첫 표지 유지</b><span id="coverHoldLabel">0.20초</span></div><input id="coverHold" type="range" min="0" max="1" step="0.05" value="0.2"></div>
+    <button id="saveCoverBtn" class="wide ghost">표지 JPG 저장</button>
+  </section>
+
+  <section id="exportSheet" class="bottom-sheet hidden">
+    <div class="sheet-handle"></div><div class="sheet-head"><strong>영상 저장</strong><button class="close-sheet">×</button></div>
+    <p id="exportInfo" class="sheet-sub">720p · 30fps · 휴대폰에서 바로 렌더링합니다.</p>
+    <div class="progress"><i id="exportProgress"></i></div>
+    <div id="exportStatus" class="sheet-sub">준비됨</div>
+    <button id="startExportBtn" class="wide primary">영상 만들기</button>
+  </section>
+
+  <div id="toast" class="toast hidden"></div>
+  <script src="app.js"></script>
+  <script src="caption-core.js"></script>
+  <script src="caption-alignment-core.js"></script>
+<script src="auto-captions.js"></script>
+  <script src="caption-split.js"></script>
+  <script src="mosaic-editor.js"></script>
+</body>
+</html>

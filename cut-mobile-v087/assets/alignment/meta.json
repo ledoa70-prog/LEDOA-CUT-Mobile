@@ -1,0 +1,22 @@
+{
+  "model_id": "kresnik/wav2vec2-large-xlsr-korean",
+  "license": "Apache-2.0",
+  "sample_rate": 16000,
+  "blank_id": 1204,
+  "unk_token": "[UNK]",
+  "word_delimiter_token": "|",
+  "do_normalize": true,
+  "conv_stride": [
+    5,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2
+  ],
+  "total_stride_samples": 320,
+  "frame_ms": 20.0,
+  "vocab_size": 1207,
+  "torch_version_used_for_export": "2.13.0+cpu"
+}

@@ -1,0 +1,19 @@
+{
+  "editor_native_source": {
+    "repository": "ledoa70-prog/LEDOA-CUT-Mobile",
+    "commit": "7daaa667a200f370cbdfde21e4f5407754c339f6",
+    "path": "source/v044_MainActivity.java",
+    "sha256": "80230983725e90ca40285b9be7f1b299f67c640fba241db52a587eeb0318b6cb"
+  },
+  "baseline_mobile": "0.8.6",
+  "mosaic_source_commit": "2b23b61022ea49d878061a7c114e852a96314336",
+  "unchanged_caption_sources": {
+    "src/kr/ledoa/cut/CaptionAudio.java": "640571bd754b86ccaca472b84c137ab3dbb0c255ca3aa43d198b816b9f26d4de",
+    "src/kr/ledoa/cut/TimeAlignmentActivity.java": "a0d1ae941bd6faa3f24c5aa890827326516ce9916409a3cc9b02a7319dec63c7",
+    "src/kr/ledoa/cut/CaptionMath.java": "54e1f396c5ab7f58f013947c3edf3f6f27ab17a7bbefbfeb502ea3a1e64a7a07",
+    "src/kr/ledoa/cut/CaptionActivity.java": "736af1987e0e46500a126770ed2454682e3a037fb7be018ce19b18bd0948d577",
+    "src/kr/ledoa/cut/CtcAlignment.java": "c0942beaeb728167bc0a783c92c9030e39a903e2ed0d8c34a134e614319ccfbd",
+    "src/kr/ledoa/cut/SpeechStartGate.java": "c49f78c86246b8fb26940411770a479b557678882a2f2140013cf35c177c7a58"
+  },
+  "alignment_model_sha256": "0f1aa81911a6dc8fe61ae0c13f4bbebd37145c5ad69c83da24d9256bb4e21623"
+}

@@ -1,0 +1,16 @@
+{
+  "passed": true,
+  "browser": "136.0.7103.25",
+  "checks": [
+    "Google recognition → corrected text and paragraphs → alignment receives corrected transcript → real returned word times automatically place two paragraphs; title preserved",
+    "Repeated alignment and manual Apply update existing captions without duplicates",
+    "Each auto-placement is one undo transaction; undo restores preceding project",
+    "Previously applied captions can be corrected, split and re-aligned with style, zero opacity and first ID retained",
+    "Engine rejection and malformed timestamps leave all existing captions unchanged",
+    "Cancel and late native results cannot apply stale alignment",
+    "Changing clip speed while working rejects stale timing without overwriting captions",
+    "Autosave/reload retains word times, corrected text, source context, uncertainty and caption styling"
+  ],
+  "native_in_browser": "Mocked; acoustic model and same Java Viterbi tested separately with real Korean audio",
+  "physical_android_test": false
+}

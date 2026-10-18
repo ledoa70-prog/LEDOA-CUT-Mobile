@@ -1,0 +1,10 @@
+LEDOA CUT v0.8.5 local Korean alignment
+
+Base model: kresnik/wav2vec2-large-xlsr-korean (Apache-2.0).
+ONNX conversion: smartkdy7/movie-cut-w2v2-ko-onnx, commit 096ef0952e7e76eaa971db66010766416a7dbf8e.
+Original ONNX SHA256: e0c2a3da47fd6f20148e05d5440e78298c7b9ed272e2f034be753012d7bcd5a8.
+
+LEDOA modification, 2026-10-17: converted signed ConvInteger weight and weight-zero-point initializers from int8 to uint8 by adding 128 to each. The centered integer values and scales are preserved. This fixes unsupported signed ConvInteger kernels in ONNX Runtime 1.22.0. No retraining. MatMul weights unchanged. Modified model SHA256: 0f1aa81911a6dc8fe61ae0c13f4bbebd37145c5ad69c83da24d9256bb4e21623.
+
+Runtime: Microsoft ONNX Runtime Android 1.22.0, MIT. Full license and third party notices accompany this file.
+Implementation: transcript-constrained CTC Viterbi, 16kHz mono, 20ms steps, bounded 8s cores with 0.8s context and 0.1s end padding; low-confidence words flagged for review. Timing is derived from acoustic evidence, never text-length interpolation.

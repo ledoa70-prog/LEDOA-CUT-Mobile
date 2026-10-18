@@ -1,0 +1,15 @@
+{
+  "passed": true,
+  "browser": "136.0.7103.25",
+  "checks": [
+    "Mock native result mapped through trim and 2x speed; existing captions untouched before Apply",
+    "Reviewed text applied once, existing title and caption preserved, batch undo restores both",
+    "Stale results rejected after clip speed changes",
+    "Cancellation ignores late native callbacks and preserves all existing texts",
+    "Native error displayed without committing captions",
+    "Real SRT file input, literal text handling, timeline Apply and download export",
+    "Autosave restores caption metadata and rejects SRT outside video bounds",
+    "Backdrop/history style sheet hiding cancels pending native work"
+  ],
+  "native_results": "Mock fixtures only; real Google service and physical Android not tested"
+}

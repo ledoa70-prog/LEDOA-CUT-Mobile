@@ -1,0 +1,58 @@
+{
+  "passed": true,
+  "browser": "136.0.7103.25",
+  "fixture": "VP8/Opus WebM, 12 files; physical Android not tested",
+  "checks": [
+    {
+      "name": "actual file input selects 12 videos, progress, bounded decoders",
+      "elapsedMs": 1585,
+      "clips": 12,
+      "total": 96.09599999999996,
+      "names": [
+        "wedding-01.webm",
+        "wedding-02.webm",
+        "wedding-03.webm",
+        "wedding-04.webm",
+        "wedding-05.webm",
+        "wedding-06.webm",
+        "wedding-07.webm",
+        "wedding-08.webm",
+        "wedding-09.webm",
+        "wedding-10.webm",
+        "wedding-11.webm",
+        "wedding-12.webm"
+      ],
+      "sources": 2,
+      "maxSources": 2,
+      "mediaWrites": 12,
+      "uiTicks": 71,
+      "importing": false,
+      "progress": "none",
+      "result": {
+        "selected": 12,
+        "added": 12,
+        "failed": [],
+        "cancelled": false,
+        "saved": true
+      }
+    },
+    {
+      "name": "unchanged videos not rewritten by repeated autosave"
+    },
+    {
+      "name": "12-video playback and split playback"
+    },
+    {
+      "name": "13 clips restore without loading every decoder or rewriting saved files"
+    },
+    {
+      "name": "corrupt video skipped with visible filename; next valid file imported"
+    },
+    {
+      "name": "cancel unresponsive import preserves existing 14 clips"
+    },
+    {
+      "name": "font, numeric size and transparent captions preserved"
+    }
+  ]
+}

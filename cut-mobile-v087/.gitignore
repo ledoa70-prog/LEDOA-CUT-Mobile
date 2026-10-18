@@ -1,0 +1,14 @@
+/assets/alignment/model.onnx
+/assets/sface_int8.onnx
+/.gradle/
+/app/build/
+/build/
+/test-out/
+/tests/__pycache__/
+/validation/*-ui.png
+/local.properties
+
+__pycache__/
+/assets/alignment/.model.onnx*
+/assets/fonts/*.ttf
+/tests/fixture.webm
