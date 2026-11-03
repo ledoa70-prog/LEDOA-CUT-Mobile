@@ -1,0 +1,157 @@
+{
+  "changed": [
+    {
+      "path": "assets/app.js",
+      "before": "fe8a29fd395df96abbcac62b4ef090c1d636dba8f31abdf7ab89f5f31fc3a72d",
+      "after": "42fe2128f754ac6c4039bdffe3835f893b0f12818fbe08b8e9722ddf1de63108"
+    },
+    {
+      "path": "assets/index.html",
+      "before": "4aa5a309d3bbc4a2331875e870fded459ebeb40c6f9827191180ef01a7b1e29b",
+      "after": "b12abcd73344efdbdb6c7ecd36679a2286c07aa7508045b09cabacffe5d0c1e0"
+    },
+    {
+      "path": "assets/sw.js",
+      "before": "a52c779eae271ead381f65b64ab716ee2247db5df261b36dc49be0be8bfedce8",
+      "after": "95da1be38d92a9c7a2cda7470b4a955255ce834cfcbfc67621106d8727bca7ee"
+    }
+  ],
+  "unchangedCount": 27,
+  "unchanged": [
+    {
+      "path": "assets/SFACE_LICENSE.txt",
+      "before": "8c6db340475136df3c1201d458fa5755698eace76e510471ecc9d857d6083dac",
+      "after": "8c6db340475136df3c1201d458fa5755698eace76e510471ecc9d857d6083dac"
+    },
+    {
+      "path": "assets/alignment/LEDOA-CHANGES.txt",
+      "before": "590bb816f6a35b4e6e07e563dbd9c46e73dc74d2c7065727b1b04d88354767c2",
+      "after": "590bb816f6a35b4e6e07e563dbd9c46e73dc74d2c7065727b1b04d88354767c2"
+    },
+    {
+      "path": "assets/alignment/LICENSE.txt",
+      "before": "3ddf9be5c28fe27dad143a5dc76eea25222ad1dd68934a047064e56ed2fa40c5",
+      "after": "3ddf9be5c28fe27dad143a5dc76eea25222ad1dd68934a047064e56ed2fa40c5"
+    },
+    {
+      "path": "assets/alignment/ORT-LICENSE.txt",
+      "before": "2f07c72751aed99790b8a4869cf2311df85a860b22ded05fa22803587a48922c",
+      "after": "2f07c72751aed99790b8a4869cf2311df85a860b22ded05fa22803587a48922c"
+    },
+    {
+      "path": "assets/alignment/ORT-ThirdPartyNotices.txt",
+      "before": "e9e90971a8e75a9a8ac0c6412e29c1202d079998389915aa485f46c816c3b4cc",
+      "after": "e9e90971a8e75a9a8ac0c6412e29c1202d079998389915aa485f46c816c3b4cc"
+    },
+    {
+      "path": "assets/alignment/meta.json",
+      "before": "7bd85a3f773a24ee3b1f7210d2547c1ade1fbc0448c6727c8a7e7fa4a3bd6ace",
+      "after": "7bd85a3f773a24ee3b1f7210d2547c1ade1fbc0448c6727c8a7e7fa4a3bd6ace"
+    },
+    {
+      "path": "assets/alignment/vocab.json",
+      "before": "6ecea09ce336a12ae24146105884952c758dd40f96ae24d7917d0caa06a78d03",
+      "after": "6ecea09ce336a12ae24146105884952c758dd40f96ae24d7917d0caa06a78d03"
+    },
+    {
+      "path": "assets/auto-captions.css",
+      "before": "bfd70ae35254aec663d40d8260c4831c0f42b730343d87aa35803d707c6efa18",
+      "after": "bfd70ae35254aec663d40d8260c4831c0f42b730343d87aa35803d707c6efa18"
+    },
+    {
+      "path": "assets/auto-captions.js",
+      "before": "24ffdbc0967364dbd9f35c4226b2360479f2f242755c63eec6e6e062f5d3468a",
+      "after": "24ffdbc0967364dbd9f35c4226b2360479f2f242755c63eec6e6e062f5d3468a"
+    },
+    {
+      "path": "assets/caption-alignment-core.js",
+      "before": "56b7486b1d13e9e2caad5f056f2f892397aaa8df21a5ed5561ab21c8f6c827c6",
+      "after": "56b7486b1d13e9e2caad5f056f2f892397aaa8df21a5ed5561ab21c8f6c827c6"
+    },
+    {
+      "path": "assets/caption-core.js",
+      "before": "2c2f5c9a80fb6b10b3bea7945b624bf1dd66ef7c27de1f037f17c9f440756b20",
+      "after": "2c2f5c9a80fb6b10b3bea7945b624bf1dd66ef7c27de1f037f17c9f440756b20"
+    },
+    {
+      "path": "assets/caption-split.js",
+      "before": "aefe718ef3bcdd2461e96324d2ae9258b783ef1a05a37f0a52cf3d9b2209f63d",
+      "after": "aefe718ef3bcdd2461e96324d2ae9258b783ef1a05a37f0a52cf3d9b2209f63d"
+    },
+    {
+      "path": "assets/fonts/GowunDodum-OFL.txt",
+      "before": "a7c73f9521cd646bbdfb6684c99a62311bbd7bce11898dc11ef0b3c69eda1aca",
+      "after": "a7c73f9521cd646bbdfb6684c99a62311bbd7bce11898dc11ef0b3c69eda1aca"
+    },
+    {
+      "path": "assets/fonts/GowunDodum-Regular.ttf",
+      "before": "a6e457933227483a11758fd0947bc74422a106d46f0bf057fdaa5af94a30067d",
+      "after": "a6e457933227483a11758fd0947bc74422a106d46f0bf057fdaa5af94a30067d"
+    },
+    {
+      "path": "assets/fonts/NanumPenScript-OFL.txt",
+      "before": "eeacf16032901d0ed0456876ec77b8f0fda6b3fecec7d972f8543eb602e6c30f",
+      "after": "eeacf16032901d0ed0456876ec77b8f0fda6b3fecec7d972f8543eb602e6c30f"
+    },
+    {
+      "path": "assets/fonts/NanumPenScript-Regular.ttf",
+      "before": "6f0d1ab29c7894010dc88831fb7a0a51edb79136e450344183de5b1a8b52bd43",
+      "after": "6f0d1ab29c7894010dc88831fb7a0a51edb79136e450344183de5b1a8b52bd43"
+    },
+    {
+      "path": "assets/fonts/SOURCES.json",
+      "before": "b713378f180f92232137f2fdd0f4ddf27ee4b268678c391f9cbaf0f49b7fba02",
+      "after": "b713378f180f92232137f2fdd0f4ddf27ee4b268678c391f9cbaf0f49b7fba02"
+    },
+    {
+      "path": "assets/icon.png",
+      "before": "7300ab0b3da9e253b98d6d412dab5f4fe53a8b2e948a3a4deea75044fb8162e4",
+      "after": "7300ab0b3da9e253b98d6d412dab5f4fe53a8b2e948a3a4deea75044fb8162e4"
+    },
+    {
+      "path": "assets/ledoa_tv_brand.png",
+      "before": "6d044e6c2d9803e7427f0b7d214424637c4fab0f7d4ad0d3303ac83af0349515",
+      "after": "6d044e6c2d9803e7427f0b7d214424637c4fab0f7d4ad0d3303ac83af0349515"
+    },
+    {
+      "path": "assets/manifest.webmanifest",
+      "before": "e7e8cbe86157f1662b49bbb0e736bd94deb79d11474a9e582ffb1d9f08c46819",
+      "after": "e7e8cbe86157f1662b49bbb0e736bd94deb79d11474a9e582ffb1d9f08c46819"
+    },
+    {
+      "path": "assets/mosaic-editor.js",
+      "before": "ba5c02e59e1527041d2ebf90a0b6bbcb8907206c3f6e91e13bba3571ab0bf232",
+      "after": "ba5c02e59e1527041d2ebf90a0b6bbcb8907206c3f6e91e13bba3571ab0bf232"
+    },
+    {
+      "path": "assets/motion-atlas.css",
+      "before": "fce832e576fed82b622842c79970cae42b4a2ff014dd0772442b241b00fa9edf",
+      "after": "fce832e576fed82b622842c79970cae42b4a2ff014dd0772442b241b00fa9edf"
+    },
+    {
+      "path": "assets/motion-atlas.js",
+      "before": "5bd8fb08745e6fc4972a4818da1290a0b53b09782a1e4c037e00021f5585d4e8",
+      "after": "5bd8fb08745e6fc4972a4818da1290a0b53b09782a1e4c037e00021f5585d4e8"
+    },
+    {
+      "path": "assets/motion-editor.css",
+      "before": "648443b4aa5fa6d8f2737a50555dd87f5e8952638d589f8181b70f93317670c0",
+      "after": "648443b4aa5fa6d8f2737a50555dd87f5e8952638d589f8181b70f93317670c0"
+    },
+    {
+      "path": "assets/motion-editor.js",
+      "before": "a9bb6130a9f54fb084cac507f9503b186603217574ebc6c0e04080e366a9aacc",
+      "after": "a9bb6130a9f54fb084cac507f9503b186603217574ebc6c0e04080e366a9aacc"
+    },
+    {
+      "path": "assets/motion-renderer.js",
+      "before": "18b79ffd1d16a3ea708c52fc2485fb0e1dabc52bf2fe7e2cb9b857efd5d72912",
+      "after": "18b79ffd1d16a3ea708c52fc2485fb0e1dabc52bf2fe7e2cb9b857efd5d72912"
+    },
+    {
+      "path": "assets/styles.css",
+      "before": "e5879f42863fca304c01cde55bd201ee63ac23fd12cff359793e2daf67e5bd52",
+      "after": "e5879f42863fca304c01cde55bd201ee63ac23fd12cff359793e2daf67e5bd52"
+    }
+  ]
+}

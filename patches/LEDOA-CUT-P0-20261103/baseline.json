@@ -1,0 +1,23 @@
+{
+  "sourceZip": "LEDOA_CUT_Mobile_v0.8.11_SOURCE.zip",
+  "sourceZipSha256": "ccdc8295b545c058411d5f38987a33c66a92d658bc192995075d2680b98c1919",
+  "apk": "LEDOA_CUT_Mobile_v0.8.11_PREVIEW_FIX.apk",
+  "apkSha256": "d1c97b5d7ad3bf082556bf8d2698fb9051492230ccd8597bc65b6eadc8f287a4",
+  "files": [
+    {
+      "path": "assets/app.js",
+      "beforeSha256": "fe8a29fd395df96abbcac62b4ef090c1d636dba8f31abdf7ab89f5f31fc3a72d",
+      "afterSha256": "42fe2128f754ac6c4039bdffe3835f893b0f12818fbe08b8e9722ddf1de63108"
+    },
+    {
+      "path": "assets/index.html",
+      "beforeSha256": "4aa5a309d3bbc4a2331875e870fded459ebeb40c6f9827191180ef01a7b1e29b",
+      "afterSha256": "b12abcd73344efdbdb6c7ecd36679a2286c07aa7508045b09cabacffe5d0c1e0"
+    },
+    {
+      "path": "assets/sw.js",
+      "beforeSha256": "a52c779eae271ead381f65b64ab716ee2247db5df261b36dc49be0be8bfedce8",
+      "afterSha256": "95da1be38d92a9c7a2cda7470b4a955255ce834cfcbfc67621106d8727bca7ee"
+    }
+  ]
+}

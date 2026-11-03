@@ -1,0 +1,203 @@
+{
+  "passed": false,
+  "androidDevice": false,
+  "actualUserProject": false,
+  "checks": [
+    {
+      "name": "dead incoming decoder is replaced once and playback finishes",
+      "diagnostics": {
+        "version": "0.8.12-p0-candidate",
+        "playing": false,
+        "projectTime": 3.9,
+        "events": [
+          {
+            "atMs": 4026,
+            "event": "retry-play",
+            "clipId": "clip-mw0m5rll-ywmsw",
+            "projectTime": 1.502,
+            "mediaTime": 1.1,
+            "readyState": 4,
+            "seeking": false,
+            "paused": true,
+            "decoded": 41
+          },
+          {
+            "atMs": 5325,
+            "event": "reload-decoder",
+            "clipId": "clip-mw0m5rll-ywmsw",
+            "projectTime": 1.502,
+            "mediaTime": 1.1,
+            "readyState": 4,
+            "seeking": false,
+            "paused": true,
+            "decoded": 41
+          },
+          {
+            "atMs": 7025,
+            "event": "replace-decoder",
+            "clipId": "clip-mw0m5rll-ywmsw",
+            "projectTime": 1.502,
+            "mediaTime": 1.102,
+            "readyState": 4,
+            "seeking": false,
+            "paused": true,
+            "decoded": 37
+          },
+          {
+            "atMs": 7188,
+            "event": "recovered",
+            "clipId": "clip-mw0m5rll-ywmsw",
+            "projectTime": 1.502,
+            "mediaTime": 1.123333,
+            "readyState": 4,
+            "seeking": false,
+            "paused": false,
+            "decoded": 39,
+            "stage": 3,
+            "waitMs": 4383
+          }
+        ]
+      }
+    },
+    {
+      "name": "persistent decoder fault stops after bounded recovery; project remains",
+      "diagnostics": {
+        "version": "0.8.12-p0-candidate",
+        "playing": false,
+        "projectTime": 1.502,
+        "events": [
+          {
+            "atMs": 3023,
+            "event": "retry-play",
+            "clipId": "clip-mw0m5z9q-ror72",
+            "projectTime": 1.502,
+            "mediaTime": 1.1,
+            "readyState": 4,
+            "seeking": false,
+            "paused": true,
+            "decoded": 41
+          },
+          {
+            "atMs": 4317,
+            "event": "reload-decoder",
+            "clipId": "clip-mw0m5z9q-ror72",
+            "projectTime": 1.502,
+            "mediaTime": 1.1,
+            "readyState": 4,
+            "seeking": false,
+            "paused": true,
+            "decoded": 41
+          },
+          {
+            "atMs": 6018,
+            "event": "replace-decoder",
+            "clipId": "clip-mw0m5z9q-ror72",
+            "projectTime": 1.502,
+            "mediaTime": 1.102,
+            "readyState": 4,
+            "seeking": false,
+            "paused": true,
+            "decoded": 37
+          },
+          {
+            "atMs": 10314,
+            "event": "stopped-after-failed-recovery",
+            "clipId": "clip-mw0m5z9q-ror72",
+            "projectTime": 1.502,
+            "mediaTime": 1.102,
+            "readyState": 4,
+            "seeking": false,
+            "paused": true,
+            "decoded": 37
+          }
+        ]
+      }
+    },
+    {
+      "name": "late callback cannot revive a retired decoder",
+      "before": {
+        "ct": 0,
+        "paused": true,
+        "src": null
+      },
+      "after": {
+        "ct": 0,
+        "paused": true,
+        "src": null
+      }
+    },
+    {
+      "name": "late callback cannot seek a new playback session backwards",
+      "before": 2.461096,
+      "after": 2.461096
+    },
+    {
+      "name": "v0.8.11 project and all media hashes survive upgrade/save/reload and rollback",
+      "media": [
+        {
+          "key": "clip:clip-mw0m6i8d-kl8d3",
+          "bytes": 7313494,
+          "type": "video/mp4",
+          "name": "portrait30.mp4",
+          "sha256": "4ce7ddb59340ed1738b5182731ba8482f1eb87e421e9e8794d92e271aa46b0a0"
+        },
+        {
+          "key": "clip:clip-mw0m6i98-kim47",
+          "bytes": 7313494,
+          "type": "video/mp4",
+          "name": "portrait30.mp4",
+          "sha256": "4ce7ddb59340ed1738b5182731ba8482f1eb87e421e9e8794d92e271aa46b0a0"
+        },
+        {
+          "key": "music:bgm-mw0m6jxj-9oto6",
+          "bytes": 7313494,
+          "type": "video/mp4",
+          "name": "portrait30.mp4",
+          "sha256": "4ce7ddb59340ed1738b5182731ba8482f1eb87e421e9e8794d92e271aa46b0a0"
+        },
+        {
+          "key": "overlay:ov-mw0m6ii6-lcvst",
+          "bytes": 4308,
+          "type": "image/jpeg",
+          "name": "blue.jpg",
+          "sha256": "157f3d5ff4d4e0b07f42e8be2f34e25288b9bb5e2fed24574632e8334c3cd97e"
+        }
+      ],
+      "clipCount": 2,
+      "textCount": 1,
+      "overlayCount": 2,
+      "musicCount": 1
+    },
+    {
+      "name": "existing subtitles, image overlay, MT-135 typography and BGM play across dissolve"
+    },
+    {
+      "name": "real MediaRecorder MP4 output through existing save path",
+      "passed": false,
+      "bytes": 48727,
+      "duration": 2.901938,
+      "video": {},
+      "audio": {
+        "codec": "opus",
+        "duration": "2.901937"
+      },
+      "scope": "Linux Chromium software encoder; Android native encoder/MediaStore unverified"
+    },
+    {
+      "name": "ten video clips, at least 100 scene transitions and 100 seek/play/pause operations",
+      "transitions": 108,
+      "maxAttached": 2,
+      "seeks": 100
+    }
+  ],
+  "errors": [],
+  "environment": {
+    "browser": "133.0.6943.0",
+    "platform": "linux",
+    "video": "synthetic H.264/AAC 720x1280 30fps",
+    "hardwareDecoder": false
+  },
+  "previewPassed": true,
+  "releaseReady": false,
+  "failure": "Error: MP4 output quality gate failed in the Linux software-encoder environment. Native-device playback/export validation is still required; do not release an installable APK.\n    at /workspace/scratch/458ab731c4c5/p0_tests/verify-mobile-p0.cjs:98:28"
+}

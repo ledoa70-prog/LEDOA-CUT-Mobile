@@ -1,0 +1,26 @@
+{
+  "status": "UNRELEASED_CANDIDATE",
+  "releaseApproved": false,
+  "package": "kr.ledoa.cut.captionbeta",
+  "versionName": "0.8.12-p0-candidate",
+  "versionCode": 812,
+  "sameSigningCertificate": true,
+  "certificateSha256": "bd7dad9ddae23ee1086bdbf5d0b578f45348036456deab7363b75dddd86bf9e8",
+  "signatureVerified": true,
+  "changedEntries": [
+    "AndroidManifest.xml",
+    "assets/app.js",
+    "assets/index.html",
+    "assets/sw.js"
+  ],
+  "preservedEntries": 495,
+  "allOtherCompressedEntrySha256Identical": true,
+  "projectSchemaChanged": false,
+  "databaseNameChanged": false,
+  "nativeCodeChanged": false,
+  "androidInstallLaunchTest": false,
+  "nativeProjectRestoreTest": false,
+  "nativeMp4ExportTest": false,
+  "bytes": 413749992,
+  "sha256": "230677efd852cd569e938291372a01a798b9de86f6f55ba465f9c8d1a9f650f8"
+}

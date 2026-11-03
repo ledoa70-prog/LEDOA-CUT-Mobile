@@ -1,0 +1,193 @@
+--- a/assets/app.js
++++ b/assets/app.js
+@@ -2459,11 +2459,13 @@
+ 
+   function drawableVideo(c){
+     if(!c||c.type!=='video'||c.placeholder)return true;
+-    const rt=ensureRuntime(c),v=rt?.el;
++    // A readiness query must never reattach an already-retired decoder.
++    const rt=c.rt,v=rt?.el;
+     return !!(v&&v.readyState>=2&&v.videoWidth>0&&v.videoHeight>0);
+   }
+ 
+   function warmCurrentFrame(g,done){
++    if(state.playing||state.exporting){done?.(false);return;}
+     g=clamp(+g||0,0,totalDuration()||0);
+     const ai=activeInfo(g),c=ai?.cur;
+     if(!c||c.type!=='video'||c.placeholder){done?.(true);return;}
+@@ -2472,10 +2474,11 @@
+     const seq=++warmSeq;
+     try{v.preload='auto';v.playsInline=true;v.setAttribute('playsinline','');}catch{}
+     const target=mediaLocalSourceTime(c,g);
+-    let finished=false;
+-    const cleanup=()=>{for(const ev of ['loadeddata','canplay','seeked'])try{v.removeEventListener(ev,onReady);}catch{}};
++    let finished=false,seek=null,timer=0;
++    const current=()=>seq===warmSeq&&c.rt===rt&&state.clips.includes(c)&&!state.playing&&!state.exporting&&activeInfo(state.currentTime)?.cur===c&&Math.abs(state.currentTime-g)<.02;
++    const cleanup=()=>{clearTimeout(timer);for(const ev of ['loadeddata','canplay','seeked'])try{v.removeEventListener(ev,onReady);}catch{}if(seek)v.removeEventListener('loadedmetadata',seek);};
+     const finish=ok=>{
+-      if(finished||seq!==warmSeq)return;finished=true;cleanup();
++      if(finished)return;finished=true;cleanup();if(!current())return;
+       if(ok){rt.synced=true;try{if(!state.playing)renderFrame(g,false);}catch{}}
+       done?.(ok);
+     };
+@@ -2484,7 +2487,8 @@
+     };
+     if(drawableVideo(c))return finish(true);
+     for(const ev of ['loadeddata','canplay','seeked'])try{v.addEventListener(ev,onReady);}catch{}
+-    const seek=()=>{
++    seek=()=>{
++      if(!current()){finish(false);return;}
+       try{
+         if(Math.abs((v.currentTime||0)-target)>.025)v.currentTime=target;
+         else onReady();
+@@ -2494,7 +2498,7 @@
+     else{
+       try{v.addEventListener('loadedmetadata',seek,{once:true});v.load();}catch{}
+     }
+-    setTimeout(()=>finish(drawableVideo(c)),1200);
++    timer=setTimeout(()=>{if(!current())finish(false);else finish(drawableVideo(c));},1200);
+   }
+ 
+   // Any normal rerender/import/restore should proactively decode the visible first frame.
+@@ -2694,6 +2698,7 @@
+         else onReady();
+       }else{
+         v.addEventListener('loadedmetadata',()=>{
++          if(done||token!==startToken||c.rt!==rt)return;
+           try{v.currentTime=target;}catch{}
+           onReady();
+         },{once:true});
+@@ -3476,10 +3481,10 @@
+   deleteSelected=function(){return edit(oldDelete,arguments);};
+   undo=function(){return edit(oldUndo,arguments);};
+ 
+-  let lastTick=0,watch=null;
++  let lastTick=0,watch=null,transportSession=0;
+   const basePlay=play,basePause=pause;
+-  play=function(){lastTick=0;watch=null;v065SeparateRuntimes();return basePlay.apply(this,arguments);};
+-  pause=function(){lastTick=0;watch=null;return basePause.apply(this,arguments);};
++  play=function(){if(state.playing)return;transportSession++;lastTick=0;watch=null;v065SeparateRuntimes();return basePlay.apply(this,arguments);};
++  pause=function(){transportSession++;lastTick=0;watch=null;return basePause.apply(this,arguments);};
+ 
+   function checkProgress(c,v,now){
+     const fw=v062ObserveVideoFrame(v);
+@@ -3487,29 +3492,41 @@
+     if(!watch||watch.id!==c.id||watch.el!==v){watch={id:c.id,el:v,ct,serial:fw.serial,decoded:v088DecodedCount(v),progress:now,retry:0};return true;}
+     // Android may stop rVFC notifications for an off-screen video while its
+     // decoder and audio continue. Actual decoded frames remain authoritative.
+-    const count=v088DecodedCount(v),clockMoved=Math.abs(ct-watch.ct)>.004;
+-    const countMoved=count!==null&&count!==(watch.decoded??count);
+-    const frameMoved=fw.serial!==watch.serial||countMoved||((count===null||count===0)&&clockMoved);
++    // A decoder reload resets its frame count and a seek jumps its clock. Neither
++    // is playback progress. Keep the recovery deadline until it decodes AND moves
++    // forward beyond the requested recovery point, so reload cannot loop forever.
++    const count=v088DecodedCount(v),clockMoved=ct>watch.ct+.004;
++    const countMoved=count!==null&&count>(watch.decoded??count);
++    const frameMoved=clockMoved&&(fw.serial>watch.serial||countMoved||count===null||count===0);
++    const progressed=frameMoved&&!v.seeking&&v.readyState>=2&&(!watch.retry||ct>watch.recoveryTarget+.004);
+     watch.decoded=count;
+-    if(frameMoved&&!v.seeking&&v.readyState>=2){
++    if(progressed){
+       fw.ready=true;fw.presentedEpoch=fw.epoch;fw.mediaTime=ct;
+       if(fw.serial===watch.serial)fw.serial++;
+     }
+-    if(frameMoved&&!v.seeking){watch.progress=now;watch.retry=0;}
++    if(progressed){
++      if(watch.retry)v0812PlaybackNote('recovered',c,{stage:watch.retry,waitMs:Math.round(now-watch.progress)});
++      watch.progress=now;watch.retry=0;
++    }
+     watch.ct=ct;watch.serial=fw.serial;
+     const stalledFor=now-watch.progress;
+     if(stalledFor>1200&&watch.retry===0){
+       watch.retry=1;
++      watch.recoveryTarget=ct;
++      v0812PlaybackNote('retry-play',c);
+       // One re-arm and play retry; never seek on each animation frame.
+       try{v062InvalidateVideoFrame(v,ct);const p=v.play();p?.catch?.(()=>{});}catch{}
+     }
+     if(stalledFor>2500&&watch.retry===1){
+       watch.retry=2;
+       const target=mediaLocalSourceTime(c,state.currentTime);
++      watch.recoveryTarget=target;
++      const session=transportSession;
++      v0812PlaybackNote('reload-decoder',c);
+       try{
+         v.pause();v062InvalidateVideoFrame(v,null,false);v.load();c.rt.synced=false;
+         const resume=()=>{
+-          if(!state.playing||!state.clips.includes(c)||activeInfo(state.currentTime)?.cur!==c)return;
++          if(session!==transportSession||!state.playing||c.rt?.el!==v||!state.clips.includes(c)||activeInfo(state.currentTime)?.cur!==c)return;
+           try{v.currentTime=target;const p=v.play();p?.catch?.(()=>{});}catch{}
+         };
+         if(v.readyState>=1)resume();else v.addEventListener('loadedmetadata',resume,{once:true});
+@@ -3518,13 +3535,16 @@
+     if(stalledFor>4200&&watch.retry===2){
+       watch.retry=3;
+       const target=mediaLocalSourceTime(c,state.currentTime),rt=c.rt;
++      watch.recoveryTarget=target;
++      const session=transportSession;
++      v0812PlaybackNote('replace-decoder',c);
+       try{v.pause();rt.source?.disconnect();rt.gain?.disconnect();v062InvalidateVideoFrame(v,null,false);v.removeAttribute('src');v.load();v.remove();}catch{}
+       c.rt=null;
+       try{
+         const fresh=ensureRuntime(c),next=fresh.el;
+         if(state.audioCtx)connectClipAudio(c);
+         const resume=()=>{
+-          if(!state.playing||c.rt!==fresh||!state.clips.includes(c)||activeInfo(state.currentTime)?.cur!==c)return;
++          if(session!==transportSession||!state.playing||c.rt!==fresh||!state.clips.includes(c)||activeInfo(state.currentTime)?.cur!==c)return;
+           try{next.currentTime=target;fresh.synced=true;const p=next.play();p?.catch?.(()=>{});}catch{}
+         };
+         if(next.readyState>=1)resume();else next.addEventListener('loadedmetadata',resume,{once:true});
+@@ -3533,7 +3553,7 @@
+       }catch{}
+       return false;
+     }
+-    if(stalledFor>8500){pause();toast('이 영상의 재생이 지연됩니다. 편집 내용은 유지됩니다. 재생을 다시 눌러주세요.');return false;}
++    if(stalledFor>8500){v0812PlaybackNote('stopped-after-failed-recovery',c);pause();toast('이 영상의 재생이 지연됩니다. 편집 내용은 유지됩니다. 재생을 다시 눌러주세요.');return false;}
+     return stalledFor<250;
+   }
+ 
+@@ -3687,3 +3707,16 @@
+   const end=+c.trimEnd||+c.sourceDuration;
+   return v.readyState>=2&&Number.isFinite(end)&&end>0&&v.currentTime>=end-.025;
+ }
++
++// Bounded, in-memory transport evidence only. No media, project schema, DB name,
++// autosave key or stored data is changed. No URL or media filename is logged.
++const v0812PlaybackEvents=[];
++function v0812PlaybackNote(event,c,detail={}){
++  const v=c?.rt?.el;
++  v0812PlaybackEvents.push({atMs:Math.round(performance.now()),event,clipId:c?.id||null,
++    projectTime:state.currentTime,mediaTime:v?.currentTime??null,readyState:v?.readyState??null,
++    seeking:v?.seeking??null,paused:v?.paused??null,decoded:v?v088DecodedCount(v):null,...detail});
++  if(v0812PlaybackEvents.length>96)v0812PlaybackEvents.shift();
++}
++window.LedoaPlaybackDiagnostics={snapshot:()=>({version:'0.8.12-p0-candidate',
++  playing:state.playing,projectTime:state.currentTime,events:v0812PlaybackEvents.map(e=>({...e}))})};
+--- a/assets/index.html
++++ b/assets/index.html
+@@ -16,7 +16,7 @@
+ </head>
+ <body>
+   <header class="topbar">
+-    <div class="brand"><img src="icon.png" alt=""><div><strong>LEDOA CUT</strong><span>타이포 모션 135 · v0.8.11</span></div></div>
++      <div class="brand"><img src="icon.png" alt=""><div><strong>LEDOA CUT</strong><span>타이포 모션 135 · v0.8.12</span></div></div>
+     <div class="top-actions">
+       <button id="undoBtn" class="ghost" disabled>↶</button>
+       <button id="ratioBtn" class="ghost">9:16</button>
+@@ -169,7 +169,7 @@
+   </section>
+ 
+   <div id="toast" class="toast hidden"></div>
+-  <script src="app.js?v=0.8.11"></script>
++  <script src="app.js?v=0.8.12"></script>
+   <script src="caption-core.js"></script>
+   <script src="caption-alignment-core.js"></script>
+ <script src="auto-captions.js"></script>
+--- a/assets/sw.js
++++ b/assets/sw.js
+@@ -1,4 +1,4 @@
+-const CACHE='ledoa-cut-shorts-v0.8.11';
++const CACHE='ledoa-cut-shorts-v0.8.12';
+ const ASSETS=['./','./index.html','./styles.css','./app.js','./icon.png','./manifest.webmanifest','./motion-atlas.css','./motion-editor.css','./motion-atlas.js','./motion-renderer.js','./motion-editor.js','./fonts/GowunDodum-Regular.ttf','./fonts/NanumPenScript-Regular.ttf'];
+ self.addEventListener('install',e=>e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)).then(()=>self.skipWaiting())));
+ self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));

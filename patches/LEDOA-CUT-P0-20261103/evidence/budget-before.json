@@ -1,0 +1,944 @@
+{
+  "samples": [
+    {
+      "at": 1276,
+      "g": 0,
+      "playing": false,
+      "active": 0,
+      "attached": [
+        0,
+        1
+      ]
+    },
+    {
+      "at": 1363.1999999999534,
+      "g": 0.08000000000000002,
+      "playing": true,
+      "active": 0,
+      "attached": [
+        0,
+        1
+      ]
+    },
+    {
+      "at": 1446.6999999999534,
+      "g": 0.15999999999999998,
+      "playing": true,
+      "active": 0,
+      "attached": [
+        0,
+        1
+      ]
+    },
+    {
+      "at": 1537.9000000001397,
+      "g": 0.24,
+      "playing": true,
+      "active": 0,
+      "attached": [
+        0,
+        1
+      ]
+    },
+    {
+      "at": 1621.6000000000931,
+      "g": 0.31733300000000003,
+      "playing": true,
+      "active": 0,
+      "attached": [
+        0,
+        1
+      ]
+    },
+    {
+      "at": 1705.1999999999534,
+      "g": 0.389333,
+      "playing": true,
+      "active": 0,
+      "attached": [
+        0,
+        1
+      ]
+    },
+    {
+      "at": 1795.8000000000466,
+      "g": 0.46933299999999994,
+      "playing": true,
+      "active": 0,
+      "attached": [
+        0,
+        1
+      ]
+    },
+    {
+      "at": 1893.3000000000466,
+      "g": 0.6020000000000001,
+      "playing": true,
+      "active": 1,
+      "attached": [
+        1,
+        2
+      ]
+    },
+    {
+      "at": 1982.6999999999534,
+      "g": 0.6693330000000001,
+      "playing": true,
+      "active": 1,
+      "attached": [
+        1,
+        2
+      ]
+    },
+    {
+      "at": 2074.5,
+      "g": 0.7386670000000001,
+      "playing": true,
+      "active": 1,
+      "attached": [
+        1,
+        2
+      ]
+    },
+    {
+      "at": 2162.4000000001397,
+      "g": 0.842667,
+      "playing": true,
+      "active": 1,
+      "attached": [
+        1,
+        2
+      ]
+    },
+    {
+      "at": 2247.5,
+      "g": 0.9177550000000001,
+      "playing": true,
+      "active": 1,
+      "attached": [
+        1,
+        2
+      ]
+    },
+    {
+      "at": 2332.3000000000466,
+      "g": 0.981333,
+      "playing": true,
+      "active": 1,
+      "attached": [
+        1,
+        2
+      ]
+    },
+    {
+      "at": 2421.100000000093,
+      "g": 1.061333,
+      "playing": true,
+      "active": 2,
+      "attached": [
+        0,
+        1,
+        2
+      ]
+    },
+    {
+      "at": 2515,
+      "g": 1.1993330000000002,
+      "playing": true,
+      "active": 2,
+      "attached": [
+        1,
+        2
+      ]
+    },
+    {
+      "at": 2604.1999999999534,
+      "g": 1.1993330000000002,
+      "playing": true,
+      "active": 2,
+      "attached": [
+        1,
+        2
+      ]
+    },
+    {
+      "at": 2689.6999999999534,
+      "g": 1.2980000000000003,
+      "playing": true,
+      "active": 2,
+      "attached": [
+        2,
+        3
+      ]
+    },
+    {
+      "at": 2778.600000000093,
+      "g": 1.4286670000000004,
+      "playing": true,
+      "active": 2,
+      "attached": [
+        2,
+        3
+      ]
+    },
+    {
+      "at": 2864.8000000000466,
+      "g": 1.5406670000000002,
+      "playing": true,
+      "active": 2,
+      "attached": [
+        2,
+        3
+      ]
+    },
+    {
+      "at": 2970.9000000001397,
+      "g": 1.6520000000000004,
+      "playing": true,
+      "active": 3,
+      "attached": [
+        3,
+        4
+      ]
+    },
+    {
+      "at": 3069.4000000001397,
+      "g": 1.7513330000000003,
+      "playing": true,
+      "active": 3,
+      "attached": [
+        3,
+        4
+      ]
+    },
+    {
+      "at": 3164,
+      "g": 1.7513330000000003,
+      "playing": true,
+      "active": 3,
+      "attached": [
+        3,
+        4
+      ]
+    },
+    {
+      "at": 3249.6999999999534,
+      "g": 1.8674100000000005,
+      "playing": true,
+      "active": 3,
+      "attached": [
+        3,
+        4
+      ]
+    },
+    {
+      "at": 3340.8000000000466,
+      "g": 1.9513330000000004,
+      "playing": true,
+      "active": 3,
+      "attached": [
+        3,
+        4
+      ]
+    },
+    {
+      "at": 3428.100000000093,
+      "g": 2.0565670000000003,
+      "playing": true,
+      "active": 3,
+      "attached": [
+        3,
+        4
+      ]
+    },
+    {
+      "at": 3516.3000000000466,
+      "g": 2.1406670000000005,
+      "playing": true,
+      "active": 3,
+      "attached": [
+        3,
+        4
+      ]
+    },
+    {
+      "at": 3606.9000000001397,
+      "g": 2.2100000000000004,
+      "playing": true,
+      "active": 3,
+      "attached": [
+        3,
+        4
+      ]
+    },
+    {
+      "at": 3694.600000000093,
+      "g": 2.2520000000000002,
+      "playing": true,
+      "active": 4,
+      "attached": [
+        4,
+        5
+      ]
+    },
+    {
+      "at": 3787.4000000001397,
+      "g": 2.3673330000000004,
+      "playing": true,
+      "active": 4,
+      "attached": [
+        4,
+        5
+      ]
+    },
+    {
+      "at": 3875.1999999999534,
+      "g": 2.466,
+      "playing": true,
+      "active": 4,
+      "attached": [
+        4,
+        5
+      ]
+    },
+    {
+      "at": 3963.9000000001397,
+      "g": 2.5566670000000005,
+      "playing": true,
+      "active": 4,
+      "attached": [
+        4,
+        5
+      ]
+    },
+    {
+      "at": 4054.9000000001397,
+      "g": 2.6576190000000004,
+      "playing": true,
+      "active": 4,
+      "attached": [
+        4,
+        5
+      ]
+    },
+    {
+      "at": 4141.600000000093,
+      "g": 2.6576190000000004,
+      "playing": true,
+      "active": 4,
+      "attached": [
+        4,
+        5
+      ]
+    },
+    {
+      "at": 4231.40000000014,
+      "g": 2.7966670000000002,
+      "playing": true,
+      "active": 5,
+      "attached": [
+        4,
+        5
+      ]
+    },
+    {
+      "at": 4315.40000000014,
+      "g": 2.8686660000000006,
+      "playing": true,
+      "active": 5,
+      "attached": [
+        5,
+        6
+      ]
+    },
+    {
+      "at": 4575.199999999953,
+      "g": 2.8686660000000006,
+      "playing": true,
+      "active": 5,
+      "attached": [
+        5,
+        6
+      ]
+    },
+    {
+      "at": 4674.199999999953,
+      "g": 3.068666000000001,
+      "playing": true,
+      "active": 5,
+      "attached": [
+        5,
+        6
+      ]
+    },
+    {
+      "at": 4913.699999999953,
+      "g": 3.1993330000000006,
+      "playing": true,
+      "active": 5,
+      "attached": [
+        5,
+        6
+      ]
+    },
+    {
+      "at": 5212.699999999953,
+      "g": 3.1993330000000006,
+      "playing": true,
+      "active": 5,
+      "attached": [
+        5,
+        6
+      ]
+    },
+    {
+      "at": 5320.800000000047,
+      "g": 3.3020000000000005,
+      "playing": true,
+      "active": 6,
+      "attached": [
+        6,
+        7
+      ]
+    },
+    {
+      "at": 5408.699999999953,
+      "g": 3.3020000000000005,
+      "playing": true,
+      "active": 6,
+      "attached": [
+        6,
+        7
+      ]
+    },
+    {
+      "at": 5517.40000000014,
+      "g": 3.4706670000000006,
+      "playing": true,
+      "active": 6,
+      "attached": [
+        6,
+        7
+      ]
+    },
+    {
+      "at": 5606.5,
+      "g": 3.4706670000000006,
+      "playing": true,
+      "active": 6,
+      "attached": [
+        6,
+        7
+      ]
+    },
+    {
+      "at": 5693.800000000047,
+      "g": 3.6577500000000005,
+      "playing": true,
+      "active": 6,
+      "attached": [
+        6,
+        7
+      ]
+    },
+    {
+      "at": 5806.300000000047,
+      "g": 3.6577500000000005,
+      "playing": true,
+      "active": 6,
+      "attached": [
+        6,
+        7
+      ]
+    },
+    {
+      "at": 5910.300000000047,
+      "g": 3.9020000000000006,
+      "playing": true,
+      "active": 7,
+      "attached": [
+        7,
+        8
+      ]
+    },
+    {
+      "at": 5999.199999999953,
+      "g": 3.9020000000000006,
+      "playing": true,
+      "active": 7,
+      "attached": [
+        7,
+        8
+      ]
+    },
+    {
+      "at": 6119.699999999953,
+      "g": 3.9020000000000006,
+      "playing": true,
+      "active": 7,
+      "attached": [
+        7,
+        8
+      ]
+    },
+    {
+      "at": 6214.300000000047,
+      "g": 4.148000000000001,
+      "playing": true,
+      "active": 7,
+      "attached": [
+        7,
+        8
+      ]
+    },
+    {
+      "at": 6307.90000000014,
+      "g": 4.148000000000001,
+      "playing": true,
+      "active": 7,
+      "attached": [
+        7,
+        8
+      ]
+    },
+    {
+      "at": 6435.600000000093,
+      "g": 4.3426670000000005,
+      "playing": true,
+      "active": 7,
+      "attached": [
+        7,
+        8
+      ]
+    },
+    {
+      "at": 6552.800000000047,
+      "g": 4.3426670000000005,
+      "playing": true,
+      "active": 7,
+      "attached": [
+        7,
+        8
+      ]
+    },
+    {
+      "at": 6638.5,
+      "g": 4.3426670000000005,
+      "playing": true,
+      "active": 7,
+      "attached": [
+        7,
+        8
+      ]
+    },
+    {
+      "at": 6744.699999999953,
+      "g": 4.502000000000001,
+      "playing": true,
+      "active": 8,
+      "attached": [
+        8,
+        9
+      ]
+    },
+    {
+      "at": 6856.90000000014,
+      "g": 4.502000000000001,
+      "playing": true,
+      "active": 8,
+      "attached": [
+        8,
+        9
+      ]
+    },
+    {
+      "at": 6960.100000000093,
+      "g": 4.502000000000001,
+      "playing": true,
+      "active": 8,
+      "attached": [
+        8,
+        9
+      ]
+    },
+    {
+      "at": 7078.40000000014,
+      "g": 4.502000000000001,
+      "playing": true,
+      "active": 8,
+      "attached": [
+        8,
+        9
+      ]
+    },
+    {
+      "at": 7212.300000000047,
+      "g": 4.672667000000001,
+      "playing": true,
+      "active": 8,
+      "attached": [
+        8,
+        9
+      ]
+    },
+    {
+      "at": 7319.800000000047,
+      "g": 4.814000000000001,
+      "playing": true,
+      "active": 8,
+      "attached": [
+        8,
+        9
+      ]
+    },
+    {
+      "at": 7414.300000000047,
+      "g": 4.883333,
+      "playing": true,
+      "active": 8,
+      "attached": [
+        8,
+        9
+      ]
+    },
+    {
+      "at": 7512.300000000047,
+      "g": 4.883333,
+      "playing": true,
+      "active": 8,
+      "attached": [
+        8,
+        9
+      ]
+    },
+    {
+      "at": 7598.800000000047,
+      "g": 4.952000000000001,
+      "playing": true,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 7702.699999999953,
+      "g": 4.952000000000001,
+      "playing": true,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 7801.800000000047,
+      "g": 5.150000000000001,
+      "playing": true,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 7923.600000000093,
+      "g": 5.150000000000001,
+      "playing": true,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 8014.699999999953,
+      "g": 5.150000000000001,
+      "playing": true,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 8123,
+      "g": 5.459333000000001,
+      "playing": true,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 8221,
+      "g": 5.459333000000001,
+      "playing": true,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 8309.300000000047,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 8399.300000000047,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 8483.5,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 8580.100000000093,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 8667.90000000014,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 8754.5,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 8840.199999999953,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 8930.800000000047,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 9013.800000000047,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 9101.100000000093,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 9187.199999999953,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 9270.40000000014,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 9356.100000000093,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 9441,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 9531.300000000047,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 9617.40000000014,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 9700.699999999953,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 9785.300000000047,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 9869.699999999953,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 9952.600000000093,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 10037.199999999953,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 10120.40000000014,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 10203,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 10288.100000000093,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 10370.800000000047,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 10454.40000000014,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 10537.300000000047,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    }
+  ],
+  "loads": [
+    {
+      "at": 1187.6000000000931,
+      "index": 0,
+      "g": 0,
+      "stack": "Error\n    at HTMLMediaElement.load (eval at evaluate (:311:30), <anonymous>:6:217)\n    at warmThenStart (http://127.0.0.1:40429/assets/app.js?v=0.8.11:2700:11)\n    at play (http://127.0.0.1:40429/assets/app.js?v=0.8.11:2716:5)\n    at play (http://127.0.0.1:40429/assets/app.js?v=0.8.11:3481:80)\n    at eval (eval at evaluate (:311:30), <anonymous>:7:12)\n    at UtilityScript.evaluate (<anonymous>:313:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)"
+    },
+    {
+      "at": 1216.1999999999534,
+      "index": 0,
+      "g": 0,
+      "stack": "Error\n    at HTMLMediaElement.load (eval at evaluate (:311:30), <anonymous>:6:217)\n    at warmCurrentFrame (http://127.0.0.1:40429/assets/app.js?v=0.8.11:2495:67)\n    at http://127.0.0.1:40429/assets/app.js?v=0.8.11:2511:38"
+    },
+    {
+      "at": 2419.100000000093,
+      "index": 0,
+      "g": 1.061333,
+      "stack": "Error\n    at HTMLMediaElement.load (eval at evaluate (:311:30), <anonymous>:6:217)\n    at attachSourceIfNeeded (http://127.0.0.1:40429/assets/app.js?v=0.8.11:1953:11)\n    at createVideoRuntime (http://127.0.0.1:40429/assets/app.js?v=0.8.11:1963:26)\n    at createVideoRuntime (http://127.0.0.1:40429/assets/app.js?v=0.8.11:2197:43)\n    at ensureRuntime (http://127.0.0.1:40429/assets/app.js?v=0.8.11:1975:34)\n    at drawableVideo (http://127.0.0.1:40429/assets/app.js?v=0.8.11:2462:14)\n    at http://127.0.0.1:40429/assets/app.js?v=0.8.11:2497:27"
+    }
+  ],
+  "errors": [],
+  "maxAttached": 3,
+  "completed": true
+}

@@ -1,0 +1,17 @@
+Verifies
+Verified using v1 scheme (JAR signing): false
+Verified using v2 scheme (APK Signature Scheme v2): true
+Verified using v3 scheme (APK Signature Scheme v3): false
+Verified using v3.1 scheme (APK Signature Scheme v3.1): false
+Verified using v4 scheme (APK Signature Scheme v4): false
+Verified for SourceStamp: false
+Number of signers: 1
+Signer #1 certificate DN: CN=LEDOA CUT Opacity Fix, O=LEDOA, C=KR
+Signer #1 certificate SHA-256 digest: bd7dad9ddae23ee1086bdbf5d0b578f45348036456deab7363b75dddd86bf9e8
+Signer #1 certificate SHA-1 digest: a1482399d4c417bf34dfe92b11a7497bb160fe75
+Signer #1 certificate MD5 digest: 1fc04cb463cca9eb2747b899b1df4906
+Signer #1 key algorithm: RSA
+Signer #1 key size (bits): 2048
+Signer #1 public key SHA-256 digest: ce8100e111cfd2bf23999dcd967975b155c52c285f90ac50723fc48510895532
+Signer #1 public key SHA-1 digest: f5b841f806526847905b8a365fd3c518f7286642
+Signer #1 public key MD5 digest: 3056e8c1abbc7f91fdfb23bf6e02d364
