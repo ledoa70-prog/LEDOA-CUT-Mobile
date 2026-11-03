@@ -1,0 +1,23 @@
+const fs=require('fs'),path=require('path'),cp=require('child_process'),util=require('util'),repl=require('repl');
+const {chromium}=require(process.env.CODEX_PRIMARY_RUNTIME_NODE_MODULES+'/playwright');
+const root=path.resolve('.'),sdk=path.join(root,'p0_tools/android-sdk'),adb=path.join(sdk,'platform-tools/adb');
+const exec=util.promisify(cp.execFile),logDir=path.join(root,'p0_evidence/native');fs.mkdirSync(logDir,{recursive:true});
+const env={...process.env,ANDROID_SDK_ROOT:sdk,ANDROID_AVD_HOME:path.join(root,'p0_tools/android-avd'),ANDROID_USER_HOME:path.join(root,'p0_tools/android-prefs')};
+fs.mkdirSync(env.ANDROID_USER_HOME,{recursive:true});
+const adbLog=fs.openSync(path.join(logDir,'adb-server.log'),'a'),emuLog=fs.openSync(path.join(logDir,'emulator.log'),'a');
+const server=cp.spawn(adb,['nodaemon','server'],{env,stdio:['ignore',adbLog,adbLog]});
+const emulator=cp.spawn(path.join(sdk,'emulator/emulator'),['-avd',process.env.P0_AVD_NAME||'LEDOA_P0_NATIVE','-no-window','-no-audio','-no-snapshot','-no-boot-anim','-no-metrics','-accel','off','-gpu','swiftshader','-memory','2048','-cores','4','-port','5554','-show-kernel'],{env,stdio:['ignore',emuLog,emuLog]});
+const p0={root,sdk,adbPath:adb,logDir,server,emulator,browser:null,page:null};
+p0.adb=async function(args,timeout=15000){const r=await exec(adb,['-s','emulator-5554',...args],{env,timeout,maxBuffer:32*1024*1024});return r.stdout.trim();};
+p0.status=async function(){let devices,boot;try{devices=(await exec(adb,['devices'],{env,timeout:5000})).stdout.trim();boot=await p0.adb(['shell','getprop','sys.boot_completed'],5000);}catch(e){boot=e.message;}return{emulatorExit:emulator.exitCode,serverExit:server.exitCode,devices,boot,tail:fs.readFileSync(path.join(logDir,'emulator.log'),'utf8').split('\n').slice(-5)};};
+p0.install=async file=>p0.adb(['install','-r',path.resolve(file)],120000);
+p0.instrument=async function(){
+ const log=fs.openSync(path.join(logDir,'instrumentation.log'),'a');
+ p0.instrumentation=cp.spawn(adb,['-s','emulator-5554','shell','am','instrument','-w','kr.ledoa.cut.p0test/kr.ledoa.cut.p0test.TransportInstrumentation'],{env,stdio:['ignore',log,log]});
+ return{started:true,pid:p0.instrumentation.pid};
+};
+p0.connect=async function(){const pid=await p0.adb(['shell','pidof','kr.ledoa.cut.captionbeta']);await p0.adb(['forward','tcp:9222','localabstract:webview_devtools_remote_'+pid]);p0.browser=await chromium.connectOverCDP('http://127.0.0.1:9222',{timeout:20000});const pages=p0.browser.contexts().flatMap(c=>c.pages());p0.page=pages.find(p=>p.url().includes('index.html'))||pages[0];return{pid,pages:pages.map(p=>p.url())};};
+p0.stop=async function(){try{if(p0.browser)await p0.browser.close();}catch{}try{await p0.adb(['emu','kill'],5000);}catch{emulator.kill('SIGTERM');}server.kill('SIGTERM');return{stopped:true};};
+emulator.on('exit',(code,signal)=>console.log('EMULATOR_EXIT',JSON.stringify({code,signal})));
+server.on('exit',(code,signal)=>console.log('ADB_SERVER_EXIT',JSON.stringify({code,signal})));
+const prompt=repl.start({prompt:'LEDOA_P0> ',useGlobal:false});prompt.context.p0=p0;prompt.context.fs=fs;prompt.context.path=path;prompt.context.cp=cp;prompt.on('exit',()=>{emulator.kill('SIGTERM');server.kill('SIGTERM');process.exit(0);});

@@ -1,0 +1,114 @@
+{
+  "actualUserPhone": false,
+  "actualUserProject": false,
+  "files": [
+    {
+      "name": "1000067125.mp4",
+      "bytes": 47094386,
+      "sha256": "6c606dac5b3469d8702823f23b7c4ab5befdb5db2a0cdf717e1888a6c3bb66e7",
+      "streams": [
+        {
+          "codec_name": "hevc",
+          "codec_type": "video",
+          "profile": "Main",
+          "codec_tag_string": "hvc1",
+          "width": 1080,
+          "height": 1920,
+          "pix_fmt": "yuv420p",
+          "level": 30,
+          "r_frame_rate": "30/1",
+          "avg_frame_rate": "19597500/653017",
+          "duration": "29.019500",
+          "nb_frames": "871"
+        },
+        {
+          "codec_name": "aac",
+          "codec_type": "audio",
+          "profile": "LC",
+          "codec_tag_string": "mp4a",
+          "r_frame_rate": "0/0",
+          "avg_frame_rate": "0/0",
+          "duration": "29.055542",
+          "nb_frames": "1362",
+          "sample_rate": "48000",
+          "channels": 2
+        }
+      ],
+      "containerDuration": "29.055542"
+    },
+    {
+      "name": "1000067126.mp4",
+      "bytes": 25361067,
+      "sha256": "529dd9667a26e2229212f8e3f8bdc7838e3b83902e874359058224ca8f0698d9",
+      "streams": [
+        {
+          "codec_name": "hevc",
+          "codec_type": "video",
+          "profile": "Main",
+          "codec_tag_string": "hvc1",
+          "width": 1080,
+          "height": 1920,
+          "pix_fmt": "yuv420p",
+          "level": 30,
+          "r_frame_rate": "60000/1001",
+          "avg_frame_rate": "13890000/464251",
+          "duration": "15.455600",
+          "nb_frames": "463"
+        },
+        {
+          "codec_name": "aac",
+          "codec_type": "audio",
+          "profile": "LC",
+          "codec_tag_string": "mp4a",
+          "r_frame_rate": "0/0",
+          "avg_frame_rate": "0/0",
+          "duration": "15.509083",
+          "nb_frames": "727",
+          "sample_rate": "48000",
+          "channels": 2
+        }
+      ],
+      "containerDuration": "15.509083"
+    }
+  ],
+  "environment": {
+    "ffmpeg": "ffmpeg version 6.1.1-3ubuntu5 Copyright (c) 2000-2023 the FFmpeg developers",
+    "platform": "Linux-6.18.57-x86_64-with-glibc2.39"
+  },
+  "desktopChromiumHevc": "unsupported",
+  "releaseReady": false,
+  "frameTiming": [
+    {
+      "file": "1000067125.mp4",
+      "frame_count": 870,
+      "first_frame": 0.0,
+      "last_frame": 28.959856,
+      "interval_ms_histogram": {
+        "33.322": 478,
+        "33.333": 169,
+        "33.323": 135,
+        "33.334": 87
+      },
+      "full_ffmpeg_decode": "passed"
+    },
+    {
+      "file": "1000067126.mp4",
+      "frame_count": 461,
+      "first_frame": 0.0,
+      "last_frame": 15.394356,
+      "interval_ms_histogram": {
+        "33.444": 171,
+        "33.445": 134,
+        "33.456": 61,
+        "33.455": 43,
+        "33.322": 22,
+        "33.333": 11,
+        "33.323": 9,
+        "33.433": 5,
+        "33.334": 3,
+        "47.6": 1
+      },
+      "full_ffmpeg_decode": "passed"
+    }
+  ]
+}
