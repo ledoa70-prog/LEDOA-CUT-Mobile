@@ -1,0 +1,157 @@
+{
+  "cases": [
+    {
+      "spec": {
+        "name": "default",
+        "manual": false,
+        "motion": false
+      },
+      "stats": {
+        "probe": {
+          "draws": [
+            1943.5,
+            1958.3000000002794,
+            1968,
+            1983.2000000001863,
+            3485.3000000002794,
+            3493,
+            3502.7000000001863,
+            4417.399999999907,
+            4428.800000000279,
+            4435.700000000186
+          ],
+          "requests": 0
+        },
+        "diagnostics": {
+          "version": "0.8.12-p0-candidate",
+          "playing": false,
+          "projectTime": 3,
+          "events": []
+        },
+        "mime": "video/mp4;codecs=vp9,opus",
+        "status": "완료 · MP4"
+      },
+      "streams": [
+        {
+          "codec": "vp9",
+          "type": "video",
+          "frames": "2",
+          "duration": "0.072900",
+          "fps": "20000/729"
+        },
+        {
+          "codec": "opus",
+          "type": "audio",
+          "frames": "40",
+          "duration": "2.428792",
+          "fps": "0/0"
+        }
+      ],
+      "duration": "2.428792"
+    },
+    {
+      "spec": {
+        "name": "default-motion",
+        "manual": false,
+        "motion": true
+      },
+      "stats": {
+        "probe": {
+          "draws": [
+            2421.5,
+            2432.8000000002794,
+            2967.4000000003725,
+            3295.4000000003725,
+            3714.600000000093,
+            3737.7000000001863,
+            3791.5,
+            4373.600000000093,
+            4381.800000000279,
+            4432.300000000279,
+            4939.9000000003725,
+            4957.800000000279,
+            4984.4000000003725,
+            5454.200000000186
+          ],
+          "requests": 0
+        },
+        "diagnostics": {
+          "version": "0.8.12-p0-candidate",
+          "playing": false,
+          "projectTime": 3,
+          "events": []
+        },
+        "mime": "video/mp4;codecs=vp9,opus",
+        "status": "완료 · MP4"
+      },
+      "streams": [
+        {
+          "codec": "vp9",
+          "type": "video",
+          "frames": "6",
+          "duration": "2.045167",
+          "fps": "36000/12271"
+        },
+        {
+          "codec": "opus",
+          "type": "audio",
+          "frames": "49",
+          "duration": "3.026417",
+          "fps": "0/0"
+        }
+      ],
+      "duration": "3.026417"
+    },
+    {
+      "spec": {
+        "name": "requested-frames",
+        "manual": true,
+        "motion": true
+      },
+      "stats": {
+        "probe": {
+          "draws": [
+            1878.1000000000931,
+            1882.8999999999069,
+            2187.8000000002794,
+            2207.899999999907,
+            2738,
+            3657.8000000002794,
+            3672.899999999907,
+            3680.5,
+            4103.899999999907,
+            4373.700000000186,
+            6331.200000000186
+          ],
+          "requests": 11
+        },
+        "diagnostics": {
+          "version": "0.8.12-p0-candidate",
+          "playing": false,
+          "projectTime": 3,
+          "events": []
+        },
+        "mime": "video/mp4;codecs=vp9,opus",
+        "status": "완료 · MP4"
+      },
+      "streams": [
+        {
+          "codec": "vp9",
+          "type": "video",
+          "frames": "6",
+          "duration": "1.813233",
+          "fps": "180000/54397"
+        },
+        {
+          "codec": "opus",
+          "type": "audio",
+          "frames": "57",
+          "duration": "4.401312",
+          "fps": "0/0"
+        }
+      ],
+      "duration": "4.401313"
+    }
+  ],
+  "errors": []
+}

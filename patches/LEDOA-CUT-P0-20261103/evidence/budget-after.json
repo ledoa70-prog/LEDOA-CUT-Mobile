@@ -1,0 +1,937 @@
+{
+  "samples": [
+    {
+      "at": 1253.1999999997206,
+      "g": 0,
+      "playing": false,
+      "active": 0,
+      "attached": [
+        0,
+        1
+      ]
+    },
+    {
+      "at": 1339.3999999999069,
+      "g": 0.029332999999999998,
+      "playing": true,
+      "active": 0,
+      "attached": [
+        0,
+        1
+      ]
+    },
+    {
+      "at": 1423.5,
+      "g": 0.098667,
+      "playing": true,
+      "active": 0,
+      "attached": [
+        0,
+        1
+      ]
+    },
+    {
+      "at": 1514.6000000000931,
+      "g": 0.15199999999999997,
+      "playing": true,
+      "active": 0,
+      "attached": [
+        0,
+        1
+      ]
+    },
+    {
+      "at": 1602.1000000000931,
+      "g": 0.221333,
+      "playing": true,
+      "active": 0,
+      "attached": [
+        0,
+        1
+      ]
+    },
+    {
+      "at": 1690.8999999999069,
+      "g": 0.34933299999999995,
+      "playing": true,
+      "active": 0,
+      "attached": [
+        0,
+        1
+      ]
+    },
+    {
+      "at": 1777.1000000000931,
+      "g": 0.44,
+      "playing": true,
+      "active": 0,
+      "attached": [
+        0,
+        1
+      ]
+    },
+    {
+      "at": 1860,
+      "g": 0.512,
+      "playing": true,
+      "active": 0,
+      "attached": [
+        0,
+        1
+      ]
+    },
+    {
+      "at": 1950,
+      "g": 0.6613330000000001,
+      "playing": true,
+      "active": 1,
+      "attached": [
+        1,
+        2
+      ]
+    },
+    {
+      "at": 2036.3999999999069,
+      "g": 0.6613330000000001,
+      "playing": true,
+      "active": 1,
+      "attached": [
+        1,
+        2
+      ]
+    },
+    {
+      "at": 2124.2999999998137,
+      "g": 0.8293330000000001,
+      "playing": true,
+      "active": 1,
+      "attached": [
+        1,
+        2
+      ]
+    },
+    {
+      "at": 2215.1999999997206,
+      "g": 0.9120000000000001,
+      "playing": true,
+      "active": 1,
+      "attached": [
+        1,
+        2
+      ]
+    },
+    {
+      "at": 2304,
+      "g": 0.98749,
+      "playing": true,
+      "active": 1,
+      "attached": [
+        1,
+        2
+      ]
+    },
+    {
+      "at": 2388.899999999907,
+      "g": 1.061333,
+      "playing": true,
+      "active": 2,
+      "attached": [
+        1,
+        2
+      ]
+    },
+    {
+      "at": 2476.5,
+      "g": 1.1381320000000001,
+      "playing": true,
+      "active": 2,
+      "attached": [
+        1,
+        2
+      ]
+    },
+    {
+      "at": 2561.600000000093,
+      "g": 1.1863050000000004,
+      "playing": true,
+      "active": 2,
+      "attached": [
+        1,
+        2
+      ]
+    },
+    {
+      "at": 2651.399999999907,
+      "g": 1.3086670000000002,
+      "playing": true,
+      "active": 2,
+      "attached": [
+        2,
+        3
+      ]
+    },
+    {
+      "at": 2739.399999999907,
+      "g": 1.4180000000000001,
+      "playing": true,
+      "active": 2,
+      "attached": [
+        2,
+        3
+      ]
+    },
+    {
+      "at": 2825.6999999997206,
+      "g": 1.4180000000000001,
+      "playing": true,
+      "active": 2,
+      "attached": [
+        2,
+        3
+      ]
+    },
+    {
+      "at": 2915.1999999997206,
+      "g": 1.6100000000000003,
+      "playing": true,
+      "active": 2,
+      "attached": [
+        2,
+        3
+      ]
+    },
+    {
+      "at": 3005.2999999998137,
+      "g": 1.6100000000000003,
+      "playing": true,
+      "active": 2,
+      "attached": [
+        2,
+        3
+      ]
+    },
+    {
+      "at": 3095.600000000093,
+      "g": 1.6520000000000004,
+      "playing": true,
+      "active": 3,
+      "attached": [
+        3,
+        4
+      ]
+    },
+    {
+      "at": 3181.5,
+      "g": 1.6520000000000004,
+      "playing": true,
+      "active": 3,
+      "attached": [
+        3,
+        4
+      ]
+    },
+    {
+      "at": 3269.5,
+      "g": 1.7700000000000005,
+      "playing": true,
+      "active": 3,
+      "attached": [
+        3,
+        4
+      ]
+    },
+    {
+      "at": 3358.600000000093,
+      "g": 1.8999770000000002,
+      "playing": true,
+      "active": 3,
+      "attached": [
+        3,
+        4
+      ]
+    },
+    {
+      "at": 3451.1999999997206,
+      "g": 1.9593330000000004,
+      "playing": true,
+      "active": 3,
+      "attached": [
+        3,
+        4
+      ]
+    },
+    {
+      "at": 3534.399999999907,
+      "g": 1.9593330000000004,
+      "playing": true,
+      "active": 3,
+      "attached": [
+        3,
+        4
+      ]
+    },
+    {
+      "at": 3620.899999999907,
+      "g": 2.1464760000000003,
+      "playing": true,
+      "active": 3,
+      "attached": [
+        3,
+        4
+      ]
+    },
+    {
+      "at": 3707.2999999998137,
+      "g": 2.2206670000000006,
+      "playing": true,
+      "active": 3,
+      "attached": [
+        3,
+        4
+      ]
+    },
+    {
+      "at": 3795.5,
+      "g": 2.2520000000000002,
+      "playing": true,
+      "active": 4,
+      "attached": [
+        4,
+        5
+      ]
+    },
+    {
+      "at": 3880.399999999907,
+      "g": 2.3886670000000003,
+      "playing": true,
+      "active": 4,
+      "attached": [
+        4,
+        5
+      ]
+    },
+    {
+      "at": 3967.5,
+      "g": 2.5006670000000004,
+      "playing": true,
+      "active": 4,
+      "attached": [
+        4,
+        5
+      ]
+    },
+    {
+      "at": 4053.6999999997206,
+      "g": 2.5006670000000004,
+      "playing": true,
+      "active": 4,
+      "attached": [
+        4,
+        5
+      ]
+    },
+    {
+      "at": 4140.600000000093,
+      "g": 2.6180000000000003,
+      "playing": true,
+      "active": 4,
+      "attached": [
+        4,
+        5
+      ]
+    },
+    {
+      "at": 4228.199999999721,
+      "g": 2.7363510000000004,
+      "playing": true,
+      "active": 5,
+      "attached": [
+        4,
+        5
+      ]
+    },
+    {
+      "at": 4312,
+      "g": 2.7496830000000005,
+      "playing": true,
+      "active": 5,
+      "attached": [
+        4,
+        5
+      ]
+    },
+    {
+      "at": 4397.600000000093,
+      "g": 2.8376830000000006,
+      "playing": true,
+      "active": 5,
+      "attached": [
+        4,
+        5
+      ]
+    },
+    {
+      "at": 4482.600000000093,
+      "g": 2.9176830000000007,
+      "playing": true,
+      "active": 5,
+      "attached": [
+        5,
+        6
+      ]
+    },
+    {
+      "at": 4575.399999999907,
+      "g": 2.9176830000000007,
+      "playing": true,
+      "active": 5,
+      "attached": [
+        5,
+        6
+      ]
+    },
+    {
+      "at": 4664.5,
+      "g": 3.0883500000000006,
+      "playing": true,
+      "active": 5,
+      "attached": [
+        5,
+        6
+      ]
+    },
+    {
+      "at": 4749.5,
+      "g": 3.2256850000000004,
+      "playing": true,
+      "active": 5,
+      "attached": [
+        5,
+        6
+      ]
+    },
+    {
+      "at": 4839.899999999907,
+      "g": 3.3020000000000005,
+      "playing": true,
+      "active": 6,
+      "attached": [
+        6,
+        7
+      ]
+    },
+    {
+      "at": 4927.399999999907,
+      "g": 3.3826670000000005,
+      "playing": true,
+      "active": 6,
+      "attached": [
+        6,
+        7
+      ]
+    },
+    {
+      "at": 5015.100000000093,
+      "g": 3.3826670000000005,
+      "playing": true,
+      "active": 6,
+      "attached": [
+        6,
+        7
+      ]
+    },
+    {
+      "at": 5110.799999999814,
+      "g": 3.5133330000000007,
+      "playing": true,
+      "active": 6,
+      "attached": [
+        6,
+        7
+      ]
+    },
+    {
+      "at": 5207.899999999907,
+      "g": 3.5889580000000008,
+      "playing": true,
+      "active": 6,
+      "attached": [
+        6,
+        7
+      ]
+    },
+    {
+      "at": 5303.600000000093,
+      "g": 3.692049000000001,
+      "playing": true,
+      "active": 6,
+      "attached": [
+        6,
+        7
+      ]
+    },
+    {
+      "at": 5396.399999999907,
+      "g": 3.8514050000000006,
+      "playing": true,
+      "active": 6,
+      "attached": [
+        6,
+        7
+      ]
+    },
+    {
+      "at": 5482.600000000093,
+      "g": 3.9020000000000006,
+      "playing": true,
+      "active": 7,
+      "attached": [
+        7,
+        8
+      ]
+    },
+    {
+      "at": 5565.699999999721,
+      "g": 3.9693330000000007,
+      "playing": true,
+      "active": 7,
+      "attached": [
+        7,
+        8
+      ]
+    },
+    {
+      "at": 5652.799999999814,
+      "g": 4.038667000000001,
+      "playing": true,
+      "active": 7,
+      "attached": [
+        7,
+        8
+      ]
+    },
+    {
+      "at": 5735,
+      "g": 4.1080000000000005,
+      "playing": true,
+      "active": 7,
+      "attached": [
+        7,
+        8
+      ]
+    },
+    {
+      "at": 5823.799999999814,
+      "g": 4.190667000000001,
+      "playing": true,
+      "active": 7,
+      "attached": [
+        7,
+        8
+      ]
+    },
+    {
+      "at": 5917.899999999907,
+      "g": 4.308000000000001,
+      "playing": true,
+      "active": 7,
+      "attached": [
+        7,
+        8
+      ]
+    },
+    {
+      "at": 6007.5,
+      "g": 4.380000000000001,
+      "playing": true,
+      "active": 8,
+      "attached": [
+        7,
+        8
+      ]
+    },
+    {
+      "at": 6091.199999999721,
+      "g": 4.449333,
+      "playing": true,
+      "active": 8,
+      "attached": [
+        7,
+        8
+      ]
+    },
+    {
+      "at": 6176.899999999907,
+      "g": 4.518667000000001,
+      "playing": true,
+      "active": 8,
+      "attached": [
+        8,
+        9
+      ]
+    },
+    {
+      "at": 6261.199999999721,
+      "g": 4.5967720000000005,
+      "playing": true,
+      "active": 8,
+      "attached": [
+        8,
+        9
+      ]
+    },
+    {
+      "at": 6347.299999999814,
+      "g": 4.7293330000000005,
+      "playing": true,
+      "active": 8,
+      "attached": [
+        8,
+        9
+      ]
+    },
+    {
+      "at": 6438.100000000093,
+      "g": 4.790667000000001,
+      "playing": true,
+      "active": 8,
+      "attached": [
+        8,
+        9
+      ]
+    },
+    {
+      "at": 6528.799999999814,
+      "g": 4.870667000000001,
+      "playing": true,
+      "active": 8,
+      "attached": [
+        8,
+        9
+      ]
+    },
+    {
+      "at": 6623.799999999814,
+      "g": 5.011333000000001,
+      "playing": true,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 6707.399999999907,
+      "g": 5.011333000000001,
+      "playing": true,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 6798.199999999721,
+      "g": 5.128992000000001,
+      "playing": true,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 6885.5,
+      "g": 5.260524000000001,
+      "playing": true,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 6970.600000000093,
+      "g": 5.302000000000001,
+      "playing": true,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 7055.5,
+      "g": 5.392587000000001,
+      "playing": true,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 7143.699999999721,
+      "g": 5.470000000000001,
+      "playing": true,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 7226.699999999721,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 7310.299999999814,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 7393.399999999907,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 7484.699999999721,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 7568.5,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 7659.100000000093,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 7741.600000000093,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 7826.799999999814,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 7910.5,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 7993.399999999907,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 8079.600000000093,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 8163.100000000093,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 8247.100000000093,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 8330.299999999814,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 8414.69999999972,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 8498.19999999972,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 8583.19999999972,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 8668.799999999814,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 8752.600000000093,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 8837.100000000093,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 8921.100000000093,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 9006.899999999907,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 9091.100000000093,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 9175.5,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 9261.299999999814,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 9348.19999999972,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    },
+    {
+      "at": 9434,
+      "g": 5.550000000000001,
+      "playing": false,
+      "active": 9,
+      "attached": [
+        9
+      ]
+    }
+  ],
+  "loads": [
+    {
+      "at": 1160.1999999997206,
+      "index": 0,
+      "g": 0,
+      "stack": "Error\n    at HTMLMediaElement.load (eval at evaluate (:311:30), <anonymous>:6:217)\n    at warmThenStart (http://127.0.0.1:35073/assets/app.js?v=0.8.12:2704:11)\n    at play (http://127.0.0.1:35073/assets/app.js?v=0.8.12:2720:5)\n    at play (http://127.0.0.1:35073/assets/app.js?v=0.8.12:3485:123)\n    at eval (eval at evaluate (:311:30), <anonymous>:7:12)\n    at UtilityScript.evaluate (<anonymous>:313:16)\n    at UtilityScript.<anonymous> (<anonymous>:1:44)"
+    },
+    {
+      "at": 1195.1000000000931,
+      "index": 0,
+      "g": 0,
+      "stack": "Error\n    at HTMLMediaElement.load (eval at evaluate (:311:30), <anonymous>:6:217)\n    at warmCurrentFrame (http://127.0.0.1:35073/assets/app.js?v=0.8.12:2499:67)\n    at http://127.0.0.1:35073/assets/app.js?v=0.8.12:2515:38"
+    }
+  ],
+  "errors": [],
+  "maxAttached": 2,
+  "completed": true
+}

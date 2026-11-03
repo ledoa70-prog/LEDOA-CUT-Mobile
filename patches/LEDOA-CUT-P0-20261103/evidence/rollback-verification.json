@@ -1,0 +1,23 @@
+{
+  "status": "UNRELEASED_CANDIDATE",
+  "releaseApproved": false,
+  "package": "kr.ledoa.cut.captionbeta",
+  "versionName": "0.8.11-rollback-813",
+  "versionCode": 813,
+  "sameSigningCertificate": true,
+  "certificateSha256": "bd7dad9ddae23ee1086bdbf5d0b578f45348036456deab7363b75dddd86bf9e8",
+  "signatureVerified": true,
+  "changedEntries": [
+    "AndroidManifest.xml"
+  ],
+  "preservedEntries": 498,
+  "allOtherCompressedEntrySha256Identical": true,
+  "projectSchemaChanged": false,
+  "databaseNameChanged": false,
+  "nativeCodeChanged": false,
+  "androidInstallLaunchTest": false,
+  "nativeProjectRestoreTest": false,
+  "nativeMp4ExportTest": false,
+  "bytes": 413749980,
+  "sha256": "7e504d40b0af22370ebbf7e0d01c498587a24f168972a061a3aec8be4197d346"
+}

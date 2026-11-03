@@ -1,0 +1,121 @@
+{
+  "environment": {
+    "browser": "133.0.6943.0",
+    "platform": "linux",
+    "androidDevice": false,
+    "media": {
+      "h264": "probably",
+      "mp4Recorder": true
+    }
+  },
+  "faultInjected": true,
+  "spec": {
+    "name": "dead-incoming-decoder",
+    "firstEnd": 1.5,
+    "secondStart": 1.1,
+    "secondEnd": 3.5,
+    "at": 1.1,
+    "wait": 10500,
+    "faultInjected": true
+  },
+  "first": {
+    "at": 3142.9000000001397,
+    "g": 1.1,
+    "playing": false,
+    "active": 0,
+    "videos": [
+      {
+        "id": 3,
+        "ct": 1.1,
+        "paused": true,
+        "seeking": true,
+        "ended": false,
+        "ready": 1,
+        "frames": 35
+      },
+      {
+        "id": 4,
+        "ct": 1.1,
+        "paused": true,
+        "seeking": false,
+        "ended": false,
+        "ready": 4,
+        "frames": 41
+      }
+    ]
+  },
+  "last": {
+    "at": 14969,
+    "g": 3.9,
+    "playing": false,
+    "active": 1,
+    "videos": [
+      {
+        "id": 3,
+        "ct": 0,
+        "paused": true,
+        "seeking": false,
+        "ended": false,
+        "ready": 0,
+        "frames": 0
+      },
+      {
+        "id": 5,
+        "ct": 3.512667,
+        "paused": true,
+        "seeking": false,
+        "ended": false,
+        "ready": 4,
+        "frames": 66
+      }
+    ]
+  },
+  "counts": {
+    "pause": 312,
+    "play": 4,
+    "load": 4
+  },
+  "loadEvents": [
+    {
+      "at": 6276.800000000047,
+      "kind": "load",
+      "video": 3,
+      "ct": 1.1,
+      "paused": true,
+      "seeking": true,
+      "ready": 1,
+      "ended": false
+    },
+    {
+      "at": 6907.300000000047,
+      "kind": "load",
+      "video": 3,
+      "ct": 1.537333,
+      "paused": true,
+      "seeking": false,
+      "ready": 4,
+      "ended": false
+    },
+    {
+      "at": 9555.100000000093,
+      "kind": "load",
+      "video": 4,
+      "ct": 1.1,
+      "paused": true,
+      "seeking": false,
+      "ready": 4,
+      "ended": false
+    },
+    {
+      "at": 11214.800000000047,
+      "kind": "load",
+      "video": 4,
+      "ct": 1.102,
+      "paused": true,
+      "seeking": false,
+      "ready": 4,
+      "ended": false
+    }
+  ],
+  "errors": []
+}

@@ -1,0 +1,151 @@
+{
+  "environment": {
+    "browser": "133.0.6943.0",
+    "platform": "linux",
+    "androidDevice": false,
+    "media": {
+      "h264": "probably",
+      "mp4Recorder": true
+    }
+  },
+  "faultInjected": true,
+  "spec": {
+    "name": "dead-incoming-decoder",
+    "firstEnd": 1.5,
+    "secondStart": 1.1,
+    "secondEnd": 3.5,
+    "at": 1.1,
+    "wait": 10500,
+    "faultInjected": true
+  },
+  "first": {
+    "at": 1996,
+    "g": 1.1,
+    "playing": true,
+    "active": 0,
+    "videos": [
+      {
+        "id": 3,
+        "ct": 1.110667,
+        "paused": false,
+        "seeking": false,
+        "ended": false,
+        "ready": 4,
+        "frames": 41
+      },
+      {
+        "id": 4,
+        "ct": 1.1,
+        "paused": true,
+        "seeking": false,
+        "ended": false,
+        "ready": 4,
+        "frames": 41
+      }
+    ]
+  },
+  "last": {
+    "at": 13153.200000000186,
+    "g": 1.502,
+    "playing": true,
+    "active": 1,
+    "videos": [
+      {
+        "id": 3,
+        "ct": 0,
+        "paused": true,
+        "seeking": false,
+        "ended": false,
+        "ready": 0,
+        "frames": 0
+      },
+      {
+        "id": 4,
+        "ct": 1.102,
+        "paused": true,
+        "seeking": true,
+        "ended": false,
+        "ready": 1,
+        "frames": 25
+      }
+    ]
+  },
+  "counts": {
+    "pause": 505,
+    "play": 1,
+    "load": 7
+  },
+  "loadEvents": [
+    {
+      "at": 2472.100000000093,
+      "kind": "load",
+      "video": 3,
+      "ct": 1.58,
+      "paused": true,
+      "seeking": false,
+      "ready": 4,
+      "ended": false
+    },
+    {
+      "at": 2872.8000000000466,
+      "kind": "load",
+      "video": 3,
+      "ct": 0,
+      "paused": true,
+      "seeking": false,
+      "ready": 0,
+      "ended": false
+    },
+    {
+      "at": 2875,
+      "kind": "load",
+      "video": 3,
+      "ct": 0,
+      "paused": true,
+      "seeking": false,
+      "ready": 0,
+      "ended": false
+    },
+    {
+      "at": 5063.40000000014,
+      "kind": "load",
+      "video": 4,
+      "ct": 1.1,
+      "paused": true,
+      "seeking": false,
+      "ready": 4,
+      "ended": false
+    },
+    {
+      "at": 7740.40000000014,
+      "kind": "load",
+      "video": 4,
+      "ct": 1.102,
+      "paused": true,
+      "seeking": false,
+      "ready": 4,
+      "ended": false
+    },
+    {
+      "at": 10428.90000000014,
+      "kind": "load",
+      "video": 4,
+      "ct": 1.102,
+      "paused": true,
+      "seeking": false,
+      "ready": 4,
+      "ended": false
+    },
+    {
+      "at": 13049.90000000014,
+      "kind": "load",
+      "video": 4,
+      "ct": 1.102,
+      "paused": true,
+      "seeking": false,
+      "ready": 4,
+      "ended": false
+    }
+  ],
+  "errors": []
+}
